@@ -14,7 +14,7 @@ yquoter>=1.0
 adata>=0.1
 
 # 自然语言选股
-pywencai>=0.1
+pywencai>=0.13.1
 
 # 报告生成
 python-docx>=1.1
