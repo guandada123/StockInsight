@@ -1,0 +1,7 @@
+node_modules/
+dist/
+src-tauri/
+target/
+*.md
+*.html
+*.json

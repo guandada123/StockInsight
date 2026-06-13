@@ -1,0 +1,83 @@
+# Ruff configuration — StockInsight Pro (Backend)
+# 参照 QuantTradingSystem 标准，渐进式启用
+
+target-version = "py311"
+line-length = 100
+indent-width = 4
+
+[lint]
+select = [
+    # Error detection
+    "E", "W",          # pycodestyle
+    "F",               # Pyflakes
+    "B",               # flake8-bugbear
+    "S",               # flake8-bandit (security)
+    # Code quality
+    "I",               # isort
+    "N",               # pep8-naming
+    "UP",              # pyupgrade
+    "C4",              # flake8-comprehensions
+    "SIM",             # flake8-simplify
+    "T20",             # flake8-print
+    "EM",              # flake8-errmsg
+    "PL",              # pylint
+    "TRY",             # tryceratops
+    "ARG",             # flake8-unused-arguments
+    "PIE",             # flake8-pie
+]
+
+ignore = [
+    "E501",            # line too long — handled by formatter
+    "ANN",             # annotations — 渐进添加
+    "D100", "D104",    # module/package docstring
+    # 重构类（需大规模改动，渐进收紧）
+    "ARG001",          # unused function argument
+    "ARG002",          # unused method argument
+    "PLC0415",         # import-outside-top-level
+    "PLR0912",         # too-many-branches
+    "PLR0913",         # too-many-arguments
+    "PLR0915",         # too-many-statements
+    "PLR0911",         # too-many-return-statements
+    "PLR2004",         # magic-value-comparison
+    "PLW1510",         # subprocess-run-without-check
+    "PLW0108",         # unnecessary-lambda
+    # 风格/低优先级
+    "EM101", "EM102",  # exception message style
+    "TRY300", "TRY400", "TRY003",
+    "N806",            # non-lowercase-variable
+    "B007", "B905",
+    "F841",            # unused-variable (调试变量)
+    "SIM108", "SIM110", "SIM118",
+    # CLI 脚本
+    "S603", "S607",    # subprocess
+    # 数据获取层（try-except-pass 是容错策略）
+    "S110",            # try-except-pass
+    "S301",            # suspicious-pickle-usage (缓存)
+    "S311",            # non-cryptographic-random (非安全场景)
+    "S608",            # hardcoded-sql (SQLite)
+    "PLW0603",         # global-statement
+    "PLW2901",         # redefined-loop-name
+    "SIM102", "SIM103", "SIM105", "SIM116",
+    "E402",            # module-import-not-at-top
+    "E722",            # bare-except
+    "E741",            # ambiguous-variable-name
+    "TRY004", "TRY301",
+    "PIE810",          # multiple-starts-ends-with
+    "B904",            # raise-without-from
+    "N818",            # error-suffix-on-exception
+    "C401", "C416",    # unnecessary-generator
+]
+
+[lint.per-file-ignores]
+"stock_analyzer/**/*.py" = ["T201", "S310", "S108", "S112", "S324", "E402", "F401"]
+"stock_analyzer/test_*.py" = ["S101"]
+"backend/routers/*.py" = ["S310"]
+"backend/tests/**" = ["S101"]
+"scripts/*.py" = ["T201"]
+"cli.py" = ["T201"]
+"pick5_*.py" = ["T201"]
+"run_daily.py" = ["T201"]
+
+[format]
+quote-style = "double"
+indent-style = "space"

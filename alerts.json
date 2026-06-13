@@ -1,0 +1,34 @@
+[
+  {
+    "type": "technical",
+    "code": "300408",
+    "indicator": "RSI",
+    "condition": ">80",
+    "id": "f614c5f6",
+    "enabled": true
+  },
+  {
+    "type": "price",
+    "code": "300408",
+    "direction": "below",
+    "target": 100,
+    "id": "53570955",
+    "enabled": true
+  },
+  {
+    "type": "technical",
+    "code": "603005",
+    "indicator": "MACD",
+    "condition": "金叉",
+    "id": "5b526505",
+    "enabled": true
+  },
+  {
+    "type": "price",
+    "code": "600519",
+    "direction": "above",
+    "target": 2000,
+    "id": "ff23da3a",
+    "enabled": true
+  }
+]
