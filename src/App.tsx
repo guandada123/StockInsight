@@ -73,19 +73,19 @@ export default function App() {
 
       {/* 主体内容 */}
       <div className="main-body">
-        <div className="content">
-          <ErrorBoundary>
+        <ErrorBoundary>
+          <div className="content">
             <Routes>
               <Route path="/" element={<Dashboard onSearch={handleSearch} />} />
               <Route path="/stock/:code" element={<StockAnalysis />} />
               <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>
-          </ErrorBoundary>
-        </div>
+          </div>
 
-        {/* 侧边栏 */}
-        <Sidebar />
+          {/* 侧边栏 */}
+          <Sidebar />
+        </ErrorBoundary>
       </div>
 
       {/* 底部 */}

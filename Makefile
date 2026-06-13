@@ -28,7 +28,7 @@ format: ## 格式化代码 (ruff + prettier)
 test: test-be test-fe ## 运行所有测试
 
 test-be: ## 后端测试
-	$(PYTEST) stock_analyzer/test_*.py backend/tests/ -v --tb=short 2>/dev/null || true
+	$(PYTEST) stock_analyzer/test_*.py backend/tests/ -v --tb=short
 
 test-be-cov: ## 后端测试 + 覆盖率
 	$(PYTEST) stock_analyzer/test_*.py backend/tests/ -v --tb=short \
@@ -41,7 +41,7 @@ test-fe: ## 前端测试
 type-check: ## 运行 mypy 类型检查
 	mypy stock_analyzer/ backend/ \
 		--ignore-missing-imports --check-untyped-defs \
-		--warn-return-any --warn-redundant-casts || echo "⚠️ mypy 发现类型提示问题（非阻塞）"
+		--warn-return-any --warn-redundant-casts
 
 ci: ## 模拟完整 CI 流水线
 	$(MAKE) lint
