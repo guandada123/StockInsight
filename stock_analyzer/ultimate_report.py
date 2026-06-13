@@ -5,6 +5,9 @@
 """
 
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def ultimate_analysis(code: str):
@@ -229,8 +232,8 @@ def ultimate_analysis(code: str):
         nt = cached_national_team_holdings(code)
         if isinstance(nt, dict):
             nt_holders = nt.get("holders", [])
-    except:
-        pass
+    except Exception as e:
+        logger.debug("获取国家队持仓失败 code=%s: %s", code, e)
     print("\n  ═══ L3 基本面 & 国家队 ═══")
     print(f"  ROE: {roe:.2f}% | 基本面评分: {gf('fundamental'):.0f}")
     if nt_holders:
@@ -247,7 +250,8 @@ def ultimate_analysis(code: str):
         from .ml_predict import predict_ensemble
 
         ai = predict_ensemble(kline, funds)
-    except:
+    except Exception as e:
+        logger.debug("ML预测失败 code=%s: %s", code, e)
         ai = {"ensemble_direction": "?", "ensemble_confidence": 50}
     debate = generate_bull_bear_debate(
         {

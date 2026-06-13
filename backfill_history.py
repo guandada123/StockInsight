@@ -1,7 +1,9 @@
 """历史评分回算 —— 用K线永久存储回算过去日期的评分，补全daily_scores"""
-import sys, os, time, sqlite3, pickle, json
+import sys, os, time, sqlite3, pickle, json, logging
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+logger = logging.getLogger(__name__)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from stock_analyzer.config import SCAN_WORKERS, DB_PATH
@@ -57,8 +59,8 @@ def main():
             df = pickle.loads(row[1])
             if len(df) >= 20:
                 all_stocks.append((row[0], df))
-        except:
-            pass
+        except Exception as e:
+            logger.debug("加载K线数据异常: %s", e)
     conn.close()
     print(f'加载 {len(all_stocks)} 只股票K线')
 

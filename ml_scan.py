@@ -1,6 +1,8 @@
 # ML-filtered stock scan with two-tier fallback
-import json, urllib.request, subprocess, sys, time, os
+import json, urllib.request, subprocess, sys, time, os, logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 s_codes = []  # cache
 
@@ -60,8 +62,8 @@ def _tier(mode, top_n, relaxed):
                 pred = _cached_predict_ensemble(k, None)
                 if pred.get("ensemble_direction") != "看涨":
                     continue
-        except:
-            pass
+        except Exception as e:
+            logger.debug("ML扫描跳过 %s: %s", code, e)
         tier = "Tier1" if not relaxed else "Tier2"
         result.append([code, cmap.get(code, ""), tier])
         if len(result) >= top_n:

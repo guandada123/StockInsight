@@ -71,12 +71,12 @@ def install_scheduler():
     script = os.path.join(PROJECT_DIR, "run_daily.py")
     task_name = "StockFullScanDaily"
 
-    cmd = (
-        f'schtasks /Create /SC DAILY /TN "{task_name}" '
-        f'/TR "{python_exe} {script}" /ST 16:00 '
-        f"/F /RL HIGHEST"
-    )
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    cmd = [
+        "schtasks", "/Create", "/SC", "DAILY", "/TN", task_name,
+        "/TR", f"{python_exe} {script}", "/ST", "16:00",
+        "/F", "/RL", "HIGHEST"
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
         print(f"计划任务已注册：每日 16:00 运行全市场扫描")
         print(f"任务名称: {task_name}")
@@ -89,8 +89,8 @@ def install_scheduler():
 def uninstall_scheduler():
     """删除计划任务"""
     task_name = "StockFullScanDaily"
-    cmd = f'schtasks /Delete /TN "{task_name}" /F'
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    cmd = ["schtasks", "/Delete", "/TN", task_name, "/F"]
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
         print(f"计划任务已删除: {task_name}")
         return True
