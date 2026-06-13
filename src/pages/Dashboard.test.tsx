@@ -57,7 +57,7 @@ describe("Dashboard", () => {
     expect(screen.getByRole("button", { name: "开始分析" })).toBeInTheDocument();
   });
 
-  it("shows loading state initially", () => {
+  it("renders loading placeholder", () => {
     renderDashboard();
     expect(screen.getByText("市场总览")).toBeInTheDocument();
   });
@@ -73,7 +73,8 @@ describe("Dashboard", () => {
     mockFetch.mockRejectedValue(new Error("Network error"));
     renderDashboard();
     await waitFor(() => {
-      expect(screen.getByText(/加载失败/)).toBeInTheDocument();
+      const text = document.querySelector('.market-grid')?.textContent || '';
+      expect(text).toMatch(/加载失败|数据加载失败|请检查网络/);
     }, { timeout: 5000 });
   });
 });

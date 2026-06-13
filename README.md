@@ -1,6 +1,6 @@
 # StockInsight Pro
 
-[![StockInsight CI](https://github.com/nguyenchunghieu799-blip/stock-insight/actions/workflows/stockinsight-ci.yml/badge.svg)](https://github.com/nguyenchunghieu799-blip/stock-insight/actions/workflows/stockinsight-ci.yml)
+[![StockInsight CI](https://github.com/guandada123/StockInsight/actions/workflows/stockinsight-ci.yml/badge.svg)](https://github.com/guandada123/StockInsight/actions/workflows/stockinsight-ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)]()
 
 A股全链路量化投资分析平台 — 65个Python文件 · 23,000+行代码 · 7大分析层级 · 7路数据源容灾
