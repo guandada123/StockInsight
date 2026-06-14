@@ -6,31 +6,10 @@
 import numpy as np
 
 
-def deep_analyze(code, days=365, skip_nt=False):
-    """个股深度分析（单次调用，返回完整dict）"""
+def _merge_realtime_kline(kline, code):
+    """将新浪实时行情合并到K线DataFrame末尾"""
     import pandas as pd
 
-    from stock_analyzer.analysis import (
-        calc_stop_levels,
-        calc_support_resistance,
-        full_technical_analysis,
-        get_technical_summary,
-        score_fundamental,
-    )
-    from stock_analyzer.cache import cached_fundamentals, cached_kline
-    from stock_analyzer.quant import (
-        calc_risk_metrics,
-        composite_quant_score,
-        consolidate_signals,
-        evaluate_trading_style,
-        generate_all_signals,
-    )
-
-    kline = cached_kline(code, days=days)
-    if len(kline) < 20:
-        return None
-
-    # Merge real-time data into K-line
     from stock_analyzer.fetcher import sina_real_time
 
     try:
@@ -59,9 +38,51 @@ def deep_analyze(code, days=365, skip_nt=False):
                             }
                         ]
                     )
-                    kline = pd.concat([kline, new_row], ignore_index=True)
+                    return pd.concat([kline, new_row], ignore_index=True)
     except Exception:
-        pass  # Real-time unavailable, use cached data
+        pass
+    return kline
+
+
+def _check_national_team(code):
+    """查询国家队持仓（社保/养老金/汇金）"""
+    try:
+        from stock_analyzer.cache import cached_national_team_holdings
+
+        nt = cached_national_team_holdings(code)
+        if nt and isinstance(nt, dict) and nt.get("has_national_team"):
+            return True, nt.get("holders", [])
+    except Exception:
+        pass
+    return False, []
+
+
+def deep_analyze(code, days=365, skip_nt=False):
+    """个股深度分析（单次调用，返回完整dict）"""
+    import pandas as pd
+
+    from stock_analyzer.analysis import (
+        calc_stop_levels,
+        calc_support_resistance,
+        full_technical_analysis,
+        get_technical_summary,
+        score_fundamental,
+    )
+    from stock_analyzer.cache import cached_fundamentals, cached_kline
+    from stock_analyzer.quant import (
+        calc_risk_metrics,
+        composite_quant_score,
+        consolidate_signals,
+        evaluate_trading_style,
+        generate_all_signals,
+    )
+
+    kline = cached_kline(code, days=days)
+    if len(kline) < 20:
+        return None
+
+    # Merge real-time data into K-line
+    kline = _merge_realtime_kline(kline, code)
 
     kline = full_technical_analysis(kline)
     tech = get_technical_summary(kline)
@@ -108,18 +129,11 @@ def deep_analyze(code, days=365, skip_nt=False):
     ts_d = trading if isinstance(trading, dict) else {}
     stop_d = stop if isinstance(stop, dict) else {}
 
-    has_nt = False
-    nt_holders = []
     if not skip_nt:
-        try:
-            from stock_analyzer.cache import cached_national_team_holdings
-
-            nt = cached_national_team_holdings(code)
-            if nt and isinstance(nt, dict):
-                has_nt = nt.get("has_national_team", False)
-                nt_holders = nt.get("holders", [])
-        except Exception:
-            pass
+        has_nt, nt_holders = _check_national_team(code)
+    else:
+        has_nt = False
+        nt_holders = []
 
     return {
         "code": code,

@@ -31,10 +31,46 @@ logger = logging.getLogger("stockinsight-api")
 START_TIME = time.time()
 
 
-# --- Simple in-memory rate limiter (token bucket) ---
+# --- Sliding-window rate limiter with file persistence ---
+import json as _json
+
 _RATE_LIMITS: dict[str, list[float]] = {}  # ip -> list of request timestamps
 _RATE_MAX = 60  # max requests
 _RATE_WINDOW = 60.0  # per window (seconds)
+_RATE_DUMP_INTERVAL = 10.0  # flush to disk every N seconds
+_RATE_DUMP_PATH = os.path.join(os.path.dirname(__file__), ".rate_limits.json")
+_last_rate_dump = 0.0
+
+
+def _load_rate_limits() -> dict[str, list[float]]:
+    """启动时从磁盘恢复限流状态，防止重启后限流失效"""
+    try:
+        if os.path.exists(_RATE_DUMP_PATH):
+            with open(_RATE_DUMP_PATH) as f:
+                data = _json.load(f) if _json else {}
+            now = time.time()
+            return {
+                ip: [t for t in ts if now - t < _RATE_WINDOW]
+                for ip, ts in data.items()
+            }
+    except Exception:
+        pass
+    return {}
+
+
+def _dump_rate_limits():
+    """定期将限流状态写入磁盘，用于重启恢复"""
+    global _last_rate_dump
+    _last_rate_dump = time.time()
+    try:
+        with open(_RATE_DUMP_PATH, "w") as f:
+            _json.dump(_RATE_LIMITS, f)
+    except Exception:
+        pass
+
+
+# 启动时恢复限流状态
+_RATE_LIMITS = _load_rate_limits()
 
 
 @asynccontextmanager
@@ -118,6 +154,10 @@ async def rate_limit_middleware(request: Request, call_next):
         stale = [ip for ip, ts in _RATE_LIMITS.items() if not ts or now - ts[-1] > _RATE_WINDOW]
         for ip in stale:
             del _RATE_LIMITS[ip]
+    # Periodically persist to disk for restart recovery
+    global _last_rate_dump
+    if now - _last_rate_dump > _RATE_DUMP_INTERVAL:
+        _dump_rate_limits()
     return await call_next(request)
 
 
