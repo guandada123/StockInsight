@@ -9,6 +9,10 @@
 存储路径：
 - 规则: {os.path.join(os.path.dirname(os.path.dirname(__file__)), "alerts.json")}
 - 日志: {os.path.join(os.path.dirname(os.path.dirname(__file__)), "alerts_log.txt")}
+
+飞书集成：
+- 触发预警时自动推送到飞书群（需配置 FEISHU_WEBHOOK_URL 环境变量）
+- 设置 FEISHU_ALERTS_ENABLED=0 可禁用飞书推送
 """
 
 import json
@@ -329,8 +333,45 @@ def check_alerts(alert_list):
 # ── 运行全部预警 ───────────────────────────────────
 
 
+def _notify_via_feishu(triggered: list) -> bool:
+    """将触发的预警推送到飞书群"""
+    webhook_url = os.environ.get("FEISHU_WEBHOOK_URL", os.environ.get("FEISHU_WEBHOOK", ""))
+    if not webhook_url:
+        return False
+
+    if os.environ.get("FEISHU_ALERTS_ENABLED", "1") != "1":
+        return False
+
+    try:
+        lines = ["【StockInsight 预警触发】"]
+        for t in triggered:
+            emoji = "🔴" if t.get("type") in ("price", "fundamental") else "🟡"
+            lines.append(f"{emoji} [{t['type']}] {t['message']}")
+
+        content = "\n".join(lines)
+        payload = {"msg_type": "text", "content": {"text": content}}
+
+        import urllib.request
+        req = urllib.request.Request(
+            webhook_url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+            if result.get("code") == 0:
+                print(f"  ✅ 已推送 {len(triggered)} 条预警到飞书")
+                return True
+            else:
+                print(f"  ⚠️ 飞书返回异常: {result}")
+                return False
+    except Exception as e:
+        print(f"  ⚠️ 飞书推送失败: {e}")
+        return False
+
+
 def run_all_alerts():
-    """加载并检查所有预警，触发时打印到终端并写入日志文件"""
+    """加载并检查所有预警，触发时打印到终端、写入日志文件、飞书推送"""
     alerts = load_alerts()
     if not alerts:
         print("  无待检查的预警规则")
@@ -359,4 +400,8 @@ def run_all_alerts():
         f.write(f"-- 检查完成于 {timestamp}, 触发 {len(triggered)} 条 --\n")
 
     print(f"  日志已写入: {LOG_PATH}")
+
+    # 飞书推送
+    _notify_via_feishu(triggered)
+
     return triggered

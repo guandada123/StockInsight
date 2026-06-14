@@ -7,9 +7,13 @@ r"""飞书每日推送调度脚本
   python feishu_push.py --mode alert     持仓异动预警
   python feishu_push.py --dry-run        仅输出不推送（测试用）
 
-注册 Windows 计划任务:
-  schtasks /Create /SC DAILY /TN "FeishuStockPick" /TR "python D:\CC\股票分析\feishu_push.py --mode daily" /ST 14:30 /F
-  schtasks /Create /SC DAILY /TN "FeishuMorningBrief" /TR "python D:\CC\股票分析\feishu_push.py --mode morning" /ST 09:00 /F
+跨平台调度:
+  macOS/Linux: 通过 WorkBuddy 自动化定时触发（推荐）
+               或 crontab:
+                30 14 * * 1-5 cd /path/to/stock-insight && python feishu_push.py --mode daily
+                 0  9 * * 1-5 cd /path/to/stock-insight && python feishu_push.py --mode morning
+                 */30 9-15 * * 1-5 cd /path/to/stock-insight && python feishu_push.py --mode alert
+  Windows:     schtasks（见下方注释）
 """
 import sys
 import os
