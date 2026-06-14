@@ -44,6 +44,14 @@ async def lifespan(app: FastAPI):
     logger.info("StockInsight API server shutting down...")
 
 
+# 生产环境关闭文档路由（安全加固）
+_IS_PRODUCTION = os.environ.get("PYWORKSPACE_ENV", "").lower() in ("production", "prod")
+_docs_kwargs = (
+    {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    if _IS_PRODUCTION
+    else {"docs_url": "/docs", "redoc_url": "/redoc"}
+)
+
 app = FastAPI(
     title="StockInsight Pro API",
     description=(
@@ -54,8 +62,7 @@ app = FastAPI(
     ),
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    **_docs_kwargs,
     openapi_tags=[
         {"name": "市场行情", "description": "大盘指数、涨跌停、板块轮动"},
         {"name": "个股分析", "description": "七层全维度分析、K线、技术指标、资金流向"},
