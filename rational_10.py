@@ -17,7 +17,32 @@ from stock_analyzer.report_html import generate_screener_report
 # ============================================================
 # 读取全市场数据
 # ============================================================
-df_all = pd.read_csv('full_scan_results.csv')
+CSV_PATH = "full_scan_results.csv"
+
+if not os.path.exists(CSV_PATH):
+    print(f"❌ 找不到全市场扫描结果文件: {CSV_PATH}")
+    print(f"   请先运行: python run_full_scan.py")
+    print(f"   扫描完成后会在当前目录生成 {CSV_PATH}")
+    sys.exit(1)
+
+try:
+    df_all = pd.read_csv(CSV_PATH, encoding="utf-8-sig")
+except Exception as e:
+    print(f"❌ 读取 {CSV_PATH} 失败: {e}")
+    print(f"   文件可能已损坏，请重新运行: python run_full_scan.py")
+    sys.exit(1)
+
+if len(df_all) == 0:
+    print(f"⚠️ {CSV_PATH} 为空，无股票数据可分析。请先运行: python run_full_scan.py")
+    sys.exit(0)
+
+required_cols = ['综合评分', '代码', '名称']
+missing = [c for c in required_cols if c not in df_all.columns]
+if missing:
+    print(f"❌ {CSV_PATH} 缺少必要列: {missing}")
+    print(f"   现有列: {list(df_all.columns)}")
+    sys.exit(1)
+
 print(f"全市场评分: {len(df_all)} 只\n")
 
 # ============================================================

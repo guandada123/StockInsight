@@ -6,7 +6,8 @@
   - 单只股票 45 秒超时保护，卡住自动跳过
   - 扫描完成自动追加历史评分数据库
 """
-import sys, os, time, json, argparse
+import sys, os, time, json, argparse, fcntl
+from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from datetime import datetime
 
@@ -18,30 +19,55 @@ from stock_analyzer.fetcher import sina_real_time
 from stock_analyzer.screener import load_all_a_shares
 from stock_analyzer.config import SCAN_WORKERS
 
+
 def _get_checkpoint_file():
     from stock_analyzer.config import CHECKPOINT_FILE
     return CHECKPOINT_FILE
+
+
 PER_STOCK_TIMEOUT = 45
 
 
+@contextmanager
+def _checkpoint_lock(mode="r"):
+    """checkpoint 文件锁 — 防止多进程并发读写"""
+    cp = _get_checkpoint_file()
+    os.makedirs(os.path.dirname(cp), exist_ok=True)
+    fd = os.open(cp, os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        if mode == "r":
+            fcntl.flock(fd, fcntl.LOCK_SH)  # 共享锁（读）
+        else:
+            fcntl.flock(fd, fcntl.LOCK_EX)  # 排他锁（写/清空）
+        yield fd
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
+
+
 def load_checkpoint():
-    if not os.path.exists(_get_checkpoint_file()):
+    cp = _get_checkpoint_file()
+    if not os.path.exists(cp):
         return set()
-    with open(_get_checkpoint_file(), "r") as f:
-        return {line.strip() for line in f if line.strip()}
+    with _checkpoint_lock("r") as fd:
+        os.lseek(fd, 0, os.SEEK_SET)
+        data = os.read(fd, os.fstat(fd).st_size).decode("utf-8")
+    return {line.strip() for line in data.splitlines() if line.strip()}
 
 
 def save_checkpoint(code):
-    with open(_get_checkpoint_file(), "a") as f:
-        f.write(code + "\n")
-        f.flush()
-        os.fsync(f.fileno())
+    with _checkpoint_lock("w") as fd:
+        os.lseek(fd, 0, os.SEEK_END)
+        os.write(fd, (code + "\n").encode("utf-8"))
+        os.fsync(fd)
 
 
 def clear_checkpoint():
     cp = _get_checkpoint_file()
     if os.path.exists(cp):
-        os.remove(cp)
+        with _checkpoint_lock("w") as fd:
+            os.ftruncate(fd, 0)
+            os.fsync(fd)
 
 
 def main():
