@@ -4,9 +4,17 @@
   - 自动检测项目根目录（向上找 stock_cache.db 或 cli.py）
   - 统一路径常量（供 cache/alert/portfolio/report_html 复用）
   - 因子权重可通过环境变量覆盖
+
+2026-06-14 更新：
+  - 集成 python-dotenv 加载 .env 文件
+  - 敏感配置统一从环境变量读取
 """
 
 import os
+from stock_analyzer.env import load_env
+
+# 启动时自动加载 .env 文件（静默失败如果 dotenv 未安装）
+load_env()
 
 # ── 项目根目录 ────────────────────────────────────
 
@@ -126,4 +134,12 @@ SCAN_WORKERS = 8  # 扫描并行线程数
 
 TUSHARE_TOKEN = os.environ.get("TUSHARE_TOKEN", "")
 # 注册地址: https://tushare.pro/register
-# 设置方式: set TUSHARE_TOKEN=your_token （或直接改此处）
+# 设置方式: 在 .env 文件中设置 TUSHARE_TOKEN=your_token
+# 或在系统环境变量中 export TUSHARE_TOKEN=your_token
+
+# ── 飞书推送（从环境变量读取）────────────────
+FEISHU_WEBHOOK = os.environ.get("FEISHU_WEBHOOK", "")
+FEISHU_CHAT_ID = os.environ.get("FEISHU_CHAT_ID", "")
+
+# ── AI 模型密钥 ─────────────────────────────
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
