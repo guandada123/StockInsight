@@ -2,24 +2,22 @@
 StockInsight API 集成测试 — 验证完整请求链路
 使用 FastAPI TestClient，Mock 外部数据源
 覆盖: health, market, analysis, portfolio, factors, data, 错误处理, 中间件
+
+注意: stock_analyzer mock 由 backend/tests/conftest.py 的 session fixture
+自动管理（autouse），确保 API 测试不依赖外部 API，且不污染单元测试。
 """
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "backend"))
 
-# Mock stock_analyzer 模块（避免依赖外部 API）
-mock_fetcher = MagicMock()
-sys.modules["stock_analyzer"] = MagicMock()
-sys.modules["stock_analyzer.fetcher"] = mock_fetcher
-
 from fastapi.testclient import TestClient
 
 from backend.main import app
+from backend.tests.conftest import mock_fetcher
 
 client = TestClient(app)
 
