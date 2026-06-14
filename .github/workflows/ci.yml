@@ -1,58 +1,22 @@
-name: CI
+name: CI - Quality Gate
 
 on:
-  push:
-    branches: [main]
   pull_request:
-    branches: [main]
+    branches: [ main ]
+  push:
+    branches: [ main ]
 
 jobs:
-  frontend-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm ci
-      - run: npm run lint
+  quality-gate:
+    uses: guandada123/engineering-audit-kit/.github/workflows/quality-gate.yml@v1
+    with:
+      run-python: on
+      run-php: off
+      run-eslint: false
+      run-prettier: false
+      npm-audit-level: high
+    secrets: inherit
 
-  frontend-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm ci
-      - run: npm run build
-
-  backend-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install ruff
-      - run: ruff check backend/ stock_analyzer/
-
-  backend-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install -e ".[dev]"
-      - run: pytest backend/tests/ stock_analyzer/test_*.py -v --tb=short
-
-  type-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install mypy
-      - run: mypy backend/ stock_analyzer/ --ignore-missing-imports --check-untyped-defs --warn-return-any --warn-redundant-casts
+concurrency:
+  group: ci-quality-gate-${{ github.ref }}
+  cancel-in-progress: true
