@@ -26,6 +26,7 @@ client = TestClient(app)
 # Health Check & System
 # ═══════════════════════════════════════
 
+
 class TestHealthCheck:
     def test_health_endpoint(self):
         """GET /api/health 应返回 200 + status ok"""
@@ -52,6 +53,7 @@ class TestHealthCheck:
 # Market API
 # ═══════════════════════════════════════
 
+
 class TestMarketAPI:
     def test_overview_returns_safe_error_on_failure(self):
         """market overview 异常时不泄露内部信息"""
@@ -67,7 +69,8 @@ class TestMarketAPI:
         mock_fetcher.get_market_overview.side_effect = None
         mock_fetcher.get_market_overview.return_value = {
             "indices": {"上证指数": {"price": 3200, "change": 1.5}},
-            "limit_up": 45, "limit_down": 12,
+            "limit_up": 45,
+            "limit_down": 12,
         }
         response = client.get("/api/market/overview")
         assert response.status_code == 200
@@ -126,6 +129,7 @@ class TestMarketAPI:
 # Analysis API
 # ═══════════════════════════════════════
 
+
 class TestAnalysisAPI:
     def test_standard_analysis(self):
         """GET /api/analysis/{code} 标准分析"""
@@ -180,6 +184,7 @@ class TestAnalysisAPI:
 # Portfolio API
 # ═══════════════════════════════════════
 
+
 class TestPortfolioAPI:
     def test_list_portfolios(self):
         """列出持仓组合"""
@@ -225,6 +230,7 @@ class TestPortfolioAPI:
 # Factors API
 # ═══════════════════════════════════════
 
+
 class TestFactorsAPI:
     def test_list_factors(self):
         """列出所有因子（mock 环境下返回错误是预期行为）"""
@@ -240,13 +246,16 @@ class TestFactorsAPI:
 
     def test_create_factor(self):
         """创建自定义因子"""
-        response = client.post("/api/factors/create", json={
-            "factor_id": "test_factor_ci",
-            "name": "CI测试因子",
-            "expression": "close / open - 1",
-            "factor_type": "momentum",
-            "description": "CI自动测试用因子"
-        })
+        response = client.post(
+            "/api/factors/create",
+            json={
+                "factor_id": "test_factor_ci",
+                "name": "CI测试因子",
+                "expression": "close / open - 1",
+                "factor_type": "momentum",
+                "description": "CI自动测试用因子",
+            },
+        )
         assert response.status_code == 200
 
     def test_delete_factor(self):
@@ -258,6 +267,7 @@ class TestFactorsAPI:
 # ═══════════════════════════════════════
 # Data Management API
 # ═══════════════════════════════════════
+
 
 class TestDataManagementAPI:
     def test_db_stats(self):
@@ -287,6 +297,7 @@ class TestDataManagementAPI:
 # Data Jobs API
 # ═══════════════════════════════════════
 
+
 class TestDataJobsAPI:
     def test_list_job_types(self):
         """列出可用任务类型"""
@@ -307,6 +318,7 @@ class TestDataJobsAPI:
 # ═══════════════════════════════════════
 # Error Handling & Security
 # ═══════════════════════════════════════
+
 
 class TestErrorHandling:
     def test_404_for_unknown_routes(self):
@@ -344,6 +356,7 @@ class TestErrorHandling:
 # Middleware
 # ═══════════════════════════════════════
 
+
 class TestMiddleware:
     def test_response_timing_header(self):
         """响应应包含 X-Response-Time-Ms 头"""
@@ -354,10 +367,13 @@ class TestMiddleware:
 
     def test_cors_headers_present(self):
         """CORS 头应存在"""
-        response = client.options("/api/health", headers={
-            "Origin": "http://localhost:1420",
-            "Access-Control-Request-Method": "GET",
-        })
+        response = client.options(
+            "/api/health",
+            headers={
+                "Origin": "http://localhost:1420",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
         # FastAPI CORS middleware should respond
         assert response.status_code in (200, 204, 405)
 
@@ -365,6 +381,7 @@ class TestMiddleware:
 # ═══════════════════════════════════════
 # OpenAPI / Docs
 # ═══════════════════════════════════════
+
 
 class TestDocs:
     def test_swagger_ui_available(self):

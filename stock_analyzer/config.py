@@ -11,6 +11,7 @@
 """
 
 import os
+
 from stock_analyzer.env import load_env
 
 # 启动时自动加载 .env 文件（静默失败如果 dotenv 未安装）

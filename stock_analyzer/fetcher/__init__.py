@@ -223,6 +223,7 @@ def _get_file_rate_limiter():
     if _FILE_RATE_LIMITER is None:
         try:
             from stock_analyzer.data_sources import get_sina_rate_limiter
+
             _FILE_RATE_LIMITER = get_sina_rate_limiter()
         except ImportError:
             return None

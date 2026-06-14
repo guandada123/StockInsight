@@ -28,7 +28,7 @@ mock_fetcher = MagicMock()
 @pytest.fixture(scope="session", autouse=True)
 def _mock_stock_analyzer():
     """Session 级别自动 mock stock_analyzer，避免 API 测试依赖外部数据源。
-    
+
     使用 autouse + session scope，确保在 API 集成测试期间 mock 生效，
     同时在 tests session 结束后自动恢复，不会污染 stock_analyzer/ 单元测试。
     """

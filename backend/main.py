@@ -49,10 +49,7 @@ def _load_rate_limits() -> dict[str, list[float]]:
             with open(_RATE_DUMP_PATH) as f:
                 data = _json.load(f) if _json else {}
             now = time.time()
-            return {
-                ip: [t for t in ts if now - t < _RATE_WINDOW]
-                for ip, ts in data.items()
-            }
+            return {ip: [t for t in ts if now - t < _RATE_WINDOW] for ip, ts in data.items()}
     except Exception:
         pass
     return {}
