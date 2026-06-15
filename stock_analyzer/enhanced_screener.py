@@ -80,7 +80,7 @@ def _get_sector_stocks(sector_name):
 
 
 def pass1_quick_filter(
-    codes, sector_top_n=5, min_price=5, max_price=500, min_amplitude=0, min_turnover=0
+    codes, sector_top_n=5, min_price=5, max_price=500, min_amplitude=0, min_turnover=1_000_000
 ):
     """第一轮快速预筛 — 仅用实时行情 + 板块排名
 
@@ -151,7 +151,7 @@ def pass1_quick_filter(
             stats["price_filtered"] += 1
             continue
         vol = float(info.get("成交量", 0) or 0)
-        if vol < 1_000_000:
+        if vol < min_turnover:
             stats["vol_filtered"] += 1
             continue
         if min_amplitude > 0:
