@@ -170,8 +170,9 @@ class TestPredictDirection:
         for m in mocks:
             m.stop()
 
+    @patch("xgboost.XGBClassifier", side_effect=ImportError("test"))
     @patch("sklearn.ensemble.RandomForestClassifier")
-    def test_success_xgb(self, mock_rf):
+    def test_success_xgb(self, mock_rf, mock_xgb):
         """xgb 模式（xgboost 未装 → 降级 RF）→ 返回完整结果"""
         model = _make_mock_model()
         mock_rf.return_value = model
@@ -227,8 +228,9 @@ class TestPredictDirection:
         result = ml_predict.predict_direction(df)
         assert "error" in result
 
+    @patch("xgboost.XGBClassifier", side_effect=ImportError("test"))
     @patch("sklearn.ensemble.RandomForestClassifier")
-    def test_down_prediction(self, mock_rf):
+    def test_down_prediction(self, mock_rf, mock_xgb):
         """下跌预测分支"""
         model = MagicMock()
         model.fit.return_value = None
@@ -273,8 +275,9 @@ class TestPredictDirection:
                 # 正常路径会调用 roc_auc_score，因为 y_test 有 mixed labels
                 assert "error" not in result
 
+    @patch("xgboost.XGBClassifier", side_effect=ImportError("test"))
     @patch("sklearn.ensemble.RandomForestClassifier")
-    def test_no_feature_importances(self, mock_rf):
+    def test_no_feature_importances(self, mock_rf, mock_xgb):
         """模型没有 feature_importances_ → 重要特征为空列表"""
         # 用 spec 限制属性，使 hasattr(model, "feature_importances_") 返回 False
         model = MagicMock(spec=["fit", "predict", "predict_proba"])
@@ -303,8 +306,9 @@ class TestPredictDirection:
             assert "error" in result
             assert "训练数据标签单一" in result["error"]
 
+    @patch("xgboost.XGBClassifier", side_effect=ImportError("test"))
     @patch("sklearn.ensemble.RandomForestClassifier")
-    def test_exception_in_training(self, mock_rf):
+    def test_exception_in_training(self, mock_rf, mock_xgb):
         """训练异常 → 返回 error"""
         model = MagicMock()
         model.fit.side_effect = ValueError("训练失败")
@@ -599,7 +603,8 @@ class TestCachedPredictEnsemble:
 # ═══════════════════════════════════════════════════════════
 
 class TestPredictLgb:
-    def test_lightgbm_not_installed_falls_to_rf(self):
+    @patch("lightgbm.LGBMClassifier", side_effect=ImportError("test"))
+    def test_lightgbm_not_installed_falls_to_rf(self, mock_lgb):
         """lightgbm 未装 → 降级到 predict_direction(rf)"""
         df = _make_kline_df(200)
         with patch("stock_analyzer.ml_predict.predict_direction") as mock_dir:
