@@ -33,6 +33,7 @@ mainboard_summary_*.csv
 !alerts.json
 !mainboard_*.json
 venv/
+.venv/
 *,cover
 .coverage
 *.tmp.json
