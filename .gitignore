@@ -37,3 +37,4 @@ venv/
 *,cover
 .coverage
 *.tmp.json
+.rate_limits.json
