@@ -91,6 +91,7 @@ from ..logging_config import get_logger
 logger = get_logger("fetcher")
 
 from ..config import HEADERS
+from ..env import get_env
 from ..sectors_fallback import SECTOR_STOCKS_FALLBACK
 
 # ═══════════════════════════════════════════════════════════════
@@ -237,7 +238,7 @@ def _sina_check_rate():
           可通过 RATE_LIMITER_MODE=memory 回退到内存列表。
     """
     # 文件锁模式（默认，多进程安全）
-    use_file_lock = os.environ.get("RATE_LIMITER_MODE", "file") != "memory"
+    use_file_lock = get_env("RATE_LIMITER_MODE", "file") != "memory"
     if use_file_lock:
         rl = _get_file_rate_limiter()
         if rl is not None:
@@ -613,42 +614,13 @@ def _adata_kline(code, days):
 
 
 def _get_tushare_token():
-    """获取 Tushare token，优先 .env 再环境变量再 config"""
-    # 从 .env 文件读取
-    try:
-        env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
-        if os.path.exists(env_file):
-            with open(env_file, encoding="utf-8") as f:
-                for line in f:
-                    if line.startswith("TUSHARE_TOKEN="):
-                        return line.strip().split("=", 1)[1].strip().strip('"').strip("'")
-    except Exception:
-        pass
-    # 环境变量
-    token = os.environ.get("TUSHARE_TOKEN", "")
-    if token:
-        return token
-    # config.py
-    try:
-        from .config import TUSHARE_TOKEN
-
-        return TUSHARE_TOKEN
-    except ImportError:
-        return ""
+    """获取 Tushare token（使用统一 env 模块，.env 由 config.py 自动加载）"""
+    return get_env("TUSHARE_TOKEN", "")
 
 
 def _get_tushare_api_url():
     """获取 Tushare API 地址，支持代理"""
-    try:
-        env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
-        if os.path.exists(env_file):
-            with open(env_file, encoding="utf-8") as f:
-                for line in f:
-                    if line.startswith("TUSHARE_API_URL="):
-                        return line.strip().split("=", 1)[1].strip().strip('"').strip("'")
-    except Exception:
-        pass
-    return ""
+    return get_env("TUSHARE_API_URL", "")
 
 
 def _tushare_kline(code, days):

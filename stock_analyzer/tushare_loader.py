@@ -14,6 +14,8 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
+from stock_analyzer.env import get_env
+
 logger = logging.getLogger("tushare_loader")
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -41,32 +43,9 @@ _jobs_lock = threading.Lock()
 
 
 def get_tushare_pro():
-    """初始化 Tushare API（支持代理）"""
-    token = ""
-    api_url = ""
-    # 1. 从 .env 文件读取
-    try:
-        env_file = os.path.join(PROJECT_ROOT, ".env")
-        if os.path.exists(env_file):
-            with open(env_file, encoding="utf-8") as f:
-                for line in f:
-                    if line.startswith("TUSHARE_TOKEN="):
-                        token = line.strip().split("=", 1)[1].strip().strip('"').strip("'")
-                    elif line.startswith("TUSHARE_API_URL="):
-                        api_url = line.strip().split("=", 1)[1].strip().strip('"').strip("'")
-    except Exception:
-        pass
-    # 2. 环境变量
-    if not token:
-        token = os.environ.get("TUSHARE_TOKEN", "")
-    # 3. config.py
-    if not token:
-        try:
-            from stock_analyzer.config import TUSHARE_TOKEN
-
-            token = TUSHARE_TOKEN
-        except ImportError:
-            pass
+    """初始化 Tushare API（支持代理，.env 由 config.py 自动加载）"""
+    token = get_env("TUSHARE_TOKEN", "")
+    api_url = get_env("TUSHARE_API_URL", "")
     if not token:
         raise RuntimeError("未配置 TUSHARE_TOKEN，请在 .env 文件、环境变量或 config.py 中设置")
     import tushare as ts

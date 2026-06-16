@@ -3,7 +3,7 @@ import json
 import os
 import sys
 import unittest
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, MagicMock
 from stock_analyzer.feishu_bot import (
     _webhook_url,
     send_text,
@@ -13,7 +13,7 @@ from stock_analyzer.feishu_bot import (
 )
 
 class TestWebhookURL(unittest.TestCase):
-    """_webhook_url 获取 Webhook URL"""
+    """_webhook_url 获取 Webhook URL（env.py 统一加载 .env 文件）"""
 
     @patch.dict(os.environ, {"FEISHU_WEBHOOK_URL": "https://open.feishu.cn/hook/test"}, clear=True)
     def test_from_env_var(self):
@@ -21,27 +21,13 @@ class TestWebhookURL(unittest.TestCase):
         self.assertEqual(_webhook_url(), "https://open.feishu.cn/hook/test")
 
     @patch.dict(os.environ, {}, clear=True)
-    @patch("stock_analyzer.feishu_bot.os.path.exists")
-    @patch("stock_analyzer.feishu_bot.open", new_callable=mock_open,
-           read_data="FEISHU_WEBHOOK_URL=https://open.feishu.cn/hook/env\nSOME_OTHER=value")
-    def test_from_env_file(self, mock_file, mock_exists):
-        """环境变量为空时从 .env 文件读取"""
-        mock_exists.return_value = True
-        url = _webhook_url()
-        self.assertEqual(url, "https://open.feishu.cn/hook/env")
-
-    @patch.dict(os.environ, {}, clear=True)
-    @patch("stock_analyzer.feishu_bot.os.path.exists")
-    def test_no_url_configured(self, mock_exists):
+    def test_no_url_configured(self):
         """没有任何配置时返回空字符串"""
-        mock_exists.return_value = False
         self.assertEqual(_webhook_url(), "")
 
     @patch.dict(os.environ, {"FEISHU_WEBHOOK_URL": ""}, clear=True)
-    @patch("stock_analyzer.feishu_bot.os.path.exists")
-    def test_empty_env_var(self, mock_exists):
+    def test_empty_env_var(self):
         """环境变量为空字符串"""
-        mock_exists.return_value = False
         self.assertEqual(_webhook_url(), "")
 
 class TestPost(unittest.TestCase):

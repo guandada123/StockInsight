@@ -27,6 +27,7 @@ import numpy as np
 import pandas as pd
 import requests
 
+from .env import get_env
 from .logging_config import get_logger
 
 logger = get_logger("datasource")
@@ -517,26 +518,8 @@ class TushareKlineSource(DataSource):
 
     @staticmethod
     def _get_token() -> str:
-        import os
-
-        # 环境变量优先
-        token = os.environ.get("TUSHARE_TOKEN", "")
-        if token:
-            return token
-        # .env 文件
-        try:
-            env_file = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
-            )
-            if os.path.exists(env_file):
-                with open(env_file, encoding="utf-8") as f:
-                    for line in f:
-                        if line.startswith("TUSHARE_TOKEN="):
-                            return line.strip().split("=", 1)[1].strip().strip('"').strip("'")
-        except Exception:
-            pass
-        return ""
-
+        """获取 Tushare token（使用统一 env 模块）"""
+        return get_env("TUSHARE_TOKEN", "")
 
 # ============================================
 # 实时行情数据源

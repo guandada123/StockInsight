@@ -12,7 +12,7 @@
 
 import os
 
-from stock_analyzer.env import load_env
+from stock_analyzer.env import get_env, load_env
 
 # 启动时自动加载 .env 文件（静默失败如果 dotenv 未安装）
 load_env()
@@ -133,14 +133,14 @@ SCAN_WORKERS = 8  # 扫描并行线程数
 
 # ── TuShare（可选增强数据源）────────────────────
 
-TUSHARE_TOKEN = os.environ.get("TUSHARE_TOKEN", "")
+TUSHARE_TOKEN = get_env("TUSHARE_TOKEN", "")
 # 注册地址: https://tushare.pro/register
 # 设置方式: 在 .env 文件中设置 TUSHARE_TOKEN=your_token
 # 或在系统环境变量中 export TUSHARE_TOKEN=your_token
 
 # ── 飞书推送（从环境变量读取）────────────────
-FEISHU_WEBHOOK = os.environ.get("FEISHU_WEBHOOK", "")
-FEISHU_CHAT_ID = os.environ.get("FEISHU_CHAT_ID", "")
+FEISHU_WEBHOOK = get_env("FEISHU_WEBHOOK", "")
+FEISHU_CHAT_ID = get_env("FEISHU_CHAT_ID", "")
 
 # ── AI 模型密钥 ─────────────────────────────
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+DEEPSEEK_API_KEY = get_env("DEEPSEEK_API_KEY", "")

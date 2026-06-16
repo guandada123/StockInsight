@@ -26,6 +26,7 @@ import numpy as np
 from .analysis import full_technical_analysis
 from .cache import cached_fundamentals, cached_kline
 from .config import ALERTS_LOG_PATH, ALERTS_PATH
+from .env import get_env
 from .fetcher import sina_real_time
 
 LOG_PATH = ALERTS_LOG_PATH
@@ -335,11 +336,11 @@ def check_alerts(alert_list):
 
 def _notify_via_feishu(triggered: list) -> bool:
     """将触发的预警推送到飞书群"""
-    webhook_url = os.environ.get("FEISHU_WEBHOOK_URL", os.environ.get("FEISHU_WEBHOOK", ""))
+    webhook_url = get_env("FEISHU_WEBHOOK_URL", get_env("FEISHU_WEBHOOK", ""))
     if not webhook_url:
         return False
 
-    if os.environ.get("FEISHU_ALERTS_ENABLED", "1") != "1":
+    if get_env("FEISHU_ALERTS_ENABLED", "1") != "1":
         return False
 
     try:

@@ -1,8 +1,9 @@
-import os
 from datetime import datetime, timedelta
 
 import pandas as pd
 from db_utils import DatabaseUtils
+
+from stock_analyzer.env import get_env
 
 FIELDS = [
     "ts_code",
@@ -44,10 +45,10 @@ def _to_bool(value: str | None) -> bool:
 
 
 def _resolve_dates(cursor) -> tuple[list[str], bool]:
-    start_date = _normalize_ymd(os.getenv("DATA_JOB_START_DATE"))
-    end_date = _normalize_ymd(os.getenv("DATA_JOB_END_DATE"))
-    trade_date = _normalize_ymd(os.getenv("DATA_JOB_TRADE_DATE"))
-    full_refresh = _to_bool(os.getenv("DATA_JOB_FULL_REFRESH"))
+    start_date = _normalize_ymd(get_env("DATA_JOB_START_DATE"))
+    end_date = _normalize_ymd(get_env("DATA_JOB_END_DATE"))
+    trade_date = _normalize_ymd(get_env("DATA_JOB_TRADE_DATE"))
+    full_refresh = _to_bool(get_env("DATA_JOB_FULL_REFRESH"))
 
     if trade_date:
         return [trade_date], full_refresh
