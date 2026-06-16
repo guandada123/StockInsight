@@ -107,7 +107,7 @@ app = FastAPI(
     ],
 )
 
-# CORS: 允许 Tauri WebView (tauri://localhost) 和 Vite dev server (localhost:1420)
+# CORS: 仅允许白名单来源和方法
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -117,8 +117,8 @@ app.add_middleware(
         "https://tauri.localhost",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -128,6 +128,16 @@ async def add_timing_header(request: Request, call_next):
     response = await call_next(request)
     elapsed = (time.time() - t0) * 1000
     response.headers["X-Response-Time-Ms"] = f"{elapsed:.0f}"
+    return response
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """添加安全响应头：CSP、X-Content-Type-Options、X-Frame-Options"""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
     return response
 
 
@@ -184,12 +194,8 @@ async def shutdown():
 async def _delayed_shutdown():
     await asyncio.sleep(0.5)
     logger.info("Shutdown complete")
-    try:
-        import signal
-
-        signal.raise_signal(signal.SIGTERM)
-    except Exception:
-        os._exit(0)
+    # 使用 SIGTERM 优雅关闭，确保 SQLite WAL 和 buffer 被正确 flush
+    os.kill(os.getpid(), signal.SIGTERM)
 
 
 # ── 注册子路由 ──────────────────────────────────────

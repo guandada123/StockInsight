@@ -5,26 +5,14 @@ import time
 
 from fastapi import APIRouter, Query
 
+from backend.common import _err, _ok
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/market", tags=["市场行情"])
 
 # 对外展示的安全错误信息（不泄露内部细节）
 _SAFE_ERROR_MSG = "服务暂不可用，请稍后重试"
-
-
-def _ok(data, freshness="fresh", timing=0):
-    return {
-        "success": True,
-        "data": data,
-        "error": None,
-        "freshness": freshness,
-        "timing_ms": round(timing, 1),
-    }
-
-
-def _err(msg):
-    return {"success": False, "data": None, "error": str(msg), "freshness": "stale", "timing_ms": 0}
 
 
 @router.get("/overview")

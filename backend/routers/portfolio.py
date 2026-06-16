@@ -7,24 +7,12 @@ import time
 
 from fastapi import APIRouter, Query
 
+from backend.common import _err, _ok, validate_portfolio_name
+
 logger = logging.getLogger(__name__)
 _SAFE_ERROR_MSG = "服务暂不可用，请稍后重试"
 
 router = APIRouter(prefix="/api/portfolio", tags=["持仓管理"])
-
-
-def _ok(data, freshness="fresh", timing=0):
-    return {
-        "success": True,
-        "data": data,
-        "error": None,
-        "freshness": freshness,
-        "timing_ms": round(timing, 1),
-    }
-
-
-def _err(msg):
-    return {"success": False, "data": None, "error": str(msg), "freshness": "stale", "timing_ms": 0}
 
 
 PORTFOLIO_DIR = os.path.join(
@@ -68,6 +56,7 @@ async def get_portfolio(name: str):
     """获取持仓组合详情"""
     t0 = time.time()
     try:
+        validate_portfolio_name(name)
         from stock_analyzer.fetcher import sina_real_time
 
         fpath = os.path.join(PORTFOLIO_DIR, f"{name}.json")
@@ -152,6 +141,7 @@ async def create_portfolio(
     """创建新持仓组合"""
     t0 = time.time()
     try:
+        validate_portfolio_name(name)
         os.makedirs(PORTFOLIO_DIR, exist_ok=True)
         fpath = os.path.join(PORTFOLIO_DIR, f"{name}.json")
         if os.path.exists(fpath):
@@ -190,6 +180,7 @@ async def update_portfolio_holding(
     """更新持仓组合中的股票"""
     t0 = time.time()
     try:
+        validate_portfolio_name(name)
         fpath = os.path.join(PORTFOLIO_DIR, f"{name}.json")
         if not os.path.exists(fpath):
             return _err(f"组合 {name} 不存在")
@@ -224,6 +215,7 @@ async def delete_portfolio(name: str):
     """删除持仓组合"""
     t0 = time.time()
     try:
+        validate_portfolio_name(name)
         fpath = os.path.join(PORTFOLIO_DIR, f"{name}.json")
         if not os.path.exists(fpath):
             return _err(f"组合 {name} 不存在")
@@ -239,6 +231,7 @@ async def analyze_portfolio(name: str):
     """组合分析 — 收益率/波动率/夏普/调仓建议"""
     t0 = time.time()
     try:
+        validate_portfolio_name(name)
         from stock_analyzer.fetcher import sina_real_time
 
         fpath = os.path.join(PORTFOLIO_DIR, f"{name}.json")

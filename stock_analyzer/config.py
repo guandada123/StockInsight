@@ -83,7 +83,7 @@ API_HOSTS = [
     "https://push2.eastmoney.com",
 ]
 
-UT = "bd1d9ddb04089700cf9c27f6f7426281"
+UT = get_env("EASTMONEY_UT", "bd1d9ddb04089700cf9c27f6f7426281")
 KLINE_PERIODS = {"daily": 101, "weekly": 102, "monthly": 103}
 ADJUST = {"qfq": 1, "hfq": 2, "none": 0}
 

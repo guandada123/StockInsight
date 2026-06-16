@@ -6,6 +6,8 @@ import time
 from fastapi import APIRouter, Body, Query
 from pydantic import BaseModel
 
+from backend.common import _err, _ok
+
 logger = logging.getLogger(__name__)
 _SAFE_ERROR_MSG = "服务暂不可用，请稍后重试"
 
@@ -18,14 +20,6 @@ class FactorCreateRequest(BaseModel):
     expression: str
     factor_type: str = "custom"
     description: str = ""
-
-
-def _ok(data, timing=0):
-    return {"success": True, "data": data, "error": None, "timing_ms": round(timing, 1)}
-
-
-def _err(msg):
-    return {"success": False, "data": None, "error": str(msg), "timing_ms": 0}
 
 
 @router.get("/list")

@@ -1,5 +1,6 @@
 """数据管理 API 路由 — DB统计/缓存/导入导出/数据源健康"""
 
+import json as _json
 import logging
 import os
 import sqlite3
@@ -7,24 +8,12 @@ import time
 
 from fastapi import APIRouter, Body, Query
 
+from backend.common import _err, _ok, safe_table_count
+
 logger = logging.getLogger(__name__)
 _SAFE_ERROR_MSG = "服务暂不可用，请稍后重试"
 
 router = APIRouter(prefix="/api/data", tags=["数据管理"])
-
-
-def _ok(data, freshness="fresh", timing=0):
-    return {
-        "success": True,
-        "data": data,
-        "error": None,
-        "freshness": freshness,
-        "timing_ms": round(timing, 1),
-    }
-
-
-def _err(msg):
-    return {"success": False, "data": None, "error": str(msg), "freshness": "stale", "timing_ms": 0}
 
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -54,7 +43,7 @@ async def data_stats():
         # DB 大小
         db_size = os.path.getsize(db_path) / (1024 * 1024)
 
-        # 各表行数
+        # 各表行数（使用白名单校验防止 SQL 注入）
         tables = {
             "kline_store": 0,
             "fund_store": 0,
@@ -65,8 +54,7 @@ async def data_stats():
         }
         for table in tables:
             try:
-                cur.execute(f"SELECT COUNT(*) FROM {table}")
-                tables[table] = cur.fetchone()[0]
+                tables[table] = safe_table_count(cur, table)
             except Exception:
                 pass
 
@@ -96,7 +84,6 @@ async def data_stats():
         return _ok(
             {
                 "db_size_mb": round(db_size, 1),
-                "db_path": db_path,
                 "kline_count": tables["kline_store"],
                 "fundamental_count": tables["fund_store"],
                 "national_team_count": tables["nt_store"],
@@ -261,10 +248,11 @@ async def import_data(
 
             db_path = _get_db_path()
             conn = sqlite3.connect(db_path)
-            import pickle
 
             code = filename.rsplit(".", 1)[0].split("_", maxsplit=1)[0]
-            blob = pickle.dumps(df)
+            # 使用 JSON 序列化替代 pickle（安全加固，防止 RCE 攻击面）
+            df_json = df.to_json(orient="records", force_ascii=False)
+            blob = df_json.encode("utf-8")
             conn.execute(
                 "INSERT OR REPLACE INTO kline_store (code, data, updated_at) VALUES (?, ?, ?)",
                 (code, blob, time.time()),
