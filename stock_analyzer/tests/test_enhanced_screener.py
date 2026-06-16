@@ -11,7 +11,6 @@ import pytest
 
 from stock_analyzer import enhanced_screener as es
 
-
 # ── 工具函数 ──────────────────────────────────────────
 
 def _make_stock_cache(tmp_path):
@@ -22,13 +21,11 @@ def _make_stock_cache(tmp_path):
         json.dump(codes, f)
     return path, codes
 
-
 def _make_sectors_df():
     return pd.DataFrame({
         "板块名称": ["银行", "券商", "保险", "地产", "医药"],
         "涨跌幅": [2.5, 1.8, -0.5, 1.2, 3.0],
     })
-
 
 def _make_sectors_dict():
     return {
@@ -36,7 +33,6 @@ def _make_sectors_dict():
         "券商": {"涨跌幅": 1.8},
         "保险": {"涨跌幅": -0.5},
     }
-
 
 def _mock_sina(codes):
     stocks = {
@@ -59,7 +55,6 @@ def _mock_sina(codes):
                               "成交量": "3000000", "最高": "10.20", "最低": "9.80"})
             for c in codes}
 
-
 def _make_kline():
     np.random.seed(42)
     dates = pd.date_range(end="2025-06-01", periods=120, freq="D")
@@ -72,7 +67,6 @@ def _make_kline():
         "volume": np.random.randint(1_000_000, 10_000_000, 120),
     })
 
-
 def _make_quant_result(cs=70, rating="A", **kw):
     r = {"composite_score": cs, "rating": rating,
          "factor_scores": {k: {"score": v} for k, v in {
@@ -81,18 +75,15 @@ def _make_quant_result(cs=70, rating="A", **kw):
     r.update(kw)
     return r
 
-
 def _make_trading_style(**kw):
     r = {"long_term_score": 60}
     r.update(kw)
     return r
 
-
 def _make_ml_result(**kw):
     r = {"ensemble_direction": "看涨", "ensemble_confidence": 75.0, "agreement": "高"}
     r.update(kw)
     return r
-
 
 # ── Test: _gf ──────────────────────────────────────────
 
@@ -108,7 +99,6 @@ class TestGf:
 
     def test_missing_key(self):
         assert es._gf({}, "momentum") == 0.0
-
 
 # ── Test: _check_nt ────────────────────────────────────
 
@@ -132,7 +122,6 @@ class TestCheckNt:
     def test_non_dict_return(self, mock_nt):
         mock_nt.return_value = None
         assert es._check_nt("600000") is False
-
 
 # ── Test: _load_all_codes ─────────────────────────────
 
@@ -177,7 +166,6 @@ class TestLoadAllCodes:
         mock_ak.stock_info_a_code_name.side_effect = ValueError("fail")
         monkeypatch.setitem(sys.modules, "akshare", mock_ak)
         assert es._load_all_codes() == []
-
 
 # ── Test: _get_sector_stocks ──────────────────────────
 
@@ -230,7 +218,6 @@ class TestGetSectorStocks:
         result = es._get_sector_stocks("银行")
         # SQL异常→fallback→返回空
         assert result == []
-
 
 # ── Test: pass1_quick_filter ───────────────────────────
 
@@ -378,7 +365,6 @@ class TestPass1QuickFilter:
         passed, top_sectors, stats = es.pass1_quick_filter(self.codes)
         # 只有 600000 在板块成分股中，所以只有它进入硬筛
         assert stats["total"] < len(self.codes)
-
 
 # ── pass2_deep_analyze 测试 ──────────────────────────
 
@@ -780,7 +766,6 @@ class TestPass2DeepAnalyze:
         assert df["排名"].is_monotonic_increasing
         assert df.iloc[0]["composite_score"] >= df.iloc[-1]["composite_score"]
 
-
 # ── Test: enhanced_scan ────────────────────────────────
 
 class TestEnhancedScan:
@@ -923,7 +908,6 @@ class TestEnhancedScan:
         mock_save.assert_called_once()
         mock_snap.assert_called_once()
 
-
 # ── Test: _save_to_daily_scores ──────────────────────
 
 class TestSaveToDailyScores:
@@ -973,7 +957,6 @@ class TestSaveToDailyScores:
         """空 DataFrame→不执行任何 INSERT"""
         es._save_to_daily_scores(pd.DataFrame())
         mock_conn.return_value.__enter__.return_value.execute.assert_not_called()
-
 
 # ── Test: _save_snapshot ──────────────────────────────
 

@@ -45,7 +45,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
-      - run: pytest backend/tests/ stock_analyzer/test_*.py -v --tb=short
+      - run: pytest backend/tests/ stock_analyzer/tests/ -v --tb=short
 
   type-check:
     runs-on: ubuntu-latest

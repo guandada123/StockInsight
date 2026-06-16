@@ -18,7 +18,6 @@ from unittest.mock import MagicMock, patch, ANY
 
 from stock_analyzer import ml_predict
 
-
 # ═══════════════════════════════════════════════════════════
 # 测试数据生成
 # ═══════════════════════════════════════════════════════════
@@ -44,7 +43,6 @@ def _make_kline_df(n=200, seed=42):
         "振幅": (high - low) / close * 100,
     })
 
-
 def _make_mock_model(n_features=35, n_samples=30):
     """创建 mock RF/RF 模型实例"""
     model = MagicMock()
@@ -57,14 +55,12 @@ def _make_mock_model(n_features=35, n_samples=30):
     model.feature_importances_ = np.random.default_rng(42).random(n_features)
     return model
 
-
 def _make_mock_regressor(n_samples=30):
     """创建 mock 回归模型实例"""
     model = MagicMock()
     model.fit.return_value = None
     model.predict.return_value = np.full(n_samples + 1, 0.005)
     return model
-
 
 # ═══════════════════════════════════════════════════════════
 # build_features — 特征工程（纯 pandas/numpy，无 mock）
@@ -139,7 +135,6 @@ class TestBuildFeatures:
         orig_cols = set(df.columns)
         ml_predict.build_features(df)
         assert set(df.columns) == orig_cols
-
 
 # ═══════════════════════════════════════════════════════════
 # predict_direction — 方向预测
@@ -322,7 +317,6 @@ class TestPredictDirection:
             assert "error" in result
             assert "训练失败" in result["error"]
 
-
 # ═══════════════════════════════════════════════════════════
 # predict_return — 涨跌幅预测
 # ═══════════════════════════════════════════════════════════
@@ -374,7 +368,6 @@ class TestPredictReturn:
         mock_rf.side_effect = ValueError("regressor init failed")
         result = ml_predict.predict_return(self.df)
         assert "error" in result
-
 
 # ═══════════════════════════════════════════════════════════
 # ml_enhanced_score — ML 增强评分
@@ -437,7 +430,6 @@ class TestMlEnhancedScore:
 
         result = ml_predict.ml_enhanced_score(self.df)
         assert result["ml_AUC"] == 0
-
 
 # ═══════════════════════════════════════════════════════════
 # predict_ensemble — 集成投票
@@ -528,7 +520,6 @@ class TestPredictEnsemble:
         assert "rf" in result["models"]
         assert "lgb" in result["models"]
 
-
 # ═══════════════════════════════════════════════════════════
 # predict_dual_model — 双模型验证（委托给 ensemble）
 # ═══════════════════════════════════════════════════════════
@@ -542,7 +533,6 @@ class TestPredictDualModel:
             result = ml_predict.predict_dual_model(df)
             assert result["ensemble_direction"] == "看涨"
             mock_ens.assert_called_once_with(df, None)
-
 
 # ═══════════════════════════════════════════════════════════
 # _cached_predict_ensemble — 缓存机制
@@ -596,7 +586,6 @@ class TestCachedPredictEnsemble:
             # key 应该在 _RESULT_CACHE 中
             assert expected_key in ml_predict._RESULT_CACHE
             assert ml_predict._RESULT_CACHE[expected_key] == {"ensemble_direction": "看涨"}
-
 
 # ═══════════════════════════════════════════════════════════
 # _predict_lgb — LightGBM 降级测试

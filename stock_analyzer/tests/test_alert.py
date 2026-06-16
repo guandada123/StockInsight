@@ -3,9 +3,6 @@
 import json
 import os
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
@@ -15,7 +12,6 @@ TMP_ALERTS = os.path.join(tempfile.gettempdir(), "test_alerts.json")
 TMP_ALERTS_LOG = os.path.join(tempfile.gettempdir(), "test_alerts_log.txt")
 
 os.environ["FEISHU_ALERTS_ENABLED"] = "0"  # 禁用飞书推送
-
 
 class TestAlertCRUD(unittest.TestCase):
     """预警 CRUD 操作测试"""
@@ -105,7 +101,6 @@ class TestAlertCRUD(unittest.TestCase):
         alert = next(a for a in load_alerts() if a["id"] == alert_id)
         self.assertTrue(alert["enabled"])
 
-
 class TestCheckAlerts(unittest.TestCase):
     """check_alerts 分发逻辑测试"""
 
@@ -133,7 +128,6 @@ class TestCheckAlerts(unittest.TestCase):
 
         result = check_alerts([{"type": "price", "code": "000001", "enabled": False}])
         self.assertEqual(result, [])
-
 
 class TestRunAllAlerts(unittest.TestCase):
     """run_all_alerts 集成测试"""
@@ -163,7 +157,6 @@ class TestRunAllAlerts(unittest.TestCase):
         with patch("stock_analyzer.alert._get_current_price", return_value=10.0):
             result = run_all_alerts()
             self.assertEqual(result, [])
-
 
 class TestPriceAlert(unittest.TestCase):
     """价格预警检查测试（纯逻辑，无需数据库）"""
@@ -206,7 +199,6 @@ class TestPriceAlert(unittest.TestCase):
         mock_price.return_value = None
         result, msg = _check_price_alert({"code": "000001", "direction": "above", "target": 15.0})
         self.assertIsNone(result)
-
 
 class TestFundamentalAlert(unittest.TestCase):
     """基本面预警测试"""
@@ -255,7 +247,6 @@ class TestFundamentalAlert(unittest.TestCase):
             "code": "000001", "metric": "ROE", "condition": "abc"
         })
         self.assertIsNone(result)
-
 
 class TestNotifyFeishu(unittest.TestCase):
     """飞书推送测试"""
@@ -330,7 +321,6 @@ class TestNotifyFeishu(unittest.TestCase):
         result = _notify_via_feishu([{"type": "price", "message": "test"}])
         self.assertFalse(result)
 
-
 class TestVolumeAlert(unittest.TestCase):
     """放量预警测试"""
 
@@ -386,7 +376,6 @@ class TestVolumeAlert(unittest.TestCase):
         result, msg = _check_volume_alert({"code": "600000", "multiplier": 2.0})
         self.assertIsNone(result)
         self.assertIn("均量为零", msg)
-
 
 class TestTechnicalAlert(unittest.TestCase):
     """技术指标预警测试"""
@@ -585,7 +574,6 @@ class TestTechnicalAlert(unittest.TestCase):
         })
         self.assertIsNone(result)
 
-
 class TestCheckAlertsDispatch(unittest.TestCase):
     """check_alerts 全部分发分支 + 异常处理"""
 
@@ -647,7 +635,6 @@ class TestCheckAlertsDispatch(unittest.TestCase):
         # 但 check_alerts 应该捕获并继续
         self.assertEqual(result, [])
 
-
 class TestRunAllAlertsTriggered(unittest.TestCase):
     """run_all_alerts 触发态测试"""
 
@@ -676,7 +663,6 @@ class TestRunAllAlertsTriggered(unittest.TestCase):
         with open(TMP_ALERTS_LOG, encoding="utf-8") as f:
             content = f.read()
         self.assertIn("000001", content)
-
 
 class TestAlertEdgeCases(unittest.TestCase):
     """边缘情况测试"""
@@ -712,7 +698,6 @@ class TestAlertEdgeCases(unittest.TestCase):
         mock_sina.return_value = {}
         price = _get_current_price("000001")
         self.assertIsNone(price)
-
 
 class TestTechnicalAlertEdgeCases(unittest.TestCase):
     """技术指标预警边缘分支补齐"""
@@ -789,7 +774,6 @@ class TestTechnicalAlertEdgeCases(unittest.TestCase):
         })
         self.assertFalse(triggered)
 
-
 class TestCheckAlertsException(unittest.TestCase):
     """check_alerts 异常处理（line 327-328）"""
 
@@ -806,12 +790,10 @@ class TestCheckAlertsException(unittest.TestCase):
         }])
         self.assertEqual(result, [])
 
-
 def _make_kline_df(data):
     """构造测试用 DataFrame"""
     import pandas as pd
     return pd.DataFrame(data)
-
 
 def _make_macd_df(prev_dif, prev_dea, now_dif, now_dea):
     """构造含两行 MACD 数据的 DataFrame"""
@@ -824,7 +806,6 @@ def _make_macd_df(prev_dif, prev_dea, now_dif, now_dea):
         "DEA": [prev_dea, now_dea],
     })
     return df
-
 
 if __name__ == "__main__":
     unittest.main()

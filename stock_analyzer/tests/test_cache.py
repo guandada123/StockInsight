@@ -6,9 +6,6 @@ import pickle
 import sqlite3
 import time
 from unittest.mock import patch, MagicMock
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import pandas as pd
 import numpy as np
 
@@ -17,14 +14,12 @@ from stock_analyzer import cache
 # ── 原有的 DB_PATH 替换（保持兼容）──
 _ORIG_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "stock_cache.db")
 
-
 def _setup_test_cache():
     """重置内存缓存和 DB 路径"""
     cache._MEM_CACHE.clear()
     cache._DB_CONN = None
     # 用 :memory: 替代真实 DB
     return
-
 
 def _make_kline_df(rows=60, code="000001"):
     """构造模拟K线 DataFrame"""
@@ -43,7 +38,6 @@ def _make_kline_df(rows=60, code="000001"):
         "代码": [code] * rows,
     })
     return df
-
 
 # ═══════════════════════════════════════════
 # 核心 KV 缓存
@@ -91,7 +85,6 @@ class TestCacheBasic(unittest.TestCase):
         cache.cache_clear_all()
         self.assertEqual(len(cache._MEM_CACHE), 0)
 
-
 # ═══════════════════════════════════════════
 # 异常路径
 # ═══════════════════════════════════════════
@@ -124,7 +117,6 @@ class TestCacheErrorPaths(unittest.TestCase):
         """cache_clear_all 异常时不抛异常"""
         with patch('stock_analyzer.cache.sqlite3.connect', side_effect=Exception("DB down")):
             cache.cache_clear_all()
-
 
 # ═══════════════════════════════════════════
 # 永久存储 _perm_load / _perm_save
@@ -178,7 +170,6 @@ class TestPermStorage(unittest.TestCase):
         cache._perm_save("test_t", "key_col", "overwrite_key", {"v": 2})
         result = cache._perm_load("test_t", "key_col", "overwrite_key")
         self.assertEqual(result["v"], 2)
-
 
 # ═══════════════════════════════════════════
 # 模板化 cached_* 函数
@@ -309,7 +300,6 @@ class TestCachedWrappers(unittest.TestCase):
         mock_fetch.side_effect = Exception("fail")
         result = cache.cached_sector_fund_flow_rank()
         self.assertTrue(result.empty)
-
 
 # ═══════════════════════════════════════════
 # cached_fundamentals — 三层缓存
@@ -450,7 +440,6 @@ class TestCachedFundamentals(unittest.TestCase):
         self.assertIsNone(result.get("ROE"))
         conn.close()
 
-
 # ═══════════════════════════════════════════
 # cached_kline — K线缓存
 # ═══════════════════════════════════════════
@@ -532,7 +521,6 @@ class TestCachedKline(unittest.TestCase):
         self.assertIsInstance(result, pd.DataFrame)
         self.assertTrue(result.empty)
 
-
 # ═══════════════════════════════════════════
 # cached_sectors / cached_national_team_holdings
 # ═══════════════════════════════════════════
@@ -578,7 +566,6 @@ class TestCachedSectors(unittest.TestCase):
         mock_fetch.side_effect = Exception("fail")
         result = cache.cached_sectors()
         self.assertTrue(result.empty)
-
 
 if __name__ == "__main__":
     unittest.main()

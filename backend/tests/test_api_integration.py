@@ -2,24 +2,70 @@
 StockInsight API 集成测试 — 验证完整请求链路
 使用 FastAPI TestClient，Mock 外部数据源
 覆盖: health, market, analysis, portfolio, factors, data, 错误处理, 中间件
-
-注意: stock_analyzer mock 由 backend/tests/conftest.py 的 session fixture
-自动管理（autouse），确保 API 测试不依赖外部 API，且不污染单元测试。
 """
 
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "backend"))
 
-from fastapi.testclient import TestClient
+# ════════════════════════════════════════════════════
+# Phase 1 — Module-level: mock stock_analyzer BEFORE importing app
+# 确保 app import 时内部懒加载 stock_analyzer 获取的是 mock
+# 导入完成后立即恢复，不污染其他 test module 的 collection
+# ════════════════════════════════════════════════════
+_ORIG_SA = sys.modules.get("stock_analyzer")
+_ORIG_SA_FETCHER = sys.modules.get("stock_analyzer.fetcher")
 
-from backend.main import app
+_mock_sa = MagicMock()
+sys.modules["stock_analyzer"] = _mock_sa
+
 from backend.tests.conftest import mock_fetcher
 
+_mock_sa.fetcher = mock_fetcher
+sys.modules["stock_analyzer.fetcher"] = mock_fetcher
+
+from fastapi.testclient import TestClient
+from backend.main import app
+
 client = TestClient(app)
+
+# 恢复原始模块，避免污染其他 test module
+if _ORIG_SA is not None:
+    sys.modules["stock_analyzer"] = _ORIG_SA
+else:
+    sys.modules.pop("stock_analyzer", None)
+if _ORIG_SA_FETCHER is not None:
+    sys.modules["stock_analyzer.fetcher"] = _ORIG_SA_FETCHER
+else:
+    sys.modules.pop("stock_analyzer.fetcher", None)
+
+# ════════════════════════════════════════════════════
+# Phase 2 — Module-scope fixture: 测试执行时重新注入 mock
+# 因为 router 函数内是懒加载 stock_analyzer，测试执行时仍需 mock
+# ════════════════════════════════════════════════════
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _mock_stock_analyzer():
+    """测试执行时重新 mock stock_analyzer，确保懒加载拿到 mock。"""
+    sys.modules["stock_analyzer"] = _mock_sa
+    sys.modules["stock_analyzer.fetcher"] = mock_fetcher
+    yield
+    # 恢复（不影响后续 module）
+    if _ORIG_SA is not None:
+        sys.modules["stock_analyzer"] = _ORIG_SA
+    else:
+        sys.modules.pop("stock_analyzer", None)
+    if _ORIG_SA_FETCHER is not None:
+        sys.modules["stock_analyzer.fetcher"] = _ORIG_SA_FETCHER
+    else:
+        sys.modules.pop("stock_analyzer.fetcher", None)
 
 
 # ═══════════════════════════════════════

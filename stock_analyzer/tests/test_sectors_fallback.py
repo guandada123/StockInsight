@@ -3,15 +3,11 @@
 import os
 import re
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import unittest
 
 from stock_analyzer.sectors_fallback import SECTOR_STOCKS_FALLBACK
 
 CODE_PATTERN = re.compile(r"^\d{6}$")
-
 
 class TestSectorsFallback(unittest.TestCase):
     """静态板块数据测试"""
@@ -102,7 +98,6 @@ class TestSectorsFallback(unittest.TestCase):
         for sector in known:
             if sector in SECTOR_STOCKS_FALLBACK:
                 self.assertIn(sector, SECTOR_STOCKS_FALLBACK)
-
 
 if __name__ == "__main__":
     unittest.main()

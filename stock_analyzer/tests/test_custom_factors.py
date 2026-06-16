@@ -2,16 +2,12 @@
 
 import os
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import unittest
 
 import numpy as np
 import pandas as pd
 
 from stock_analyzer.custom_factors import FactorExpressionEngine
-
 
 class TestFactorExpressionEngine(unittest.TestCase):
     """因子表达式引擎测试"""
@@ -290,11 +286,9 @@ class TestFactorExpressionEngine(unittest.TestCase):
             expected.values[19:],
         )
 
-
 # ═══════════════════════════════════════════
 # 错误路径全覆盖
 # ═══════════════════════════════════════════
-
 
 class TestErrorPaths(unittest.TestCase):
     """覆盖所有 raise ValueError 分支"""
@@ -458,11 +452,9 @@ class TestErrorPaths(unittest.TestCase):
             self.engine.evaluate("len(close)", self.df)
         self.assertIn("函数不允许", str(ctx.exception))
 
-
 # ═══════════════════════════════════════════
 # SQLite 因子管理
 # ═══════════════════════════════════════════
-
 
 class TestFactorCRUD(unittest.TestCase):
     """因子 SQLite 存储 CRUD 操作"""
@@ -538,7 +530,6 @@ class TestFactorCRUD(unittest.TestCase):
             "(close - close.rolling(20).mean()) / close.rolling(20).std()",
             description="布林带位置",
         )
-
 
 if __name__ == "__main__":
     unittest.main()

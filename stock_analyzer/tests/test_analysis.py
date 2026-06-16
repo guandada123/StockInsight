@@ -1,15 +1,11 @@
 import os
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import unittest
 
 import numpy as np
 import pandas as pd
 
 from stock_analyzer import analysis
-
 
 def _make_df(rows=100):
     """生成模拟 K 线数据，固定 seed 确保可重复"""
@@ -26,7 +22,6 @@ def _make_df(rows=100):
         }
     )
     return df
-
 
 class TestAnalysis(unittest.TestCase):
     def test_empty_df(self):
@@ -92,7 +87,6 @@ class TestAnalysis(unittest.TestCase):
         self.assertGreater(len(valid), 0)
         self.assertTrue((valid > 0).all())
 
-
 class TestCalcSupportResistance(unittest.TestCase):
     """支撑位与压力位计算"""
 
@@ -126,7 +120,6 @@ class TestCalcSupportResistance(unittest.TestCase):
         result = analysis.calc_support_resistance(df, lookback=20)
         self.assertIsInstance(result, dict)
 
-
 class TestCalcStopLevels(unittest.TestCase):
     """止损止盈位计算"""
 
@@ -156,7 +149,6 @@ class TestCalcStopLevels(unittest.TestCase):
         self.assertIn("止损幅度%", result)
         self.assertIn("止盈幅度%", result)
         self.assertIn("ATR占比%", result)
-
 
 class TestGetTechnicalSummary(unittest.TestCase):
     """技术分析结论提取"""
@@ -209,7 +201,6 @@ class TestGetTechnicalSummary(unittest.TestCase):
         result = analysis.get_technical_summary(df)
         self.assertIsNone(result["近20日涨跌幅"])
 
-
 class TestScoreFundamental(unittest.TestCase):
     """基本面评分"""
 
@@ -249,7 +240,6 @@ class TestScoreFundamental(unittest.TestCase):
         self.assertIn("ROE", details)
         self.assertIn("营收增长", details)
 
-
 class TestScoreStocksInSector(unittest.TestCase):
     """板块内个股评分"""
 
@@ -283,7 +273,6 @@ class TestScoreStocksInSector(unittest.TestCase):
         })
         result = analysis.score_stocks_in_sector(df)
         self.assertEqual(len(result), 1)
-
 
 if __name__ == "__main__":
     unittest.main()

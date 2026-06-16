@@ -8,7 +8,6 @@ import pytest
 
 from stock_analyzer import sector_report
 
-
 def _make_screener_df(extra_rows: bool = False) -> pd.DataFrame:
     """创建模拟的 run_screener 返回值 DataFrame"""
     rows = [
@@ -26,7 +25,6 @@ def _make_screener_df(extra_rows: bool = False) -> pd.DataFrame:
     cols = ["代码", "综合评分", "评级", "动量分", "技术分", "基本面分", "量能分", "风险分"]
     return pd.DataFrame(rows, columns=cols)
 
-
 def _mock_sector(code: str) -> str:
     """模拟 get_sector_for_code 返回值"""
     mapping = {
@@ -40,7 +38,6 @@ def _mock_sector(code: str) -> str:
         "999999": "其他",
     }
     return mapping.get(code, "其他")
-
 
 class TestGenerateSectorReport:
     """generate_sector_report 函数全覆盖测试"""

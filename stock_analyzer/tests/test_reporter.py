@@ -25,13 +25,11 @@ _MOCK_DOCX_MODULES = {
 class _WDTableAlign:
     CENTER = "center"
 
-
 class _WDAlignParagraph:
     CENTER = "center"
     LEFT = "left"
     RIGHT = "right"
     JUSTIFY = "justify"
-
 
 _MOCK_DOCX_MODULES["docx.enum.table"].WD_TABLE_ALIGNMENT = _WDTableAlign()
 _MOCK_DOCX_MODULES["docx.enum.text"].WD_ALIGN_PARAGRAPH = _WDAlignParagraph()
@@ -67,7 +65,6 @@ from stock_analyzer import reporter
 # Fixtures
 # ══════════════════════════════════════════════════════════════════════
 
-
 @pytest.fixture
 def mock_doc():
     """返回一个可用的 mock Document 实例"""
@@ -77,7 +74,6 @@ def mock_doc():
     doc.add_table.return_value = MagicMock()
     doc.sections = [MagicMock()]
     return doc
-
 
 @pytest.fixture
 def sample_sectors():
@@ -93,7 +89,6 @@ def sample_sectors():
         }
     )
 
-
 @pytest.fixture
 def sample_picks():
     """模拟推荐股票 DataFrame"""
@@ -107,7 +102,6 @@ def sample_picks():
             "量比": [1.5, 0.8],
         }
     )
-
 
 @pytest.fixture
 def sample_details():
@@ -146,11 +140,9 @@ def sample_details():
         },
     }
 
-
 # ══════════════════════════════════════════════════════════════════════
 # Tests — add_title
 # ══════════════════════════════════════════════════════════════════════
-
 
 class TestAddTitle:
     def test_level_0_calls_heading_level_1(self, mock_doc):
@@ -175,11 +167,9 @@ class TestAddTitle:
         reporter.add_title(mock_doc, "默认")
         mock_doc.add_heading.assert_called_once_with("默认", level=1)
 
-
 # ══════════════════════════════════════════════════════════════════════
 # Tests — add_para
 # ══════════════════════════════════════════════════════════════════════
-
 
 class TestAddPara:
     def test_basic(self, mock_doc):
@@ -220,11 +210,9 @@ class TestAddPara:
         p = mock_doc.add_paragraph.return_value
         assert p.alignment == align
 
-
 # ══════════════════════════════════════════════════════════════════════
 # Tests — add_image
 # ══════════════════════════════════════════════════════════════════════
-
 
 class TestAddImage:
     def test_path_exists(self, mock_doc):
@@ -257,11 +245,9 @@ class TestAddImage:
             "/tmp/img.png", width="cm:10"
         )
 
-
 # ══════════════════════════════════════════════════════════════════════
 # Tests — _set_cell_shading
 # ══════════════════════════════════════════════════════════════════════
-
 
 class TestSetCellShading:
     def test_sets_shading(self):
@@ -288,11 +274,9 @@ class TestSetCellShading:
         tc_pr = cell._tc.get_or_add_tcPr.return_value
         tc_pr.append.assert_called_once_with(shading_elem)
 
-
 # ══════════════════════════════════════════════════════════════════════
 # Tests — _make_header_row
 # ══════════════════════════════════════════════════════════════════════
-
 
 class TestMakeHeaderRow:
     def test_sets_headers(self):
@@ -330,11 +314,9 @@ class TestMakeHeaderRow:
         shading_elem = OxmlElement.return_value
         shading_elem.set.assert_any_call("ns:w:fill", "4472C4")
 
-
 # ══════════════════════════════════════════════════════════════════════
 # Tests — _add_table_row
 # ══════════════════════════════════════════════════════════════════════
-
 
 class TestAddTableRow:
     def test_adds_values(self):
@@ -380,11 +362,9 @@ class TestAddTableRow:
             "45.6"
         )
 
-
 # ══════════════════════════════════════════════════════════════════════
 # Tests — _create_table
 # ══════════════════════════════════════════════════════════════════════
-
 
 class TestCreateTable:
     def test_create_basic(self, mock_doc):
@@ -437,11 +417,9 @@ class TestCreateTable:
         reporter._create_table(mock_doc, headers, rows, col_widths)
         assert fake_row.cells[0].width == "cm:3"
 
-
 # ══════════════════════════════════════════════════════════════════════
 # Tests — generate_report
 # ══════════════════════════════════════════════════════════════════════
-
 
 class TestGenerateReport:
     def mk_doc(self):

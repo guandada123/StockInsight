@@ -9,16 +9,12 @@ import unittest
 from unittest import mock
 
 import pandas as pd
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 from stock_analyzer.data_sources import (CircuitBreaker, DataSource, DataSourceChain, Freshness,
                                           HTTPSessionPool, FileRateLimiter, _parse_kline_df,
                                           get_default_kline_chain, get_default_realtime_chain,
                                           get_default_fundamentals_chain,
                                           fetch_kline, fetch_realtime, fetch_fundamentals,
                                           get_sina_rate_limiter, check_sina_rate)
-
 
 class TestFreshness(unittest.TestCase):
     """数据新鲜度枚举测试"""
@@ -37,7 +33,6 @@ class TestFreshness(unittest.TestCase):
         self.assertEqual(Freshness.FRESH.value, "fresh")
         self.assertEqual(Freshness.DEGRADED.value, "degraded")
         self.assertEqual(Freshness.UNAVAILABLE.value, "unavailable")
-
 
 class TestCircuitBreaker(unittest.TestCase):
     """熔断器测试"""
@@ -78,7 +73,6 @@ class TestCircuitBreaker(unittest.TestCase):
         """名称正确保存"""
         cb = CircuitBreaker("my_api", max_failures=5)
         self.assertEqual(cb.name, "my_api")
-
 
 class TestParseKlineDF(unittest.TestCase):
     """_parse_kline_df 测试"""
@@ -147,7 +141,6 @@ class TestParseKlineDF(unittest.TestCase):
             self.assertTrue(pd.api.types.is_numeric_dtype(df[col]),
                             f"{col} should be numeric")
 
-
 class TestDataSourceABC(unittest.TestCase):
     """DataSource 抽象基类测试"""
 
@@ -176,11 +169,9 @@ class TestDataSourceABC(unittest.TestCase):
         ms = MySource()
         self.assertEqual(ms.name, "MySource")
 
-
 # ============================================================
 # FileRateLimiter 测试
 # ============================================================
-
 
 class TestFileRateLimiter(unittest.TestCase):
     """跨进程速率限制器测试 — 核心逻辑全覆盖"""
@@ -278,11 +269,9 @@ class TestFileRateLimiter(unittest.TestCase):
             f.write("not json {{{")
         self.assertEqual(self.limiter._read_timestamps(), [])
 
-
 # ============================================================
 # HTTP 会话池测试
 # ============================================================
-
 
 class TestHTTPSessionPool(unittest.TestCase):
     """HTTPSessionPool 单例模式测试"""
@@ -308,11 +297,9 @@ class TestHTTPSessionPool(unittest.TestCase):
         """sina 和 em 是不同的会话对象"""
         self.assertIsNot(HTTPSessionPool.sina(), HTTPSessionPool.em())
 
-
 # ============================================================
 # DataSourceChain 测试
 # ============================================================
-
 
 class _MockSuccessKlineSource(DataSource):
     """模拟成功返回 K 线的数据源"""
@@ -320,13 +307,11 @@ class _MockSuccessKlineSource(DataSource):
     def fetch_kline(self, code, days=120):
         return pd.DataFrame({"日期": ["2025-01-01"], "收盘": [100.0]})
 
-
 class _MockFailSource(DataSource):
     """模拟总是失败的数据源（返回空 DataFrame）"""
 
     def fetch_kline(self, code, days=120):
         return pd.DataFrame()
-
 
 class _MockExceptionSource(DataSource):
     """模拟抛异常的数据源"""
@@ -334,20 +319,17 @@ class _MockExceptionSource(DataSource):
     def fetch_kline(self, code, days=120):
         raise RuntimeError("模拟异常")
 
-
 class _MockRealtimeSource(DataSource):
     """模拟实时行情源"""
 
     def fetch_realtime(self, codes):
         return {"000001": {"最新价": 50.0, "涨跌幅": 2.5}}
 
-
 class _MockFundamentalsSource(DataSource):
     """模拟基本面源"""
 
     def fetch_fundamentals(self, code):
         return {"ROE": 15.0, "市盈率": 20.0, "市净率": 3.0}
-
 
 class TestDataSourceChain(unittest.TestCase):
     """容灾链测试"""
@@ -425,11 +407,9 @@ class TestDataSourceChain(unittest.TestCase):
         chain = DataSourceChain([_MockSuccessKlineSource()])
         self.assertEqual(len(chain.sources), 1)
 
-
 # ============================================================
 # 默认容灾链工厂函数测试
 # ============================================================
-
 
 class TestDefaultChains(unittest.TestCase):
     """默认容灾链工厂"""
@@ -462,11 +442,9 @@ class TestDefaultChains(unittest.TestCase):
         c2 = get_default_fundamentals_chain()
         self.assertIs(c1, c2)
 
-
 # ============================================================
 # 便捷顶层 API 测试
 # ============================================================
-
 
 class TestConvenienceAPI(unittest.TestCase):
     """便捷 API 测试"""
@@ -499,11 +477,9 @@ class TestConvenienceAPI(unittest.TestCase):
         except Exception as e:
             self.fail(f"check_sina_rate 不应抛异常: {e}")
 
-
 # ============================================================
 # DataSource 子类 K 线源测试（集成/网络依赖验证）
 # ============================================================
-
 
 class TestKlineSources(unittest.TestCase):
     """K 线数据源集成测试 — 验证解析逻辑，依赖网络"""
@@ -582,11 +558,9 @@ class TestKlineSources(unittest.TestCase):
             token = TushareKlineSource._get_token()
             self.assertEqual(token, "")
 
-
 # ============================================================
 # SinaRealtimeSource 测试
 # ============================================================
-
 
 class TestSinaRealtimeSource(unittest.TestCase):
     """新浪实时行情源测试"""
@@ -653,8 +627,6 @@ class TestSinaRealtimeSource(unittest.TestCase):
             self.assertEqual(src.fetch_realtime(["600519"]), {})
         finally:
             HTTPSessionPool._sina = orig_sina
-
-
 
 if __name__ == "__main__":
     unittest.main()

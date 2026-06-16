@@ -2,9 +2,6 @@
 
 import os
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 # Pre-populate sys.modules so @patch('akshare.stock_holder_number_em') resolves
 # without needing akshare actually installed in the test environment.
 from unittest.mock import MagicMock
@@ -23,7 +20,6 @@ from stock_analyzer.chip_factors import (
     composite_chip_score,
 )
 
-
 def _make_kline_df(rows=60, seed=42):
     """生成标准K线DataFrame"""
     np.random.seed(seed)
@@ -36,7 +32,6 @@ def _make_kline_df(rows=60, seed=42):
         "最低": close * (1 - np.abs(np.random.randn(rows) * 0.01)),
         "成交量": np.random.randint(500_000, 5_000_000, rows),
     })
-
 
 class TestVolumePriceFactors(unittest.TestCase):
     """量价配合因子"""
@@ -81,7 +76,6 @@ class TestVolumePriceFactors(unittest.TestCase):
         kline = _make_kline_df(60)
         result = calc_volume_price_factors(kline)
         self.assertGreaterEqual(result["缩量下跌天数"], 0)
-
 
 class TestTurnoverAnalysis(unittest.TestCase):
     """换手率分析因子"""
@@ -152,7 +146,6 @@ class TestTurnoverAnalysis(unittest.TestCase):
         kline["换手率"] = np.full(60, 10.0)
         result = calc_turnover_analysis(kline)
         self.assertEqual(result["换手率评分"], 50)
-
 
 class TestCalcChipConcentration(unittest.TestCase):
     """calc_chip_concentration 筹码集中度测试（mock akshare）"""
@@ -252,7 +245,6 @@ class TestCalcChipConcentration(unittest.TestCase):
         self.assertTrue(result["数据可用"])
         self.assertGreater(result["户均持股变化"], 0)
 
-
 class TestVolumePriceFactorsNoVol(unittest.TestCase):
     """calc_volume_price_factors — 无成交量列分支"""
 
@@ -264,7 +256,6 @@ class TestVolumePriceFactorsNoVol(unittest.TestCase):
         })
         result = calc_volume_price_factors(kline)
         self.assertEqual(result["量价配合度评分"], 50)
-
 
 class TestCompositeChipScore(unittest.TestCase):
     """composite_chip_score 综合评分测试"""

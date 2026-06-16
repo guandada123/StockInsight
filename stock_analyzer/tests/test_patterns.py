@@ -2,16 +2,12 @@
 
 import os
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import unittest
 
 import numpy as np
 import pandas as pd
 
 from stock_analyzer import patterns
-
 
 def _make_df(rows=120):
     """生成模拟 K 线数据，固定 seed 确保可重复"""
@@ -31,7 +27,6 @@ def _make_df(rows=120):
     })
     return df
 
-
 def _make_row(open_p, close_p, high_p, low_p, volume=5000000):
     """创建单行 K 线数据 (Series)"""
     return pd.Series({
@@ -41,7 +36,6 @@ def _make_row(open_p, close_p, high_p, low_p, volume=5000000):
         "最低": float(low_p),
         "成交量": volume,
     })
-
 
 class TestHelpers(unittest.TestCase):
     """K 线辅助函数测试"""
@@ -92,7 +86,6 @@ class TestHelpers(unittest.TestCase):
         """无下影线（最低价等于开盘/收盘较小者）"""
         row = _make_row(10, 12, 14, 10)
         self.assertEqual(patterns._lower_shadow(row), 0.0)
-
 
 class TestSingleCandlePatterns(unittest.TestCase):
     """单根 K 线形态测试"""
@@ -180,7 +173,6 @@ class TestSingleCandlePatterns(unittest.TestCase):
         row = _make_row(11.5, 10.8, 11.6, 9.0)
         self.assertFalse(patterns.is_hanging_man(row, trend="down"))
 
-
 class TestTwoCandlePatterns(unittest.TestCase):
     """两根 K 线形态测试"""
 
@@ -257,7 +249,6 @@ class TestTwoCandlePatterns(unittest.TestCase):
         curr = _make_row(10.2, 10.6, 10.8, 10)
         self.assertFalse(patterns.is_piercing_pattern(prev, curr))
 
-
 class TestThreeCandlePatterns(unittest.TestCase):
     """三根 K 线形态测试"""
 
@@ -327,7 +318,6 @@ class TestThreeCandlePatterns(unittest.TestCase):
         r3 = _make_row(10, 9, 10.2, 8.8)
         self.assertFalse(patterns.is_three_black_crows(r1, r2, r3))
 
-
 class TestTrendDetection(unittest.TestCase):
     """趋势判断测试"""
 
@@ -377,7 +367,6 @@ class TestTrendDetection(unittest.TestCase):
         })
         result = patterns.detect_trend_phase(df)
         self.assertEqual(result, "下降趋势")
-
 
 class TestPatternDetection(unittest.TestCase):
     """detect_patterns 和 generate_kline_interpretation 测试"""
@@ -442,7 +431,6 @@ class TestPatternDetection(unittest.TestCase):
             self.assertEqual(len(result), len(df) + 1)
         except Exception as e:
             self.fail(f"merge_today_data raised: {e}")
-
 
 if __name__ == "__main__":
     unittest.main()

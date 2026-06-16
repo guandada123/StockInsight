@@ -2,13 +2,9 @@
 
 import os
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import unittest
 
 from stock_analyzer.env import get_env, get_env_int, get_env_float, get_env_bool, load_env
-
 
 class TestGetEnv(unittest.TestCase):
     """get_env 基础功能测试"""
@@ -26,7 +22,6 @@ class TestGetEnv(unittest.TestCase):
     def test_get_env_default_empty(self):
         """默认值为空字符串"""
         self.assertEqual(get_env("_NONEXIST_TEST_VAR2"), "")
-
 
 class TestGetEnvInt(unittest.TestCase):
     """get_env_int 解析测试"""
@@ -53,7 +48,6 @@ class TestGetEnvInt(unittest.TestCase):
         self.assertEqual(get_env_int("_TEST_INT_NEG"), -7)
         del os.environ["_TEST_INT_NEG"]
 
-
 class TestGetEnvFloat(unittest.TestCase):
     """get_env_float 解析测试"""
 
@@ -79,7 +73,6 @@ class TestGetEnvFloat(unittest.TestCase):
         self.assertEqual(get_env_float("_TEST_FLOAT_INT"), 5.0)
         del os.environ["_TEST_FLOAT_INT"]
 
-
 class TestGetEnvBool(unittest.TestCase):
     """get_env_bool 解析测试"""
 
@@ -101,7 +94,6 @@ class TestGetEnvBool(unittest.TestCase):
         """默认值测试"""
         self.assertFalse(get_env_bool("_NONEXIST_BOOL"))
         self.assertTrue(get_env_bool("_NONEXIST_BOOL", True))
-
 
 class TestLoadEnv(unittest.TestCase):
     """load_env 测试"""
@@ -127,7 +119,6 @@ class TestLoadEnv(unittest.TestCase):
         # dotenv 使用 override=False，不会覆盖已有环境变量
         self.assertEqual(os.environ["_IDEMPOTENT_TEST"], "original")
         del os.environ["_IDEMPOTENT_TEST"]
-
 
 if __name__ == "__main__":
     unittest.main()

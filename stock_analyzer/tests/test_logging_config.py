@@ -3,13 +3,9 @@
 import logging
 import os
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import unittest
 
 from stock_analyzer.logging_config import get_logger, init_logging
-
 
 class TestLoggingConfig(unittest.TestCase):
     """日志配置测试"""
@@ -53,7 +49,6 @@ class TestLoggingConfig(unittest.TestCase):
             logger.warning("warning message")
         except Exception as e:
             self.fail(f"logger methods raised: {e}")
-
 
 if __name__ == "__main__":
     unittest.main()

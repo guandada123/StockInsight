@@ -2,9 +2,6 @@
 
 import os
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -12,7 +9,6 @@ import numpy as np
 import pandas as pd
 
 from stock_analyzer.analyzer import _check_national_team, _merge_realtime_kline, deep_analyze
-
 
 class TestCheckNationalTeam(unittest.TestCase):
     """国家队持仓查询测试"""
@@ -66,7 +62,6 @@ class TestCheckNationalTeam(unittest.TestCase):
         mock_cache.return_value = "not_a_dict"
         has_nt, holders = _check_national_team("000001")
         self.assertFalse(has_nt)
-
 
 class TestMergeRealtimeKline(unittest.TestCase):
     """实时行情合并到K线测试"""
@@ -146,7 +141,6 @@ class TestMergeRealtimeKline(unittest.TestCase):
             result = _merge_realtime_kline(kline, "000001")
             for col in ["日期", "开盘", "收盘", "最高", "最低", "成交量"]:
                 self.assertIn(col, result.columns)
-
 
 # ──────────────────────────────────────────────
 # TestDeepAnalyze — deep_analyze 完整流程
@@ -362,7 +356,6 @@ class TestDeepAnalyze(unittest.TestCase):
         result = deep_analyze("000001")
         self.assertEqual(result["mom_s"], 0)
         self.assertEqual(result["tech_s"], 0)
-
 
 if __name__ == "__main__":
     unittest.main()

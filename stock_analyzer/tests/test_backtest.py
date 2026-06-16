@@ -2,9 +2,6 @@
 
 import os
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import unittest
 
 import numpy as np
@@ -26,7 +23,6 @@ from stock_analyzer.backtest import (
 )
 
 # 扩展 test_quant.py 中已有的 _make_df，确保测试可重复
-
 
 class TestBacktestStrategies(unittest.TestCase):
     """各策略函数单元测试（纯逻辑，不依赖网络）"""
@@ -122,9 +118,7 @@ class TestBacktestStrategies(unittest.TestCase):
         self.assertIn("metrics", result)
         self.assertIn("基准收益%", result["metrics"])
 
-
 # ── 网格交易 ──────────────────────────────────────────────
-
 
 class TestStrategyGrid(unittest.TestCase):
     """strategy_grid 网格交易策略测试"""
@@ -155,9 +149,7 @@ class TestStrategyGrid(unittest.TestCase):
         result = strategy_grid(df, grid_pct=0.05)
         self.assertIn("signal", result.columns)
 
-
 # ── 均线趋势 ────────────────────────────────────────────
-
 
 class TestStrategyMaTrend(unittest.TestCase):
     """strategy_ma_trend 均线多头排列测试"""
@@ -192,9 +184,7 @@ class TestStrategyMaTrend(unittest.TestCase):
         result = strategy_ma_trend(df)
         self.assertIsInstance(result, pd.DataFrame)
 
-
 # ── 布林带列路径 ─────────────────────────────────────
-
 
 class TestStrategyBollingerColumns(unittest.TestCase):
     """strategy_bollinger_breakout 不同列名路径测试"""
@@ -229,9 +219,7 @@ class TestStrategyBollingerColumns(unittest.TestCase):
         result = strategy_bollinger_breakout(df)
         self.assertIn("signal", result.columns)
 
-
 # ── MACD 列路径 ────────────────────────────────────────
-
 
 class TestStrategyMacdCrossColumns(unittest.TestCase):
     """strategy_macd_cross 已有 DIF/DEA 列"""
@@ -246,9 +234,7 @@ class TestStrategyMacdCrossColumns(unittest.TestCase):
         result = strategy_macd_cross(df)
         self.assertIn("signal", result.columns)
 
-
 # ── 回测引擎边缘分支 ─────────────────────────────────
-
 
 class TestBacktestEdgeCases(unittest.TestCase):
     """run_backtest 边缘分支测试"""
@@ -291,9 +277,7 @@ class TestBacktestEdgeCases(unittest.TestCase):
         result = run_backtest(df, strategy_ma_cross, None)
         self.assertIsInstance(result, dict)
 
-
 # ── 止盈止损风控 ──────────────────────────────────
-
 
 class TestBacktestRiskControl(unittest.TestCase):
     """run_backtest 止盈止损移动止损测试"""
@@ -360,9 +344,7 @@ class TestBacktestRiskControl(unittest.TestCase):
         has_ts = any("移动止损" in r for r in reasons)
         self.assertTrue(has_ts, f"Expected 移动止损 in reasons: {reasons}")
 
-
 # ── 多策略对比 ──────────────────────────────────
-
 
 class TestCompareStrategies(unittest.TestCase):
     """compare_strategies 多策略对比测试"""
@@ -416,9 +398,7 @@ class TestCompareStrategies(unittest.TestCase):
         results = compare_strategies(df, strategies=["nonexistent"], verbose=False)
         self.assertEqual(len(results), 0)
 
-
 # ── 参数优化 ──────────────────────────────────
-
 
 class TestOptimizeStrategy(unittest.TestCase):
     """optimize_strategy 参数网格优化测试"""
@@ -477,10 +457,7 @@ class TestOptimizeStrategy(unittest.TestCase):
         self.assertIn("优化进度", output)
         self.assertIn("优化完成", output)
 
-
-
 # ── JSON 导出 ──────────────────────────────────
-
 
 class TestExportBacktestJson(unittest.TestCase):
     """export_backtest_json 测试"""

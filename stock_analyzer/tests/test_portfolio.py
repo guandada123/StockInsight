@@ -11,23 +11,18 @@ import pytest
 
 from stock_analyzer import portfolio
 
-
 # ── 测试辅助函数 ─────────────────────────────────
-
 
 def _make_kline(close_prices, start_date="2026-01-01"):
     """构建与 cached_kline 返回值一致的 mock DataFrame"""
     dates = pd.date_range(start_date, periods=len(close_prices), freq="D")
     return pd.DataFrame({"日期": dates, "收盘": close_prices})
 
-
 def _portf(name="test", stocks=None):
     """快速构造一个组合 dict"""
     return {"name": name, "created_at": "2026-06-14", "stocks": stocks or []}
 
-
 # ── _empty_result ────────────────────────────────
-
 
 class TestEmptyResult:
     def test_returns_correct_structure(self):
@@ -42,9 +37,7 @@ class TestEmptyResult:
             "stocks": [],
         }
 
-
 # ── 内部路径/目录工具 ──────────────────────────
-
 
 class TestPortfolioPathUtils:
     def test_ensure_dir_creates_directory(self, tmp_path):
@@ -65,9 +58,7 @@ class TestPortfolioPathUtils:
             assert path.endswith("my_portfolio.json")
             assert str(tmp_path) in path
 
-
 # ── _get_current_price ─────────────────────────
-
 
 class TestGetCurrentPrice:
     def test_normal_returns_last_close(self):
@@ -79,9 +70,7 @@ class TestGetCurrentPrice:
         with patch("stock_analyzer.portfolio.cached_kline", return_value=pd.DataFrame()):
             assert portfolio._get_current_price("000001") is None
 
-
 # ── _get_daily_returns_series ──────────────────
-
 
 class TestGetDailyReturnsSeries:
     def test_normal_returns_pct_change(self):
@@ -106,9 +95,7 @@ class TestGetDailyReturnsSeries:
         assert isinstance(sr, pd.Series)
         assert sr.empty
 
-
 # ── create_portfolio ───────────────────────────
-
 
 class TestCreatePortfolio:
     def test_with_stocks(self):
@@ -133,9 +120,7 @@ class TestCreatePortfolio:
                 result = portfolio.create_portfolio("dated")
         assert result["created_at"] == "2026-06-14"
 
-
 # ── save_portfolio ─────────────────────────────
-
 
 class TestSavePortfolio:
     def test_saves_json_to_correct_path(self, tmp_path):
@@ -152,9 +137,7 @@ class TestSavePortfolio:
             with patch("builtins.open", MagicMock()):
                 assert portfolio.save_portfolio(_portf("x")) is True
 
-
 # ── load_portfolio ─────────────────────────────
-
 
 class TestLoadPortfolio:
     def test_loads_existing(self, tmp_path):
@@ -169,9 +152,7 @@ class TestLoadPortfolio:
         with patch("stock_analyzer.portfolio.PORTFOLIO_DIR", str(tmp_path)):
             assert portfolio.load_portfolio("nonexistent") is None
 
-
 # ── list_portfolios ───────────────────────────
-
 
 class TestListPortfolios:
     def test_lists_json_files_sorted(self, tmp_path):
@@ -188,9 +169,7 @@ class TestListPortfolios:
         with patch("stock_analyzer.portfolio.PORTFOLIO_DIR", str(tmp_path)):
             assert portfolio.list_portfolios() == []
 
-
 # ── add_stock ─────────────────────────────────
-
 
 class TestAddStock:
     def test_add_new_stock(self):
@@ -213,9 +192,7 @@ class TestAddStock:
         portfolio.add_stock(pf, "000001", 100, 10.0)
         assert pf["stocks"] == [{"code": "000001", "weight": 100, "cost": 10.0}]
 
-
 # ── remove_stock ──────────────────────────────
-
 
 class TestRemoveStock:
     def test_remove_existing(self):
@@ -237,9 +214,7 @@ class TestRemoveStock:
         result = portfolio.remove_stock(pf, "000001")
         assert result["stocks"] == []
 
-
 # ── analyze_portfolio ─────────────────────────
-
 
 class TestAnalyzePortfolio:
     """注意：analyze_portfolio 内部调用 _get_current_price / _get_daily_returns_series，
@@ -384,9 +359,7 @@ class TestAnalyzePortfolio:
         assert round(result["total_return_pct"], 2) == 0.0
         assert result["stocks"][0]["贡献度%"] == 0.0
 
-
 # ── rebalance ──────────────────────────────────
-
 
 class TestRebalance:
     def test_empty_portfolio_returns_empty_list(self):
@@ -428,9 +401,7 @@ class TestRebalance:
         assert len(suggestions) == 1
         assert suggestions[0]["建议"] == "持有"  # 100% vs 100%
 
-
 # ── optimize_portfolio ─────────────────────────
-
 
 class TestOptimizePortfolio:
     """optimize_portfolio 需要 cached_kline 返回含至少30行「收盘」数据的 DataFrame"""

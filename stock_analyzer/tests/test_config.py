@@ -2,13 +2,9 @@
 
 import os
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import unittest
 
 from stock_analyzer import config
-
 
 class TestConfigPaths(unittest.TestCase):
     """路径常量测试"""
@@ -36,7 +32,6 @@ class TestConfigPaths(unittest.TestCase):
                      "STOCK_LIST_CACHE", "CHECKPOINT_FILE"]:
             self.assertIsInstance(getattr(config, attr), str, f"{attr} should be str")
 
-
 class TestConfigAPI(unittest.TestCase):
     """API 请求配置测试"""
 
@@ -61,7 +56,6 @@ class TestConfigAPI(unittest.TestCase):
         self.assertIn("hfq", config.ADJUST)
         self.assertIn("none", config.ADJUST)
 
-
 class TestConfigAnalysis(unittest.TestCase):
     """技术分析参数测试"""
 
@@ -85,7 +79,6 @@ class TestConfigAnalysis(unittest.TestCase):
         """布林带参数合理"""
         self.assertGreater(config.BB_PERIOD, 0)
         self.assertGreater(config.BB_STD_DEV, 0)
-
 
 class TestConfigQuant(unittest.TestCase):
     """量化参数测试"""
@@ -115,7 +108,6 @@ class TestConfigQuant(unittest.TestCase):
         """每个因子权重为正"""
         for w in config.QUANT_FACTOR_WEIGHTS.values():
             self.assertGreater(w, 0)
-
 
 class TestConfigDefaults(unittest.TestCase):
     """默认参数测试"""
@@ -148,7 +140,6 @@ class TestConfigDefaults(unittest.TestCase):
         self.assertIsInstance(config.FEISHU_WEBHOOK, str)
         self.assertIsInstance(config.FEISHU_CHAT_ID, str)
         self.assertIsInstance(config.DEEPSEEK_API_KEY, str)
-
 
 if __name__ == "__main__":
     unittest.main()

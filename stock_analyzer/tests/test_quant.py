@@ -3,14 +3,10 @@ import os
 import sys
 import unittest
 from unittest.mock import patch
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import pandas as pd
 import numpy as np
 
 from stock_analyzer import quant
-
 
 def _make_df(rows=100):
     """构造带收盘价和成交量的标准 K 线 DataFrame"""
@@ -26,7 +22,6 @@ def _make_df(rows=100):
     })
     return df
 
-
 def _add_ma(df):
     """添加均线列"""
     df = df.copy()
@@ -35,7 +30,6 @@ def _add_ma(df):
     df["MA20"] = df["收盘"].rolling(20).mean()
     df["MA60"] = df["收盘"].rolling(60).mean()
     return df
-
 
 def _add_indicators(df):
     """添加技术指标列"""
@@ -78,7 +72,6 @@ def _add_indicators(df):
     df["ADX"] = dx.ewm(span=14).mean()
     return df
 
-
 # ═══════════════════════════════════════════
 # 纯计算函数
 # ═══════════════════════════════════════════
@@ -105,7 +98,6 @@ class TestNormalizeScore(unittest.TestCase):
         """invert=True 反向归一化"""
         self.assertAlmostEqual(quant._normalize_score(20, 0, 100, invert=True), 80)
 
-
 class TestDailyReturns(unittest.TestCase):
     """_daily_returns 日收益率"""
 
@@ -118,7 +110,6 @@ class TestDailyReturns(unittest.TestCase):
         df = pd.DataFrame({"收盘": [10.0]})
         rets = quant._daily_returns(df)
         self.assertEqual(len(rets), 0)
-
 
 class TestCalcMaxDrawdown(unittest.TestCase):
     """calc_max_drawdown 最大回撤"""
@@ -158,7 +149,6 @@ class TestCalcMaxDrawdown(unittest.TestCase):
         result = quant.calc_max_drawdown(pd.Series([0.01]))
         self.assertEqual(result["max_drawdown_pct"], 0)
 
-
 class TestCalcSharpeSortino(unittest.TestCase):
     """Sharpe 和 Sortino 比率"""
 
@@ -185,7 +175,6 @@ class TestCalcSharpeSortino(unittest.TestCase):
         ratio = quant.calc_sortino_ratio(rets)
         self.assertIsInstance(ratio, (float, type(None)))
 
-
 class TestCalcVar(unittest.TestCase):
     """VaR 风险值"""
 
@@ -199,7 +188,6 @@ class TestCalcVar(unittest.TestCase):
         rets = pd.Series([0.01, -0.01])
         result = quant.calc_var(rets)
         self.assertIsNotNone(result)
-
 
 class TestCalcCalmar(unittest.TestCase):
     """Calmar 比率"""
@@ -215,7 +203,6 @@ class TestCalcCalmar(unittest.TestCase):
         close = pd.Series([100, 101])
         ratio = quant.calc_calmar_ratio(daily_rets, close)
         self.assertIsNone(ratio)
-
 
 # ═══════════════════════════════════════════
 # 因子评分函数
@@ -249,7 +236,6 @@ class TestScoreMomentumFactor(unittest.TestCase):
         self.assertGreaterEqual(result["score"], 0)
         self.assertLessEqual(result["score"], 100)
 
-
 class TestScoreVolumeFactor(unittest.TestCase):
     """score_volume_factor 量能因子"""
 
@@ -277,7 +263,6 @@ class TestScoreVolumeFactor(unittest.TestCase):
         df = _make_df(120)
         result = quant.score_volume_factor(df)
         self.assertIn("volume_ratio_score", result["details"])
-
 
 class TestScoreRiskFactor(unittest.TestCase):
     """score_risk_factor 风险因子"""
@@ -308,7 +293,6 @@ class TestScoreRiskFactor(unittest.TestCase):
         result = quant.score_risk_factor(df)
         self.assertIn("atr_ratio_score", result["details"])
 
-
 class TestScoreFundFlowFactor(unittest.TestCase):
     """score_fund_flow_factor 资金流因子"""
 
@@ -338,7 +322,6 @@ class TestScoreFundFlowFactor(unittest.TestCase):
         result = quant.score_fund_flow_factor(df)
         self.assertIn("score", result)
         self.assertIsInstance(result["score"], (int, float))
-
 
 # ═══════════════════════════════════════════
 # 信号检测 — 分支覆盖
@@ -378,7 +361,6 @@ class TestDetectMACrossover(unittest.TestCase):
         result = quant.detect_ma_crossover(df)
         self.assertEqual(len(result), 0)
 
-
 class TestDetectMACDCrossover(unittest.TestCase):
     """MACD 金叉/死叉"""
 
@@ -399,7 +381,6 @@ class TestDetectMACDCrossover(unittest.TestCase):
         })
         result = quant.detect_macd_crossover(df)
         self.assertIsInstance(result, list)
-
 
 class TestDetectADXTrend(unittest.TestCase):
     """ADX 趋势检测"""
@@ -436,7 +417,6 @@ class TestDetectADXTrend(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["type"], "adx_ranging")
 
-
 class TestDetectChannelBreakout(unittest.TestCase):
     """通道突破检测"""
 
@@ -472,7 +452,6 @@ class TestDetectChannelBreakout(unittest.TestCase):
         })
         result = quant.detect_channel_breakout(df)
         self.assertEqual(len(result), 0)
-
 
 class TestDetectRSIReversal(unittest.TestCase):
     """RSI 反转信号"""
@@ -523,7 +502,6 @@ class TestDetectRSIReversal(unittest.TestCase):
         })
         result = quant.detect_rsi_reversal(df)
         self.assertEqual(len(result), 0)
-
 
 class TestDetectBollingerReversion(unittest.TestCase):
     """布林带回归信号"""
@@ -576,7 +554,6 @@ class TestDetectBollingerReversion(unittest.TestCase):
         result = quant.detect_bollinger_reversion(df)
         self.assertEqual(len(result), 0)
 
-
 # ═══════════════════════════════════════════
 # 综合信号生成
 # ═══════════════════════════════════════════
@@ -599,7 +576,6 @@ class TestGenerateAllSignals(unittest.TestCase):
         self.assertEqual(len(result["signals"]), 0)
         self.assertEqual(result["total_bullish"], 0)
         self.assertEqual(result["total_bearish"], 0)
-
 
 class TestConsolidateSignals(unittest.TestCase):
     """consolidate_signals 信号整合"""
@@ -630,7 +606,6 @@ class TestConsolidateSignals(unittest.TestCase):
         result = quant.consolidate_signals(signals)
         self.assertEqual(result["bias"], "neutral")
 
-
 # ═══════════════════════════════════════════
 # 综合量化评分
 # ═══════════════════════════════════════════
@@ -655,7 +630,6 @@ class TestCompositeQuantScore(unittest.TestCase):
         result = quant.composite_quant_score(pd.DataFrame())
         self.assertIn("composite_score", result)
 
-
 class TestRiskMetrics(unittest.TestCase):
     """calc_risk_metrics 综合风险指标 (保留原有)"""
 
@@ -671,7 +645,6 @@ class TestRiskMetrics(unittest.TestCase):
         result = quant.calc_risk_metrics(pd.DataFrame())
         self.assertIsInstance(result, dict)
 
-
 class TestMakeSignal(unittest.TestCase):
     """_make_signal 辅助函数"""
 
@@ -681,7 +654,6 @@ class TestMakeSignal(unittest.TestCase):
         self.assertEqual(s["type"], "golden_cross")
         self.assertEqual(s["direction"], "bullish")
         self.assertEqual(s["strength"], 0.8)
-
 
 # ═══════════════════════════════════════════
 # 技术因子 (score_technical_factor 分支扩展)
@@ -787,7 +759,6 @@ class TestScoreTechnicalFactor(unittest.TestCase):
         })
         result = quant.score_technical_factor(df)
         self.assertIsInstance(result, dict)
-
 
 # ═══════════════════════════════════════════
 # 文本情感因子（完全未覆盖）
@@ -895,7 +866,6 @@ class TestScoreSentimentFactor(unittest.TestCase):
         # sentiment_df has no "rate" column, so weibo stays 50
         self.assertAlmostEqual(result, 50.0)
 
-
 # ═══════════════════════════════════════════
 # 边缘分支覆盖 — 风险指标
 # ═══════════════════════════════════════════
@@ -980,7 +950,6 @@ class TestCalcRiskMetricsEdge(unittest.TestCase):
         for v in result.values():
             self.assertIsNone(v)
 
-
 # ═══════════════════════════════════════════
 # 分支覆盖 — 量能因子
 # ═══════════════════════════════════════════
@@ -1054,7 +1023,6 @@ class TestScoreVolumeFactorBranches(unittest.TestCase):
         result = quant.score_volume_factor(df)
         self.assertEqual(result["score"], 50)
 
-
 # ═══════════════════════════════════════════
 # 分支覆盖 — 资金流因子
 # ═══════════════════════════════════════════
@@ -1118,7 +1086,6 @@ class TestScoreFundFlowFactorBranches(unittest.TestCase):
         df["fund_flow"] = [42] * 30  # 整数而非 dict
         result = quant.score_fund_flow_factor(df)
         self.assertEqual(result["score"], 50)
-
 
 # ═══════════════════════════════════════════
 # 分支覆盖 — 风险因子
@@ -1191,7 +1158,6 @@ class TestScoreRiskFactorBranches(unittest.TestCase):
         df = pd.DataFrame({"收盘": [100.0] * 15, "ATR": [2.0] * 15})
         result = quant.score_risk_factor(df)
         self.assertEqual(result["details"]["drawdown_20d_score"], 50)
-
 
 # ═══════════════════════════════════════════
 # 分支覆盖 — 综合评分 (chase_penalty + rating)
@@ -1291,7 +1257,6 @@ class TestCompositeQuantScoreBranches(unittest.TestCase):
         result = quant.composite_quant_score(df, fundamentals={"ROE": 15})
         # fundamentals available, weight redistribution
         self.assertIn("fundamental", result["factor_scores"])
-
 
 # ═══════════════════════════════════════════
 # 分支覆盖 — 信号检测
@@ -1434,7 +1399,6 @@ class TestSignalDetectionEdge(unittest.TestCase):
         result = quant.consolidate_signals(signals)
         self.assertEqual(result["bias"], "bearish")
 
-
 # ═══════════════════════════════════════════
 # 短线/长线风格评估（完全未覆盖）
 # ═══════════════════════════════════════════
@@ -1490,7 +1454,6 @@ def _rich_kline(rows=100, trend_up=True):
     df["ADX"] = dx.ewm(span=14).mean()
     df["volume_ratio"] = df["成交量"] / df["成交量"].rolling(20).mean()
     return df.dropna()
-
 
 class TestEvaluateTradingStyle(unittest.TestCase):
     """evaluate_trading_style 短线/长线风格评估"""
@@ -1689,7 +1652,6 @@ class TestEvaluateTradingStyle(unittest.TestCase):
         df = df.dropna()
         result = quant.evaluate_trading_style(df, None, None)
         self.assertIsInstance(result["long_term_score"], (int, float))
-
 
 if __name__ == "__main__":
     unittest.main()

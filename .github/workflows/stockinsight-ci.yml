@@ -79,7 +79,7 @@ jobs:
           pip install -r requirements.txt 2>/dev/null || true
       - name: Run tests with coverage
         run: |
-          python -m pytest stock_analyzer/test_*.py backend/tests/ -v --tb=short \
+          python -m pytest stock_analyzer/tests/ backend/tests/ -v --tb=short \
             --cov=stock_analyzer --cov=backend \
             --cov-report=term-missing \
             --cov-fail-under=15 \

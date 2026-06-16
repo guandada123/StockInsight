@@ -1,15 +1,11 @@
 import os
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import unittest
 
 import numpy as np
 import pandas as pd
 
 from stock_analyzer import short_term as st
-
 
 def _make_kline(rows=100, seed=42):
     """生成模拟K线，包含涨跌幅和换手率"""
@@ -30,11 +26,9 @@ def _make_kline(rows=100, seed=42):
     )
     return df
 
-
 # ═══════════════════════════════════════════
 # 换手率信号
 # ═══════════════════════════════════════════
-
 
 class TestCalcTurnoverSignal(unittest.TestCase):
     """换手率信号检测"""
@@ -87,11 +81,9 @@ class TestCalcTurnoverSignal(unittest.TestCase):
         valid_signals = ["正常", "异常放量⚠️", "放量", "缩量", "近期放量", "无数据"]
         self.assertIn(result["信号"], valid_signals)
 
-
 # ═══════════════════════════════════════════
 # 连涨连跌天数
 # ═══════════════════════════════════════════
-
 
 class TestCalcConsecutiveDays(unittest.TestCase):
     """连涨/连跌天数计算"""
@@ -133,11 +125,9 @@ class TestCalcConsecutiveDays(unittest.TestCase):
         self.assertGreaterEqual(result["近60日最大连涨"], 0)
         self.assertGreaterEqual(result["近60日最大连跌"], 0)
 
-
 # ═══════════════════════════════════════════
 # 尾盘倾向
 # ═══════════════════════════════════════════
-
 
 class TestCalcTailTendency(unittest.TestCase):
     """尾盘倾向分析"""
@@ -165,7 +155,6 @@ class TestCalcTailTendency(unittest.TestCase):
         result = st.calc_tail_tendency(df, days=10)
         self.assertIn("近5日涨跌节奏", result)
 
-
 class TestCalcRhythm(unittest.TestCase):
     """5日涨跌节奏符号"""
 
@@ -187,11 +176,9 @@ class TestCalcRhythm(unittest.TestCase):
         result = st._calc_rhythm(df)
         self.assertGreater(len(result), 0)
 
-
 # ═══════════════════════════════════════════
 # 技术指标辅助函数
 # ═══════════════════════════════════════════
-
 
 class TestCalcRSI(unittest.TestCase):
     """_calc_rsi 辅助函数"""
@@ -207,7 +194,6 @@ class TestCalcRSI(unittest.TestCase):
         self.assertGreaterEqual(result, 0)
         self.assertLessEqual(result, 100)
 
-
 class TestCalcMACDSignal(unittest.TestCase):
     """_calc_macd_signal"""
 
@@ -221,7 +207,6 @@ class TestCalcMACDSignal(unittest.TestCase):
         df["收盘"] = [50 + i * 1 for i in range(50)]
         result = st._calc_macd_signal(df)
         self.assertIn(result, ["金叉", "多头"])
-
 
 class TestCalcKDJSignal(unittest.TestCase):
     """_calc_kdj_signal"""
@@ -240,11 +225,9 @@ class TestCalcKDJSignal(unittest.TestCase):
         result = st._calc_kdj_signal(df)
         self.assertIn(result, ["金叉", "多头", "死叉", "空头"])  # 趋势取决于 K/D 值相对位置
 
-
 # ═══════════════════════════════════════════
 # 组合信号
 # ═══════════════════════════════════════════
-
 
 class TestCalcComboSignals(unittest.TestCase):
     """四维共振组合信号"""
@@ -295,11 +278,9 @@ class TestCalcComboSignals(unittest.TestCase):
         self.assertIn("近5日%", result)
         self.assertIsInstance(result["近5日%"], float)
 
-
 # ═══════════════════════════════════════════
 # 短线综合评分
 # ═══════════════════════════════════════════
-
 
 class TestShortTermScore(unittest.TestCase):
     """短线综合评分"""
@@ -361,7 +342,6 @@ class TestShortTermScore(unittest.TestCase):
         df["成交量"] = df["成交量"].tail(20).mean() * np.random.uniform(1, 2, 80)
         result = st.short_term_score(df)
         self.assertGreater(result["短线评分"], 0)
-
 
 if __name__ == "__main__":
     unittest.main()

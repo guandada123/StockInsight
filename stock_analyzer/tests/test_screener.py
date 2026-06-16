@@ -20,7 +20,6 @@ from stock_analyzer.screener import (
     three_layer_funnel,
 )
 
-
 # ==============================================================================
 # Tests: load_all_a_shares
 # ==============================================================================
@@ -76,7 +75,6 @@ class TestLoadAllAShares:
             with patch.dict("sys.modules", {"akshare": mock_ak}):
                 result = load_all_a_shares()
         assert result == list(DEFAULT_POOL)
-
 
 # ==============================================================================
 # Tests: quick_filter
@@ -139,7 +137,6 @@ class TestQuickFilter:
         codes = ["000001"]
         result = quick_filter(codes, exclude_st=False, min_volume=0, min_price=0, max_price=0)
         assert "000001" in result
-
 
 # ==============================================================================
 # Tests: load_stock_pool
@@ -212,7 +209,6 @@ class TestLoadStockPool:
         assert call_kwargs["exclude_st"] is False
         assert call_kwargs["max_price"] == 500  # 默认保留
 
-
 # ==============================================================================
 # Tests: get_stock_name
 # ==============================================================================
@@ -237,7 +233,6 @@ class TestGetStockName:
         mock_sina.return_value = {}
         result = get_stock_name("999999")
         assert result == ""
-
 
 # ==============================================================================
 # Tests: three_layer_funnel
@@ -340,7 +335,6 @@ class TestThreeLayerFunnel:
                 with patch("stock_analyzer.short_term.calc_multi_timeframe_resonance"):
                     result = three_layer_funnel(candidates, top_n=5)
         assert result["最终推荐"][0]["funnel_score"] == 60
-
 
 # ==============================================================================
 # Tests: run_screener (核心—但简单验证)
@@ -629,7 +623,6 @@ class TestRunScreener:
         # 涨跌幅为 0（因为从 kline 取不到涨跌幅列）
         assert df.iloc[0]["涨跌幅"] == 1.0  # 从 kline 涨跌幅最后值
 
-
 # ==============================================================================
 # Tests: filter_by_conditions
 # ==============================================================================
@@ -671,7 +664,6 @@ class TestFilterByConditions:
         result = filter_by_conditions(df, min_price=5, min_score=0)
         assert len(result) == 1
         assert result.iloc[0]["最新价"] == 10.0
-
 
 # ==============================================================================
 # Tests: save_screener_result

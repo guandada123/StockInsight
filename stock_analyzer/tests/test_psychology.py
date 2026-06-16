@@ -2,9 +2,6 @@
 
 import os
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import unittest
 
 import numpy as np
@@ -34,7 +31,6 @@ from stock_analyzer.psychology import (
     generate_combined_summary,
 )
 
-
 def _make_kline_df(rows=60, seed=42):
     """生成模拟K线DataFrame（含开盘/收盘/最高/最低/成交量/ATR）"""
     np.random.seed(seed)
@@ -48,7 +44,6 @@ def _make_kline_df(rows=60, seed=42):
         "成交量": np.random.randint(500_000, 5_000_000, rows),
         "ATR": np.abs(np.random.randn(rows) * 1.5) + 0.5,
     })
-
 
 class TestDetectAccumulation(unittest.TestCase):
     """建仓阶段检测"""
@@ -69,7 +64,6 @@ class TestDetectAccumulation(unittest.TestCase):
         self.assertGreaterEqual(score, 0)
         self.assertLessEqual(score, 100)
 
-
 class TestDetectWashout(unittest.TestCase):
     """洗盘阶段检测"""
 
@@ -87,7 +81,6 @@ class TestDetectWashout(unittest.TestCase):
         volumes = df["成交量"].values.astype(float)
         score, signals = _detect_washout(df, closes, volumes, 10)
         self.assertIsInstance(score, int)
-
 
 class TestDetectUptrend(unittest.TestCase):
     """拉升阶段检测"""
@@ -115,7 +108,6 @@ class TestDetectUptrend(unittest.TestCase):
         score, _ = _detect_uptrend(df, closes, volumes, 60)
         self.assertGreater(score, 0)
 
-
 class TestDetectDistribution(unittest.TestCase):
     """出货阶段检测"""
 
@@ -134,7 +126,6 @@ class TestDetectDistribution(unittest.TestCase):
         score, signals = _detect_distribution(df, closes, volumes, 60, "流入")
         self.assertIsInstance(score, int)
 
-
 class TestVolumeProfile(unittest.TestCase):
     """量能分析"""
 
@@ -144,7 +135,6 @@ class TestVolumeProfile(unittest.TestCase):
         result = _volume_profile(df, volumes, 60)
         self.assertIsInstance(result, str)
         self.assertGreater(len(result), 0)
-
 
 class TestChipAssessment(unittest.TestCase):
     """筹码评估"""
@@ -157,7 +147,6 @@ class TestChipAssessment(unittest.TestCase):
         result = _chip_assessment(20)
         self.assertIsInstance(result, str)
 
-
 class TestPhaseAssessment(unittest.TestCase):
     """阶段综合评估"""
 
@@ -168,7 +157,6 @@ class TestPhaseAssessment(unittest.TestCase):
             result = _phase_assessment(phase, 60, df, closes, 60, "")
             self.assertIsInstance(result, str)
 
-
 class TestPhaseRisk(unittest.TestCase):
     """阶段风险提示"""
 
@@ -178,7 +166,6 @@ class TestPhaseRisk(unittest.TestCase):
         for phase in ["建仓", "洗盘", "拉升", "出货"]:
             result = _phase_risk(phase, df, closes, 60)
             self.assertIsInstance(result, str)
-
 
 class TestFallbackResult(unittest.TestCase):
     """回退结果"""
@@ -192,7 +179,6 @@ class TestFallbackResult(unittest.TestCase):
     def test_phase_is_unknown(self):
         result = _fallback_result("测试")
         self.assertEqual(result["phase"], "不明")
-
 
 class TestManipulatorIntention(unittest.TestCase):
     """庄家意图主入口"""
@@ -229,7 +215,6 @@ class TestManipulatorIntention(unittest.TestCase):
         self.assertGreaterEqual(result["phase_confidence"], 0)
         self.assertLessEqual(result["phase_confidence"], 100)
 
-
 class TestRetailPsychology(unittest.TestCase):
     """散户心态主入口"""
 
@@ -265,7 +250,6 @@ class TestRetailPsychology(unittest.TestCase):
         result = analyze_retail_psychology(df)
         self.assertGreaterEqual(result["emotion_score"], 0)
         self.assertLessEqual(result["emotion_score"], 100)
-
 
 class TestEmotionCalculators(unittest.TestCase):
     """五个情绪计算函数"""
@@ -314,7 +298,6 @@ class TestEmotionCalculators(unittest.TestCase):
                           self.closes, self.volumes, self.n)
             self.assertGreaterEqual(score, 0, f"{fn.__name__} returned negative")
 
-
 class TestPsychologyHelpers(unittest.TestCase):
     """描述/建议文本生成"""
 
@@ -329,7 +312,6 @@ class TestPsychologyHelpers(unittest.TestCase):
             result = _psychology_advice(emotion, -3.0, 30)
             self.assertIsInstance(result, str)
             self.assertGreater(len(result), 0)
-
 
 class TestCombinedSummary(unittest.TestCase):
     """综合摘要"""
@@ -360,7 +342,6 @@ class TestCombinedSummary(unittest.TestCase):
         result = generate_combined_summary(None, None)
         self.assertIsInstance(result, dict)
 
-
 class TestSynergyAndConclusion(unittest.TestCase):
     """协同评估和总结"""
 
@@ -376,7 +357,6 @@ class TestSynergyAndConclusion(unittest.TestCase):
     def test_overall_conclusion(self):
         result = _overall_conclusion(["启明星"], "拉升", "上涨", "强烈看涨")
         self.assertIsInstance(result, str)
-
 
 if __name__ == "__main__":
     unittest.main()

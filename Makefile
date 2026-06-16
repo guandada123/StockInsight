@@ -27,11 +27,11 @@ format: ## 格式化代码 (ruff + prettier)
 
 test: test-be test-fe ## 运行所有测试
 
-test-be: ## 后端测试
-	$(PYTEST) stock_analyzer/test_*.py backend/tests/ -v --tb=short
+test-be: ## 后端测试（含 stock_analyzer 和 backend）
+	$(PYTEST) stock_analyzer/tests/ backend/tests/ -v --tb=short
 
 test-be-cov: ## 后端测试 + 覆盖率
-	$(PYTEST) stock_analyzer/test_*.py backend/tests/ -v --tb=short \
+	$(PYTEST) stock_analyzer/tests/ backend/tests/ -v --tb=short \
 		--cov=stock_analyzer --cov=backend \
 		--cov-report=term-missing --cov-fail-under=40
 

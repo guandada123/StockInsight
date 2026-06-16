@@ -1,19 +1,14 @@
 import os
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import unittest
 
 import pandas as pd
 
 from stock_analyzer import business_quality as bq
 
-
 # ═══════════════════════════════════════════
 # 工具函数
 # ═══════════════════════════════════════════
-
 
 class TestSafeGet(unittest.TestCase):
     """_safe_get 安全取值"""
@@ -42,7 +37,6 @@ class TestSafeGet(unittest.TestCase):
         df = pd.DataFrame()
         result = bq._safe_get(df, "A")
         self.assertEqual(result, "")
-
 
 class TestSafeFloat(unittest.TestCase):
     """_safe_float 安全取浮点数"""
@@ -77,11 +71,9 @@ class TestSafeFloat(unittest.TestCase):
         result = bq._safe_float(row, "A")
         self.assertEqual(result, 0.0)
 
-
 # ═══════════════════════════════════════════
 # Fallback 函数
 # ═══════════════════════════════════════════
-
 
 class TestFallbacks(unittest.TestCase):
     """各类 fallback 返回函数"""
@@ -103,11 +95,9 @@ class TestFallbacks(unittest.TestCase):
         self.assertEqual(result["confidence"], 0)
         self.assertIn("数据不足", result["signals"])
 
-
 # ═══════════════════════════════════════════
 # 护城河评估
 # ═══════════════════════════════════════════
-
 
 class TestMoatAssessment(unittest.TestCase):
     """_moat_assessment 文本生成"""
@@ -130,11 +120,9 @@ class TestMoatAssessment(unittest.TestCase):
         self.assertIn("无明显护城河", text)
         self.assertIn("竞争激烈", text)
 
-
 # ═══════════════════════════════════════════
 # 生命周期分类
 # ═══════════════════════════════════════════
-
 
 class TestClassifyLifecycle(unittest.TestCase):
     """生命周期阶段判断"""
@@ -189,11 +177,9 @@ class TestClassifyLifecycle(unittest.TestCase):
         result = bq.classify_lifecycle("000001", financials=financials)
         self.assertEqual(result["stage"], "mature")  # >= 0 path
 
-
 # ═══════════════════════════════════════════
 # 估值评分
 # ═══════════════════════════════════════════
-
 
 class TestScoreValuation(unittest.TestCase):
     """估值评分"""
@@ -248,11 +234,9 @@ class TestScoreValuation(unittest.TestCase):
         result = bq.score_valuation("000001", price=50, financials=financials)
         self.assertIsNotNone(result["pb"])
 
-
 # ═══════════════════════════════════════════
 # 综合摘要
 # ═══════════════════════════════════════════
-
 
 class TestScoreMoat(unittest.TestCase):
     """Q4: 护城河五维度评分"""
@@ -455,11 +439,9 @@ class TestScoreMoat(unittest.TestCase):
             self.assertIn(key, r)
         self.assertEqual(len(r["dimensions"]), 5)
 
-
 # ═══════════════════════════════════════════
 # 估值评分 (扩展：覆盖所有PE/PEG/PB区间)
 # ═══════════════════════════════════════════
-
 
 class TestScoreValuationExtended(unittest.TestCase):
     """估值评分 — 覆盖剩余未测区间"""
@@ -534,11 +516,9 @@ class TestScoreValuationExtended(unittest.TestCase):
         self.assertIsNone(r["peg"])
         self.assertIsInstance(r["score"], int)
 
-
 # ═══════════════════════════════════════════
 # 综合摘要 (扩展：覆盖剩余分支)
 # ═══════════════════════════════════════════
-
 
 class TestGenerateSummaryExtended(unittest.TestCase):
     """_generate_summary — 覆盖 transition 和 growth 非优质分支"""
@@ -597,7 +577,6 @@ class TestGenerateSummaryExtended(unittest.TestCase):
 
         result = bq._generate_summary("000001", "测试", profile, moat, cf, lifecycle, valuation)
         self.assertIn("质地中等", result)
-
 
 if __name__ == "__main__":
     unittest.main()

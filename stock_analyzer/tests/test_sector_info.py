@@ -2,14 +2,10 @@
 
 import os
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import unittest
 from unittest.mock import MagicMock, patch
 
 from stock_analyzer.sector_info import _CACHE, _query, get_stock_concepts, get_stock_sector_full, get_stock_all_sectors
-
 
 class TestSectorInfoNoDB(unittest.TestCase):
     """无数据库时的行为测试"""
@@ -38,7 +34,6 @@ class TestSectorInfoNoDB(unittest.TestCase):
             result = get_stock_all_sectors("000001")
             self.assertEqual(result["industry"], "未知")
             self.assertEqual(result["concepts"], [])
-
 
 class TestSectorInfoCache(unittest.TestCase):
     """缓存行为测试"""
@@ -76,7 +71,6 @@ class TestSectorInfoCache(unittest.TestCase):
             self.assertIsNone(result)
             self.assertIn("999999", _CACHE)
             self.assertIsNone(_CACHE["999999"])
-
 
 class TestSectorInfoFull(unittest.TestCase):
     """完整数据流测试"""
@@ -140,7 +134,6 @@ class TestSectorInfoFull(unittest.TestCase):
             self.assertEqual(result["industry"], "制造业 > 汽车零部件")
             self.assertIn("新能源车", result["concepts"])
             self.assertIn("锂电池", result["concepts"])
-
 
 if __name__ == "__main__":
     unittest.main()
