@@ -1,5 +1,23 @@
 import { useEffect, useState } from "react";
-import { API_BASE } from "../types/api";
+import { useApi } from "../hooks/useApi";
+
+interface JobItem {
+  id: string;
+  name: string;
+  status: string;
+  progress: number;
+  total: number;
+  started: string;
+  done: string | null;
+}
+
+interface FactorItem {
+  id: string;
+  name: string;
+  expression: string;
+  type: string;
+  created: string;
+}
 
 export default function Settings() {
   const [tab, setTab] = useState<"data" | "factors" | "about">("data");
@@ -9,7 +27,11 @@ export default function Settings() {
       <h2 style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 14 }}>系统设置</h2>
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
         {(["data", "factors", "about"] as const).map((t) => (
-          <button key={t} className={`nav-tab ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
+          <button
+            key={t}
+            className={`nav-tab ${tab === t ? "active" : ""}`}
+            onClick={() => setTab(t)}
+          >
             {t === "data" ? "数据管理" : t === "factors" ? "因子管理" : "关于"}
           </button>
         ))}
@@ -23,26 +45,27 @@ export default function Settings() {
 }
 
 function DataManagement() {
-  const [jobs, setJobs] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<JobItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => { loadJobs(); }, []);
+  const jobsApi = useApi<{ jobs: JobItem[] }>();
+  const submitApi = useApi<{ job_id: string }>();
+
+  useEffect(() => {
+    loadJobs();
+  }, []);
 
   async function loadJobs() {
-    try {
-      const res = await fetch(`${API_BASE}/api/data-jobs/list?limit=20`);
-      const json = await res.json();
-      if (json.success) setJobs(json.data.jobs);
-    } catch {}
+    const res = await jobsApi.fetchApi("/api/data-jobs/list?limit=20");
+    if (res.success) setJobs(res.data.jobs);
   }
 
   async function submitJob(type: string) {
     setLoading(true);
-    try {
-      await fetch(`${API_BASE}/api/data-jobs/submit?job_type=${type}`, { method: "POST" });
-      setTimeout(() => loadJobs(), 1000);
-      setTimeout(() => loadJobs(), 3000);
-    } catch {} finally { setLoading(false); }
+    await submitApi.request(`/api/data-jobs/submit?job_type=${type}`, { method: "POST" });
+    setTimeout(() => loadJobs(), 1000);
+    setTimeout(() => loadJobs(), 3000);
+    setLoading(false);
   }
 
   const jobTypes = [
@@ -59,10 +82,19 @@ function DataManagement() {
         <div className="card-body">
           <div className="grid2" style={{ marginBottom: 12 }}>
             {jobTypes.map((jt) => (
-              <div key={jt.id} style={{ background: "#070d18", borderRadius: 8, padding: 16, textAlign: "center" }}>
+              <div
+                key={jt.id}
+                style={{ background: "#070d18", borderRadius: 8, padding: 16, textAlign: "center" }}
+              >
                 <div style={{ fontSize: 24, marginBottom: 8 }}>{jt.icon}</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 4 }}>{jt.name}</div>
-                <button className="nav-btn primary" disabled={loading} onClick={() => submitJob(jt.id)}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 4 }}>
+                  {jt.name}
+                </div>
+                <button
+                  className="nav-btn primary"
+                  disabled={loading}
+                  onClick={() => submitJob(jt.id)}
+                >
                   下载
                 </button>
               </div>
@@ -77,30 +109,53 @@ function DataManagement() {
       <div className="card">
         <div className="card-header">
           <span>任务列表</span>
-          <button className="nav-btn" onClick={loadJobs}>刷新</button>
+          <button className="nav-btn" onClick={loadJobs} disabled={jobsApi.loading}>
+            {jobsApi.loading ? "加载中..." : "刷新"}
+          </button>
         </div>
         <div className="card-body" style={{ padding: 0 }}>
           <table className="data-table">
             <thead>
-              <tr><th>ID</th><th>类型</th><th>状态</th><th>进度</th><th>开始</th><th>完成</th></tr>
+              <tr>
+                <th>ID</th>
+                <th>类型</th>
+                <th>状态</th>
+                <th>进度</th>
+                <th>开始</th>
+                <th>完成</th>
+              </tr>
             </thead>
             <tbody>
               {jobs.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: "center", padding: 20, color: "var(--dm)" }}>暂无任务</td></tr>
-              ) : jobs.map((j) => (
-                <tr key={j.id}>
-                  <td style={{ fontSize: 10, color: "var(--dm)" }}>{j.id}</td>
-                  <td>{j.name}</td>
-                  <td>
-                    <span className={`tag ${j.status === "done" ? "tag-buy" : j.status === "failed" ? "tag-sell" : j.status === "running" ? "tag-info" : "tag-warn"}`}>
-                      {j.status === "done" ? "完成" : j.status === "failed" ? "失败" : j.status === "running" ? "运行中" : "等待"}
-                    </span>
+                <tr>
+                  <td colSpan={6} style={{ textAlign: "center", padding: 20, color: "var(--dm)" }}>
+                    暂无任务
                   </td>
-                  <td>{j.total > 0 ? `${Math.round(j.progress / j.total * 100)}%` : "-"}</td>
-                  <td style={{ fontSize: 10 }}>{j.started}</td>
-                  <td style={{ fontSize: 10 }}>{j.done || "-"}</td>
                 </tr>
-              ))}
+              ) : (
+                jobs.map((j) => (
+                  <tr key={j.id}>
+                    <td style={{ fontSize: 10, color: "var(--dm)" }}>{j.id}</td>
+                    <td>{j.name}</td>
+                    <td>
+                      <span
+                        className={`tag ${j.status === "done" ? "tag-buy" : j.status === "failed" ? "tag-sell" : j.status === "running" ? "tag-info" : "tag-warn"}`}
+                      >
+                        {j.status === "done"
+                          ? "完成"
+                          : j.status === "failed"
+                            ? "失败"
+                            : j.status === "running"
+                              ? "运行中"
+                              : "等待"}
+                      </span>
+                    </td>
+                    <td>{j.total > 0 ? `${Math.round((j.progress / j.total) * 100)}%` : "-"}</td>
+                    <td style={{ fontSize: 10 }}>{j.started}</td>
+                    <td style={{ fontSize: 10 }}>{j.done || "-"}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -110,43 +165,56 @@ function DataManagement() {
 }
 
 function FactorManagement() {
-  const [factors, setFactors] = useState<any[]>([]);
+  const [factors, setFactors] = useState<FactorItem[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ id: "", name: "", expression: "", description: "" });
   const [validateMsg, setValidateMsg] = useState("");
 
-  useEffect(() => { loadFactors(); }, []);
+  const factorsApi = useApi<{ factors: FactorItem[] }>();
+  const createApi = useApi<{ factor_id: string }>();
+  const deleteApi = useApi<{ deleted: boolean }>();
+  const validateApi = useApi<{ valid: boolean; error?: string }>();
+
+  useEffect(() => {
+    loadFactors();
+  }, []);
 
   async function loadFactors() {
-    try {
-      const res = await fetch(`${API_BASE}/api/factors/list`);
-      const json = await res.json();
-      if (json.success) setFactors(json.data.factors);
-    } catch {}
+    const res = await factorsApi.fetchApi("/api/factors/list");
+    if (res.success) setFactors(res.data.factors);
   }
 
   async function createFactor() {
-    const params = new URLSearchParams(form);
-    const res = await fetch(`${API_BASE}/api/factors/create?${params}`, { method: "POST" });
-    const json = await res.json();
-    if (json.success) {
+    const res = await createApi.request("/api/factors/create", {
+      method: "POST",
+      body: {
+        factor_id: form.id,
+        name: form.name,
+        expression: form.expression,
+        description: form.description,
+      },
+    });
+    if (res.success) {
       setShowCreate(false);
       setForm({ id: "", name: "", expression: "", description: "" });
       loadFactors();
     } else {
-      setValidateMsg(json.error || "创建失败");
+      setValidateMsg(res.error || "创建失败");
     }
   }
 
   async function deleteFactor(id: string) {
-    await fetch(`${API_BASE}/api/factors/${id}`, { method: "DELETE" });
+    if (!window.confirm("确定要永久删除此因子吗？此操作不可撤销。")) return;
+    await deleteApi.request(`/api/factors/${id}`, { method: "DELETE" });
     loadFactors();
   }
 
   async function validateExpr() {
-    const res = await fetch(`${API_BASE}/api/factors/validate?expression=${encodeURIComponent(form.expression)}`, { method: "POST" });
-    const json = await res.json();
-    setValidateMsg(json.data.valid ? "表达式语法正确" : `语法错误: ${json.data.error}`);
+    const res = await validateApi.request(
+      `/api/factors/validate?expression=${encodeURIComponent(form.expression)}`,
+      { method: "POST" }
+    );
+    setValidateMsg(res.data.valid ? "表达式语法正确" : `语法错误: ${res.data.error}`);
   }
 
   const examples = [
@@ -169,24 +237,52 @@ function FactorManagement() {
           {showCreate && (
             <div style={{ background: "#070d18", borderRadius: 8, padding: 14, marginBottom: 12 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <input className="nav-search" style={{ width: "100%" }} placeholder="因子ID (英文, 如 my_momentum_10)"
-                  value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value })} />
-                <input className="nav-search" style={{ width: "100%" }} placeholder="因子名称 (如 10日动量)"
-                  value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                <input
+                  className="nav-search"
+                  style={{ width: "100%" }}
+                  placeholder="因子ID (英文, 如 my_momentum_10)"
+                  value={form.id}
+                  onChange={(e) => setForm({ ...form, id: e.target.value })}
+                />
+                <input
+                  className="nav-search"
+                  style={{ width: "100%" }}
+                  placeholder="因子名称 (如 10日动量)"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                />
                 <div style={{ display: "flex", gap: 8 }}>
-                  <input className="nav-search" style={{ flex: 1 }} placeholder="表达式 (如 close.pct_change(10))"
-                    value={form.expression} onChange={(e) => setForm({ ...form, expression: e.target.value })} />
-                  <button className="nav-btn" onClick={validateExpr}>验证</button>
+                  <input
+                    className="nav-search"
+                    style={{ flex: 1 }}
+                    placeholder="表达式 (如 close.pct_change(10))"
+                    value={form.expression}
+                    onChange={(e) => setForm({ ...form, expression: e.target.value })}
+                  />
+                  <button className="nav-btn" onClick={validateExpr} disabled={validateApi.loading}>
+                    {validateApi.loading ? "验证中..." : "验证"}
+                  </button>
                 </div>
                 {validateMsg && (
-                  <div style={{ fontSize: 11, color: validateMsg.includes("正确") ? "var(--gn)" : "var(--rd)" }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: validateMsg.includes("正确") ? "var(--gn)" : "var(--rd)",
+                    }}
+                  >
                     {validateMsg}
                   </div>
                 )}
                 <div style={{ fontSize: 10, color: "var(--dm)" }}>
                   可用列: open, high, low, close, vol, amount | 方法: pct_change, rolling, shift, diff
                 </div>
-                <button className="nav-btn primary" onClick={createFactor} style={{ width: "100%" }}>创建因子</button>
+                <button
+                  className="nav-btn primary"
+                  onClick={createFactor}
+                  style={{ width: "100%" }}
+                >
+                  创建因子
+                </button>
               </div>
             </div>
           )}
@@ -194,7 +290,16 @@ function FactorManagement() {
           <div style={{ fontSize: 11, color: "var(--dm)", marginBottom: 8 }}>表达式示例:</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
             {examples.map((e, i) => (
-              <code key={i} style={{ background: "#070d18", padding: "4px 8px", borderRadius: 4, fontSize: 10, color: "var(--cy)" }}>
+              <code
+                key={i}
+                style={{
+                  background: "#070d18",
+                  padding: "4px 8px",
+                  borderRadius: 4,
+                  fontSize: 10,
+                  color: "var(--cy)",
+                }}
+              >
                 {e.expr} <span style={{ color: "var(--dm)" }}>→ {e.desc}</span>
               </code>
             ))}
@@ -202,21 +307,44 @@ function FactorManagement() {
 
           <table className="data-table">
             <thead>
-              <tr><th>ID</th><th>名称</th><th>表达式</th><th>类型</th><th>创建</th><th>操作</th></tr>
+              <tr>
+                <th>ID</th>
+                <th>名称</th>
+                <th>表达式</th>
+                <th>类型</th>
+                <th>创建</th>
+                <th>操作</th>
+              </tr>
             </thead>
             <tbody>
               {factors.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: "center", padding: 20, color: "var(--dm)" }}>暂无自定义因子</td></tr>
-              ) : factors.map((f) => (
-                <tr key={f.id}>
-                  <td style={{ fontSize: 10, color: "var(--cy)" }}>{f.id}</td>
-                  <td style={{ fontWeight: 600 }}>{f.name}</td>
-                  <td style={{ fontSize: 10, fontFamily: "monospace" }}>{f.expression}</td>
-                  <td><span className="tag tag-purple">{f.type}</span></td>
-                  <td style={{ fontSize: 10 }}>{f.created}</td>
-                  <td><button className="nav-btn" style={{ fontSize: 10, color: "var(--rd)" }} onClick={() => deleteFactor(f.id)}>删除</button></td>
+                <tr>
+                  <td colSpan={6} style={{ textAlign: "center", padding: 20, color: "var(--dm)" }}>
+                    暂无自定义因子
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                factors.map((f) => (
+                  <tr key={f.id}>
+                    <td style={{ fontSize: 10, color: "var(--cy)" }}>{f.id}</td>
+                    <td style={{ fontWeight: 600 }}>{f.name}</td>
+                    <td style={{ fontSize: 10, fontFamily: "monospace" }}>{f.expression}</td>
+                    <td>
+                      <span className="tag tag-purple">{f.type}</span>
+                    </td>
+                    <td style={{ fontSize: 10 }}>{f.created}</td>
+                    <td>
+                      <button
+                        className="nav-btn"
+                        style={{ fontSize: 10, color: "var(--rd)" }}
+                        onClick={() => deleteFactor(f.id)}
+                      >
+                        删除
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -231,10 +359,24 @@ function AboutTab() {
       <div className="card-header">关于 StockInsight Pro</div>
       <div className="card-body">
         <div className="kpi-row">
-          <div className="kpi"><div className="kpi-lbl">版本</div><div className="kpi-val">1.0.0</div></div>
-          <div className="kpi"><div className="kpi-lbl">架构</div><div className="kpi-val">Tauri + React + FastAPI</div></div>
-          <div className="kpi"><div className="kpi-lbl">数据源</div><div className="kpi-val" style={{ fontSize: 11 }}>新浪/东方财富/akshare/Tushare</div></div>
-          <div className="kpi"><div className="kpi-lbl">数据库</div><div className="kpi-val">SQLite 152MB</div></div>
+          <div className="kpi">
+            <div className="kpi-lbl">版本</div>
+            <div className="kpi-val">1.0.0</div>
+          </div>
+          <div className="kpi">
+            <div className="kpi-lbl">架构</div>
+            <div className="kpi-val">Tauri + React + FastAPI</div>
+          </div>
+          <div className="kpi">
+            <div className="kpi-lbl">数据源</div>
+            <div className="kpi-val" style={{ fontSize: 11 }}>
+              新浪/东方财富/akshare/Tushare
+            </div>
+          </div>
+          <div className="kpi">
+            <div className="kpi-lbl">数据库</div>
+            <div className="kpi-val">SQLite 152MB</div>
+          </div>
         </div>
         <div style={{ fontSize: 12, color: "var(--dm)", lineHeight: 1.8, marginTop: 8 }}>
           集成了 henrylin99/quantitative_analysis 项目的:

@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMarketStore } from "../store";
+import { useApi } from "../hooks/useApi";
 import type { MarketIndex, SectorInfo } from "../types/api";
-import { API_BASE } from "../types/api";
 
 export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => void }) {
   const navigate = useNavigate();
@@ -12,30 +12,19 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
   const [quickCode, setQuickCode] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const marketApi = useApi<{ indices: Record<string, MarketIndex> }>();
+  const sectorsApi = useApi<{ sectors: SectorInfo[] }>();
+
   const loadMarket = useCallback(async () => {
-    try {
-      setError(null);
-      const res = await fetch(`${API_BASE}/api/market/overview`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      if (json.success) setIndices(json.data.indices);
-      else setError(json.error || "获取市场数据失败");
-    } catch (err) {
-      console.error("[Dashboard] loadMarket failed:", err);
-      setError("市场数据加载失败，请检查网络连接");
-    }
-  }, [setIndices]);
+    const res = await marketApi.fetchApi("/api/market/overview");
+    if (res.success) setIndices(res.data.indices);
+    else setError(res.error || "获取市场数据失败");
+  }, [setIndices, marketApi]);
 
   const loadSectors = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/market/hot-sectors?top_n=12`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      if (json.success) setSectors(json.data.sectors || []);
-    } catch (err) {
-      console.error("[Dashboard] loadSectors failed:", err);
-    }
-  }, []);
+    const res = await sectorsApi.fetchApi("/api/market/hot-sectors?top_n=12");
+    if (res.success) setSectors(res.data.sectors || []);
+  }, [sectorsApi]);
 
   useEffect(() => {
     loadMarket();
@@ -62,8 +51,8 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
       <div className="card">
         <div className="card-header">
           <span>市场总览</span>
-          <button className="nav-btn" onClick={loadMarket}>
-            刷新
+          <button className="nav-btn" onClick={loadMarket} disabled={marketApi.loading}>
+            {marketApi.loading ? "加载中..." : "刷新"}
           </button>
         </div>
         <div className="card-body">
@@ -72,7 +61,7 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
               <div
                 style={{ gridColumn: "1/-1", textAlign: "center", padding: 20, color: "var(--dm)" }}
               >
-                {error ? error : "加载中..."}
+                {error ? error : marketApi.loading ? "加载中..." : "暂无数据"}
               </div>
             ) : (
               Object.entries(indices).map(([code, idx]: [string, MarketIndex]) => (
@@ -97,7 +86,9 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
           <div className="card-header">板块热点 TOP12</div>
           <div className="card-body" style={{ padding: 8 }}>
             {sectors.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 20, color: "var(--dm)" }}>加载中...</div>
+              <div style={{ textAlign: "center", padding: 20, color: "var(--dm)" }}>
+                {sectorsApi.loading ? "加载中..." : "暂无数据"}
+              </div>
             ) : (
               <table className="data-table">
                 <thead>

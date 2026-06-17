@@ -32,7 +32,7 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::error::E
                 }
             }
             "quit" => {
-                crate::sidecar::shutdown_python_api();
+                crate::sidecar::stop_python_api();
                 app.exit(0);
             }
             _ => {}

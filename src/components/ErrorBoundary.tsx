@@ -69,9 +69,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           }}
         >
           <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
-          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
-            页面加载异常
-          </h2>
+          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>页面加载异常</h2>
           <p style={{ color: "var(--dm, #888)", fontSize: 14, marginBottom: 20, maxWidth: 400 }}>
             该模块遇到了意外错误。您的数据不会丢失，点击下方按钮可尝试恢复。
           </p>

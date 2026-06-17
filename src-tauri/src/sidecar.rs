@@ -1,5 +1,5 @@
 /// Python API 进程管理 — 自动启动/停止 FastAPI 后端
-use std::fs::File;
+use std::fs::{self, File};
 use std::process::Stdio;
 use std::sync::Mutex;
 use tokio::process::Command;
@@ -39,9 +39,15 @@ fn find_project_root() -> std::path::PathBuf {
 }
 
 pub async fn start_python_api() -> Result<(), String> {
-    // 杀掉旧进程释放端口 (Windows)
+    // 杀掉占用 8765 端口的旧进程（跨平台）
+    #[cfg(target_os = "windows")]
     let _ = std::process::Command::new("cmd")
         .args(["/c", "for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :8765 ^| findstr LISTENING') do taskkill /F /PID %a >nul 2>&1"])
+        .stdout(Stdio::null()).stderr(Stdio::null())
+        .status();
+    #[cfg(not(target_os = "windows"))]
+    let _ = std::process::Command::new("sh")
+        .args(["-c", "lsof -ti:8765 2>/dev/null | xargs kill -9 2>/dev/null"])
         .stdout(Stdio::null()).stderr(Stdio::null())
         .status();
 
@@ -50,8 +56,11 @@ pub async fn start_python_api() -> Result<(), String> {
     println!("[sidecar] Project root: {}", root.display());
     println!("[sidecar] Launching: {} -m backend.main", python);
 
+    // 确保 logs/ 目录存在
+    let log_dir = root.join("logs");
+    let _ = fs::create_dir_all(&log_dir);
     // stderr 写日志文件方便排查
-    let log_file = File::create(root.join("logs").join("sidecar_python.log"))
+    let log_file = File::create(log_dir.join("sidecar_python.log"))
         .unwrap_or_else(|_| std::fs::File::create("sidecar_python.log").unwrap());
 
     let child = Command::new(&python)

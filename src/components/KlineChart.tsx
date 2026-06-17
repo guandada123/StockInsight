@@ -1,22 +1,18 @@
+import { useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 import type { KlineData, IndicatorData } from "../types/api";
 
 export default function KlineChart({
   data,
-  indicator,
+  indicator: _indicator,
 }: {
   data: KlineData;
   indicator: IndicatorData | null;
 }) {
   const dates = data.dates;
-  const ohlc = dates.map((d, i) => [
-    data.opens[i],
-    data.closes[i],
-    data.lows[i],
-    data.highs[i],
-  ]);
+  const ohlc = dates.map((_d, i) => [data.opens[i], data.closes[i], data.lows[i], data.highs[i]]);
 
-  const option = {
+  const option = useMemo(() => ({
     backgroundColor: "#0d1422",
     grid: [
       { left: "8%", right: "3%", top: "5%", height: "55%" },
@@ -91,26 +87,16 @@ export default function KlineChart({
       },
       {
         type: "bar",
-        data: data.volumes.map((v, i) => [
-          i,
-          v,
-          data.closes[i] >= data.opens[i] ? 1 : -1,
-        ]),
+        data: data.volumes.map((v, i) => [i, v, data.closes[i] >= data.opens[i] ? 1 : -1]),
         xAxisIndex: 1,
         yAxisIndex: 1,
         itemStyle: {
-          color: (params: any) =>
+          color: (params: { data: number[] | undefined }) =>
             (params.data ? params.data[2] : 0) > 0 ? "#ef4444" : "#22c55e",
         },
       },
     ],
-  };
+  }), [data]);
 
-  return (
-    <ReactECharts
-      option={option}
-      style={{ height: 380 }}
-      opts={{ renderer: "canvas" }}
-    />
-  );
+  return <ReactECharts option={option} style={{ height: 380 }} opts={{ renderer: "canvas" }} />;
 }

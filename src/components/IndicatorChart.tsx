@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 import type { IndicatorData } from "../types/api";
 
@@ -16,7 +17,7 @@ export default function IndicatorChart({
     { key: "kdj", label: "KDJ" },
   ];
 
-  const option = {
+  const option = useMemo(() => ({
     backgroundColor: "#0d1422",
     grid: { left: "8%", right: "3%", top: "10%", bottom: "10%" },
     xAxis: {
@@ -39,7 +40,7 @@ export default function IndicatorChart({
       lineStyle: { width: 1 },
     })),
     legend: { textStyle: { color: "#bac8dc" } },
-  };
+  }), [data]);
 
   return (
     <div className="card">
@@ -55,11 +56,7 @@ export default function IndicatorChart({
         ))}
       </div>
       <div className="card-body" style={{ padding: 0 }}>
-        <ReactECharts
-          option={option}
-          style={{ height: 220 }}
-          opts={{ renderer: "canvas" }}
-        />
+        <ReactECharts option={option} style={{ height: 220 }} opts={{ renderer: "canvas" }} />
       </div>
     </div>
   );
