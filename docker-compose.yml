@@ -4,7 +4,7 @@ services:
   api:
     build: .
     ports:
-      - "8765:8765"
+      - "127.0.0.1:8765:8765"
     volumes:
       - ./stock_cache.db:/app/stock_cache.db
       - ./logs:/app/logs
