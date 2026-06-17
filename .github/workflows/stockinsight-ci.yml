@@ -59,9 +59,9 @@ jobs:
       - name: Install ruff
         run: pip install ruff
       - name: Ruff lint
-        run: ruff check backend/ stock_analyzer/ --config ruff.toml
+        run: ruff check backend/ backend/services/ stock_analyzer/ --config ruff.toml
       - name: Ruff format check
-        run: ruff format --check backend/ stock_analyzer/ --config ruff.toml
+        run: ruff format --check backend/ backend/services/ stock_analyzer/ --config ruff.toml
 
   backend-test:
     name: Backend Tests
@@ -75,14 +75,14 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-cov fastapi uvicorn httpx
-          pip install -r requirements.txt 2>/dev/null || true
+          pip install pytest pytest-cov fastapi uvicorn httpx aiosqlite
+          pip install -r requirements.txt
       - name: Run tests with coverage
         run: |
           python -m pytest stock_analyzer/tests/ backend/tests/ -v --tb=short \
-            --cov=stock_analyzer --cov=backend \
+            --cov=stock_analyzer --cov=backend --cov=backend.services \
             --cov-report=term-missing \
-            --cov-fail-under=15 \
+            --cov-fail-under=70 \
             --no-cov-on-fail
 
   # ────────────────────────────
@@ -100,10 +100,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install mypy
-          pip install -r requirements.txt 2>/dev/null || true
+          pip install -r requirements.txt
       - name: Type check
         run: |
-          mypy stock_analyzer/ backend/ \
+          mypy stock_analyzer/ backend/ backend/services/ \
             --ignore-missing-imports \
             --check-untyped-defs \
             --warn-return-any \
@@ -127,14 +127,14 @@ jobs:
       - name: Python security scan
         run: |
           pip install bandit
-          bandit -r backend/ stock_analyzer/ -ll --skip B101
+          bandit -r backend/ backend/services/ stock_analyzer/ -ll --skip B101 --exclude '*/tests/*'
       - name: npm audit
         run: |
           npm ci
           npm audit --audit-level=high || true
       - name: Check for secrets
         run: |
-          if grep -rn "API_KEY\s*=\s*['\"][^'\"]*['\"]" backend/ stock_analyzer/ 2>/dev/null | grep -v "None\|your_\|changeme\|example"; then
+          if grep -rn "API_KEY\s*=\s*['\"][^'\"]*['\"]" backend/ backend/services/ stock_analyzer/ 2>/dev/null | grep -v "None\|your_\|changeme\|example"; then
             echo "::warning::Possible hardcoded API key detected"
           fi
           echo "Secret scan complete"
