@@ -25,7 +25,9 @@ class Freshness(Enum):
 
 
 # 熔断器：连续失败 N 次后，M 秒内跳过该 API
-_CIRCUIT_STATE: dict[str, dict[str, float | int]] = {}  # {api_name: {"failures": N, "last_fail": timestamp, "open_until": timestamp}}
+_CIRCUIT_STATE: dict[
+    str, dict[str, float | int]
+] = {}  # {api_name: {"failures": N, "last_fail": timestamp, "open_until": timestamp}}
 
 
 def _circuit_breaker(api_name, max_failures=3, cooldown=300):

@@ -235,7 +235,7 @@ def download_daily_history(
                     cur2 = conn.execute("SELECT data FROM kline_store WHERE code=?", (code,))
                     old = cur2.fetchone()
                     if old:
-                        existing = pickle.loads(old[0])
+                        existing = pickle.loads(old[0])  # nosec — 从本地 SQLite 读取，非不可信数据
                     new_row = pd.DataFrame(
                         [
                             {

@@ -1,9 +1,10 @@
 """测试增强选股器 enhanced_screener.py — 两轮筛选 + 板块/短线/ML/自定义因子"""
+
 import json
 import os
 import pickle
 import tempfile
-from unittest.mock import MagicMock, PropertyMock, patch, call
+from unittest.mock import MagicMock, PropertyMock, call, patch
 
 import numpy as np
 import pandas as pd
@@ -13,6 +14,7 @@ from stock_analyzer import enhanced_screener as es
 
 # ── 工具函数 ──────────────────────────────────────────
 
+
 def _make_stock_cache(tmp_path):
     """创建 STOCK_LIST_CACHE 临时 JSON"""
     codes = ["600000", "000001", "600030", "000002", "600519", "600888", "834765"]
@@ -21,11 +23,15 @@ def _make_stock_cache(tmp_path):
         json.dump(codes, f)
     return path, codes
 
+
 def _make_sectors_df():
-    return pd.DataFrame({
-        "板块名称": ["银行", "券商", "保险", "地产", "医药"],
-        "涨跌幅": [2.5, 1.8, -0.5, 1.2, 3.0],
-    })
+    return pd.DataFrame(
+        {
+            "板块名称": ["银行", "券商", "保险", "地产", "医药"],
+            "涨跌幅": [2.5, 1.8, -0.5, 1.2, 3.0],
+        }
+    )
+
 
 def _make_sectors_dict():
     return {
@@ -34,58 +40,131 @@ def _make_sectors_dict():
         "保险": {"涨跌幅": -0.5},
     }
 
+
 def _mock_sina(codes):
     stocks = {
-        "600000": {"名称": "浦发银行", "最新价": "8.50", "涨跌幅": "1.20", "成交量": "5000000",
-                   "最高": "8.60", "最低": "8.40"},
-        "000001": {"名称": "平安银行", "最新价": "12.00", "涨跌幅": "0.80", "成交量": "8000000",
-                   "最高": "12.20", "最低": "11.80"},
-        "600030": {"名称": "中信证券", "最新价": "22.00", "涨跌幅": "-0.50", "成交量": "20000000",
-                   "最高": "22.50", "最低": "21.80"},
-        "000002": {"名称": "万科A", "最新价": "15.00", "涨跌幅": "2.00", "成交量": "15000000",
-                   "最高": "15.30", "最低": "14.80"},
-        "600519": {"名称": "贵州茅台", "最新价": "1800.00", "涨跌幅": "0.50", "成交量": "3000000",
-                   "最高": "1820.00", "最低": "1790.00"},
-        "600888": {"名称": "ST股票", "最新价": "5.00", "涨跌幅": "-1.00", "成交量": "1000000",
-                   "最高": "5.10", "最低": "4.90"},
-        "834765": {"名称": "三板股票", "最新价": "3.00", "涨跌幅": "0.00", "成交量": "500000",
-                   "最高": "3.10", "最低": "2.95"},
+        "600000": {
+            "名称": "浦发银行",
+            "最新价": "8.50",
+            "涨跌幅": "1.20",
+            "成交量": "5000000",
+            "最高": "8.60",
+            "最低": "8.40",
+        },
+        "000001": {
+            "名称": "平安银行",
+            "最新价": "12.00",
+            "涨跌幅": "0.80",
+            "成交量": "8000000",
+            "最高": "12.20",
+            "最低": "11.80",
+        },
+        "600030": {
+            "名称": "中信证券",
+            "最新价": "22.00",
+            "涨跌幅": "-0.50",
+            "成交量": "20000000",
+            "最高": "22.50",
+            "最低": "21.80",
+        },
+        "000002": {
+            "名称": "万科A",
+            "最新价": "15.00",
+            "涨跌幅": "2.00",
+            "成交量": "15000000",
+            "最高": "15.30",
+            "最低": "14.80",
+        },
+        "600519": {
+            "名称": "贵州茅台",
+            "最新价": "1800.00",
+            "涨跌幅": "0.50",
+            "成交量": "3000000",
+            "最高": "1820.00",
+            "最低": "1790.00",
+        },
+        "600888": {
+            "名称": "ST股票",
+            "最新价": "5.00",
+            "涨跌幅": "-1.00",
+            "成交量": "1000000",
+            "最高": "5.10",
+            "最低": "4.90",
+        },
+        "834765": {
+            "名称": "三板股票",
+            "最新价": "3.00",
+            "涨跌幅": "0.00",
+            "成交量": "500000",
+            "最高": "3.10",
+            "最低": "2.95",
+        },
     }
-    return {c: stocks.get(c, {"名称": f"股票{c}", "最新价": "10.00", "涨跌幅": "0.00",
-                              "成交量": "3000000", "最高": "10.20", "最低": "9.80"})
-            for c in codes}
+    return {
+        c: stocks.get(
+            c,
+            {
+                "名称": f"股票{c}",
+                "最新价": "10.00",
+                "涨跌幅": "0.00",
+                "成交量": "3000000",
+                "最高": "10.20",
+                "最低": "9.80",
+            },
+        )
+        for c in codes
+    }
+
 
 def _make_kline():
     np.random.seed(42)
     dates = pd.date_range(end="2025-06-01", periods=120, freq="D")
-    return pd.DataFrame({
-        "date": dates,
-        "open": np.random.uniform(10, 12, 120),
-        "high": np.random.uniform(11, 13, 120),
-        "low": np.random.uniform(9, 11, 120),
-        "close": np.random.uniform(10, 12, 120),
-        "volume": np.random.randint(1_000_000, 10_000_000, 120),
-    })
+    return pd.DataFrame(
+        {
+            "date": dates,
+            "open": np.random.uniform(10, 12, 120),
+            "high": np.random.uniform(11, 13, 120),
+            "low": np.random.uniform(9, 11, 120),
+            "close": np.random.uniform(10, 12, 120),
+            "volume": np.random.randint(1_000_000, 10_000_000, 120),
+        }
+    )
+
 
 def _make_quant_result(cs=70, rating="A", **kw):
-    r = {"composite_score": cs, "rating": rating,
-         "factor_scores": {k: {"score": v} for k, v in {
-             "momentum": 65, "technical": 70, "fundamental": 75,
-             "volume": 60, "risk": 55, "sentiment": 50}.items()}}
+    r = {
+        "composite_score": cs,
+        "rating": rating,
+        "factor_scores": {
+            k: {"score": v}
+            for k, v in {
+                "momentum": 65,
+                "technical": 70,
+                "fundamental": 75,
+                "volume": 60,
+                "risk": 55,
+                "sentiment": 50,
+            }.items()
+        },
+    }
     r.update(kw)
     return r
+
 
 def _make_trading_style(**kw):
     r = {"long_term_score": 60}
     r.update(kw)
     return r
 
+
 def _make_ml_result(**kw):
     r = {"ensemble_direction": "看涨", "ensemble_confidence": 75.0, "agreement": "高"}
     r.update(kw)
     return r
 
+
 # ── Test: _gf ──────────────────────────────────────────
+
 
 class TestGf:
     def test_dict_with_score(self):
@@ -100,7 +179,9 @@ class TestGf:
     def test_missing_key(self):
         assert es._gf({}, "momentum") == 0.0
 
+
 # ── Test: _check_nt ────────────────────────────────────
+
 
 class TestCheckNt:
     @patch("stock_analyzer.cache.cached_national_team_holdings")
@@ -123,7 +204,9 @@ class TestCheckNt:
         mock_nt.return_value = None
         assert es._check_nt("600000") is False
 
+
 # ── Test: _load_all_codes ─────────────────────────────
+
 
 class TestLoadAllCodes:
     def test_cache_exists(self, monkeypatch):
@@ -143,13 +226,16 @@ class TestLoadAllCodes:
 
     def test_akshare_fallback(self, monkeypatch):
         import sys
+
         tmp = tempfile.mkdtemp()
         path = os.path.join(tmp, "stock_list_cache.json")
         monkeypatch.setattr(es, "STOCK_LIST_CACHE", path)
         mock_ak = MagicMock()
-        mock_ak.stock_info_a_code_name.return_value = pd.DataFrame({
-            "code": ["600000", "600001"],
-        })
+        mock_ak.stock_info_a_code_name.return_value = pd.DataFrame(
+            {
+                "code": ["600000", "600001"],
+            }
+        )
         monkeypatch.setitem(sys.modules, "akshare", mock_ak)
         result = es._load_all_codes()
         assert "600000" in result
@@ -159,6 +245,7 @@ class TestLoadAllCodes:
 
     def test_akshare_exception(self, monkeypatch):
         import sys
+
         tmp = tempfile.mkdtemp()
         path = os.path.join(tmp, "stock_list_cache.json")
         monkeypatch.setattr(es, "STOCK_LIST_CACHE", path)
@@ -167,7 +254,9 @@ class TestLoadAllCodes:
         monkeypatch.setitem(sys.modules, "akshare", mock_ak)
         assert es._load_all_codes() == []
 
+
 # ── Test: _get_sector_stocks ──────────────────────────
+
 
 class TestGetSectorStocks:
     def setup_method(self):
@@ -219,7 +308,9 @@ class TestGetSectorStocks:
         # SQL异常→fallback→返回空
         assert result == []
 
+
 # ── Test: pass1_quick_filter ───────────────────────────
+
 
 class TestPass1QuickFilter:
     codes = ["600000", "000001", "600030", "000002", "600519", "600888", "834765"]
@@ -305,7 +396,8 @@ class TestPass1QuickFilter:
         mock_gss.return_value = ["600000", "000001"]
 
         passed, top_sectors, stats = es.pass1_quick_filter(
-            self.codes, min_amplitude=50  # 极高振幅要求 → 全部过滤
+            self.codes,
+            min_amplitude=50,  # 极高振幅要求 → 全部过滤
         )
         assert stats["amplitude_filtered"] >= 0
 
@@ -319,9 +411,7 @@ class TestPass1QuickFilter:
         mock_gss.return_value = []
 
         # min_price=100, max_price=200 → 只有贵州茅台(1800)被过滤
-        passed, top_sectors, stats = es.pass1_quick_filter(
-            self.codes, min_price=1, max_price=10
-        )
+        passed, top_sectors, stats = es.pass1_quick_filter(self.codes, min_price=1, max_price=10)
         assert stats["price_filtered"] > 0
 
     @patch("stock_analyzer.enhanced_screener._get_sector_stocks")
@@ -334,9 +424,7 @@ class TestPass1QuickFilter:
         mock_gss.return_value = []
 
         # 用极高成交量要求过滤所有
-        passed, top_sectors, stats = es.pass1_quick_filter(
-            self.codes, min_turnover=50_000_000
-        )
+        passed, top_sectors, stats = es.pass1_quick_filter(self.codes, min_turnover=50_000_000)
         assert stats["vol_filtered"] > 0
 
     @patch("stock_analyzer.enhanced_screener._get_sector_stocks")
@@ -366,20 +454,46 @@ class TestPass1QuickFilter:
         # 只有 600000 在板块成分股中，所以只有它进入硬筛
         assert stats["total"] < len(self.codes)
 
+
 # ── pass2_deep_analyze 测试 ──────────────────────────
+
 
 class TestPass2DeepAnalyze:
     """pass2_deep_analyze 通过充分 mock 外部依赖来测试"""
 
     candidates = [
-        {"code": "600000", "name": "浦发银行", "price": 8.5, "change_pct": 1.2,
-         "volume": 5000000, "amplitude": 2.35},
-        {"code": "000001", "name": "平安银行", "price": 12.0, "change_pct": 0.8,
-         "volume": 8000000, "amplitude": 3.33},
-        {"code": "600030", "name": "中信证券", "price": 22.0, "change_pct": -0.5,
-         "volume": 20000000, "amplitude": 3.18},
-        {"code": "000002", "name": "万科A", "price": 15.0, "change_pct": 2.0,
-         "volume": 15000000, "amplitude": 3.33},
+        {
+            "code": "600000",
+            "name": "浦发银行",
+            "price": 8.5,
+            "change_pct": 1.2,
+            "volume": 5000000,
+            "amplitude": 2.35,
+        },
+        {
+            "code": "000001",
+            "name": "平安银行",
+            "price": 12.0,
+            "change_pct": 0.8,
+            "volume": 8000000,
+            "amplitude": 3.33,
+        },
+        {
+            "code": "600030",
+            "name": "中信证券",
+            "price": 22.0,
+            "change_pct": -0.5,
+            "volume": 20000000,
+            "amplitude": 3.18,
+        },
+        {
+            "code": "000002",
+            "name": "万科A",
+            "price": 15.0,
+            "change_pct": 2.0,
+            "volume": 15000000,
+            "amplitude": 3.33,
+        },
     ]
 
     @patch("stock_analyzer.enhanced_screener.cached_weibo_sentiment")
@@ -397,15 +511,31 @@ class TestPass2DeepAnalyze:
     @patch("stock_analyzer.custom_factors.list_factors")
     @patch("stock_analyzer.custom_factors.compute_all_factors")
     @patch("stock_analyzer.sector_info.get_stock_sector_full")
-    def test_full_flow(self, mock_sector_full, mock_cf_all, mock_cf_list,
-                       mock_ml, mock_nt, mock_st, mock_res, mock_combo,
-                       mock_trading, mock_quant, mock_tech_sum, mock_tech,
-                       mock_fund, mock_kline, mock_sent):
+    def test_full_flow(
+        self,
+        mock_sector_full,
+        mock_cf_all,
+        mock_cf_list,
+        mock_ml,
+        mock_nt,
+        mock_st,
+        mock_res,
+        mock_combo,
+        mock_trading,
+        mock_quant,
+        mock_tech_sum,
+        mock_tech,
+        mock_fund,
+        mock_kline,
+        mock_sent,
+    ):
         """完整流程：ML + 自定义因子 + 多股筛选"""
-        mock_sent.return_value = pd.DataFrame({
-            "name": ["浦发银行", "平安银行"],
-            "rate": [0.3, -0.1],
-        })
+        mock_sent.return_value = pd.DataFrame(
+            {
+                "name": ["浦发银行", "平安银行"],
+                "rate": [0.3, -0.1],
+            }
+        )
         kline = _make_kline()
         mock_kline.return_value = kline
         mock_fund.return_value = {"ROE": 12.5}
@@ -417,7 +547,11 @@ class TestPass2DeepAnalyze:
         mock_res.return_value = {"共振强度": 45}
         mock_st.return_value = {"短线评分": 65}
         mock_nt.return_value = True
-        mock_ml.return_value = {"ensemble_direction": "看涨", "ensemble_confidence": 75.0, "agreement": "高"}
+        mock_ml.return_value = {
+            "ensemble_direction": "看涨",
+            "ensemble_confidence": 75.0,
+            "agreement": "高",
+        }
         mock_cf_list.return_value = [{"id": "factor1"}, {"id": "factor2"}]
         mock_cf_all.return_value = [{"factor_id": "factor1", "value": 1.5}]
         mock_sector_full.return_value = "银行"
@@ -446,9 +580,21 @@ class TestPass2DeepAnalyze:
     @patch("stock_analyzer.enhanced_screener.short_term_score")
     @patch("stock_analyzer.enhanced_screener._check_nt")
     @patch("stock_analyzer.sector_info.get_stock_sector_full")
-    def test_no_ml_no_custom(self, mock_sector_full, mock_nt, mock_st,
-                             mock_res, mock_combo, mock_trading, mock_quant,
-                             mock_tech_sum, mock_tech, mock_fund, mock_kline, mock_sent):
+    def test_no_ml_no_custom(
+        self,
+        mock_sector_full,
+        mock_nt,
+        mock_st,
+        mock_res,
+        mock_combo,
+        mock_trading,
+        mock_quant,
+        mock_tech_sum,
+        mock_tech,
+        mock_fund,
+        mock_kline,
+        mock_sent,
+    ):
         """关闭 ML 和自定义因子"""
         mock_sent.return_value = pd.DataFrame()
         kline = _make_kline()
@@ -481,9 +627,21 @@ class TestPass2DeepAnalyze:
     @patch("stock_analyzer.enhanced_screener.short_term_score")
     @patch("stock_analyzer.enhanced_screener._check_nt")
     @patch("stock_analyzer.sector_info.get_stock_sector_full")
-    def test_all_fail_min_score(self, mock_sector_full, mock_nt, mock_st,
-                                mock_res, mock_combo, mock_trading, mock_quant,
-                                mock_tech_sum, mock_tech, mock_fund, mock_kline, mock_sent):
+    def test_all_fail_min_score(
+        self,
+        mock_sector_full,
+        mock_nt,
+        mock_st,
+        mock_res,
+        mock_combo,
+        mock_trading,
+        mock_quant,
+        mock_tech_sum,
+        mock_tech,
+        mock_fund,
+        mock_kline,
+        mock_sent,
+    ):
         """所有候选低于最低评分→空结果"""
         mock_sent.return_value = None
         kline = _make_kline()
@@ -515,9 +673,21 @@ class TestPass2DeepAnalyze:
     @patch("stock_analyzer.enhanced_screener.short_term_score")
     @patch("stock_analyzer.enhanced_screener._check_nt")
     @patch("stock_analyzer.sector_info.get_stock_sector_full")
-    def test_empty_candidates(self, mock_sector_full, mock_nt, mock_st,
-                               mock_res, mock_combo, mock_trading, mock_quant,
-                               mock_tech_sum, mock_tech, mock_fund, mock_kline, mock_sent):
+    def test_empty_candidates(
+        self,
+        mock_sector_full,
+        mock_nt,
+        mock_st,
+        mock_res,
+        mock_combo,
+        mock_trading,
+        mock_quant,
+        mock_tech_sum,
+        mock_tech,
+        mock_fund,
+        mock_kline,
+        mock_sent,
+    ):
         """空候选列表→空 DataFrame"""
         df = es.pass2_deep_analyze([])
         assert isinstance(df, pd.DataFrame)
@@ -535,9 +705,21 @@ class TestPass2DeepAnalyze:
     @patch("stock_analyzer.enhanced_screener.short_term_score")
     @patch("stock_analyzer.enhanced_screener._check_nt")
     @patch("stock_analyzer.sector_info.get_stock_sector_full")
-    def test_empty_kline(self, mock_sector_full, mock_nt, mock_st,
-                         mock_res, mock_combo, mock_trading, mock_quant,
-                         mock_tech_sum, mock_tech, mock_fund, mock_kline, mock_sent):
+    def test_empty_kline(
+        self,
+        mock_sector_full,
+        mock_nt,
+        mock_st,
+        mock_res,
+        mock_combo,
+        mock_trading,
+        mock_quant,
+        mock_tech_sum,
+        mock_tech,
+        mock_fund,
+        mock_kline,
+        mock_sent,
+    ):
         """K线为空→跳过该股票"""
         mock_sent.return_value = None
         mock_kline.return_value = pd.DataFrame()  # 空 DataFrame
@@ -569,9 +751,21 @@ class TestPass2DeepAnalyze:
     @patch("stock_analyzer.enhanced_screener.short_term_score")
     @patch("stock_analyzer.enhanced_screener._check_nt")
     @patch("stock_analyzer.sector_info.get_stock_sector_full")
-    def test_sentiment_exception(self, mock_sector_full, mock_nt, mock_st,
-                                  mock_res, mock_combo, mock_trading, mock_quant,
-                                  mock_tech_sum, mock_tech, mock_fund, mock_kline, mock_sent):
+    def test_sentiment_exception(
+        self,
+        mock_sector_full,
+        mock_nt,
+        mock_st,
+        mock_res,
+        mock_combo,
+        mock_trading,
+        mock_quant,
+        mock_tech_sum,
+        mock_tech,
+        mock_fund,
+        mock_kline,
+        mock_sent,
+    ):
         """舆情接口异常不应阻止流程"""
         mock_sent.side_effect = RuntimeError("sentiment fail")
         kline = _make_kline()
@@ -606,10 +800,24 @@ class TestPass2DeepAnalyze:
     @patch("stock_analyzer.custom_factors.list_factors")
     @patch("stock_analyzer.custom_factors.compute_all_factors")
     @patch("stock_analyzer.sector_info.get_stock_sector_full")
-    def test_ml_exception(self, mock_sector_full, mock_cf_all, mock_cf_list,
-                          mock_ml, mock_nt, mock_st, mock_res, mock_combo,
-                          mock_trading, mock_quant, mock_tech_sum, mock_tech,
-                          mock_fund, mock_kline, mock_sent):
+    def test_ml_exception(
+        self,
+        mock_sector_full,
+        mock_cf_all,
+        mock_cf_list,
+        mock_ml,
+        mock_nt,
+        mock_st,
+        mock_res,
+        mock_combo,
+        mock_trading,
+        mock_quant,
+        mock_tech_sum,
+        mock_tech,
+        mock_fund,
+        mock_kline,
+        mock_sent,
+    ):
         """ML 预测异常→降级标记"""
         mock_sent.return_value = None
         kline = _make_kline()
@@ -649,10 +857,24 @@ class TestPass2DeepAnalyze:
     @patch("stock_analyzer.custom_factors.list_factors")
     @patch("stock_analyzer.custom_factors.compute_all_factors")
     @patch("stock_analyzer.sector_info.get_stock_sector_full")
-    def test_top_n_truncation(self, mock_sector_full, mock_cf_all, mock_cf_list,
-                              mock_ml, mock_nt, mock_st, mock_res, mock_combo,
-                              mock_trading, mock_quant, mock_tech_sum, mock_tech,
-                              mock_fund, mock_kline, mock_sent):
+    def test_top_n_truncation(
+        self,
+        mock_sector_full,
+        mock_cf_all,
+        mock_cf_list,
+        mock_ml,
+        mock_nt,
+        mock_st,
+        mock_res,
+        mock_combo,
+        mock_trading,
+        mock_quant,
+        mock_tech_sum,
+        mock_tech,
+        mock_fund,
+        mock_kline,
+        mock_sent,
+    ):
         """top_n 截断"""
         mock_sent.return_value = None
         kline = _make_kline()
@@ -690,10 +912,24 @@ class TestPass2DeepAnalyze:
     @patch("stock_analyzer.custom_factors.list_factors")
     @patch("stock_analyzer.custom_factors.compute_all_factors")
     @patch("stock_analyzer.sector_info.get_stock_sector_full")
-    def test_single_candidate(self, mock_sector_full, mock_cf_all, mock_cf_list,
-                              mock_ml, mock_nt, mock_st, mock_res, mock_combo,
-                              mock_trading, mock_quant, mock_tech_sum, mock_tech,
-                              mock_fund, mock_kline, mock_sent):
+    def test_single_candidate(
+        self,
+        mock_sector_full,
+        mock_cf_all,
+        mock_cf_list,
+        mock_ml,
+        mock_nt,
+        mock_st,
+        mock_res,
+        mock_combo,
+        mock_trading,
+        mock_quant,
+        mock_tech_sum,
+        mock_tech,
+        mock_fund,
+        mock_kline,
+        mock_sent,
+    ):
         """单候选"""
         mock_sent.return_value = None
         kline = _make_kline()
@@ -732,10 +968,24 @@ class TestPass2DeepAnalyze:
     @patch("stock_analyzer.custom_factors.list_factors")
     @patch("stock_analyzer.custom_factors.compute_all_factors")
     @patch("stock_analyzer.sector_info.get_stock_sector_full")
-    def test_composite_sort_ranking(self, mock_sector_full, mock_cf_all, mock_cf_list,
-                                    mock_ml, mock_nt, mock_st, mock_res, mock_combo,
-                                    mock_trading, mock_quant, mock_tech_sum, mock_tech,
-                                    mock_fund, mock_kline, mock_sent):
+    def test_composite_sort_ranking(
+        self,
+        mock_sector_full,
+        mock_cf_all,
+        mock_cf_list,
+        mock_ml,
+        mock_nt,
+        mock_st,
+        mock_res,
+        mock_combo,
+        mock_trading,
+        mock_quant,
+        mock_tech_sum,
+        mock_tech,
+        mock_fund,
+        mock_kline,
+        mock_sent,
+    ):
         """验证综合排序分和排名"""
         mock_sent.return_value = None
         kline = _make_kline()
@@ -751,6 +1001,7 @@ class TestPass2DeepAnalyze:
 
         # 为每个候选设置不同评分
         scores = [80, 70, 60, 50]
+
         def _quant_side_effect(*args, **kwargs):
             cs = scores.pop(0) if scores else 50
             return _make_quant_result(cs, "A")
@@ -766,7 +1017,9 @@ class TestPass2DeepAnalyze:
         assert df["排名"].is_monotonic_increasing
         assert df.iloc[0]["composite_score"] >= df.iloc[-1]["composite_score"]
 
+
 # ── Test: enhanced_scan ────────────────────────────────
+
 
 class TestEnhancedScan:
     @patch("stock_analyzer.enhanced_screener._save_snapshot")
@@ -783,11 +1036,13 @@ class TestEnhancedScan:
             ["银行"],
             {"total": 2, "passed": 1},
         )
-        mock_p2.return_value = pd.DataFrame({
-            "code": ["600000"],
-            "composite_score": [70],
-            "综合排序分": [75.0],
-        })
+        mock_p2.return_value = pd.DataFrame(
+            {
+                "code": ["600000"],
+                "composite_score": [70],
+                "综合排序分": [75.0],
+            }
+        )
 
         result = es.enhanced_scan(mode="mainboard")
         assert isinstance(result, pd.DataFrame)
@@ -810,11 +1065,13 @@ class TestEnhancedScan:
             [],
             {"total": 3, "passed": 1},
         )
-        mock_p2.return_value = pd.DataFrame({
-            "code": ["600000"],
-            "composite_score": [70],
-            "综合排序分": [75.0],
-        })
+        mock_p2.return_value = pd.DataFrame(
+            {
+                "code": ["600000"],
+                "composite_score": [70],
+                "综合排序分": [75.0],
+            }
+        )
         result = es.enhanced_scan(mode="full")
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 1
@@ -832,11 +1089,13 @@ class TestEnhancedScan:
             ["银行"],
             {"total": 2, "passed": 1},
         )
-        mock_p2.return_value = pd.DataFrame({
-            "code": ["600000"],
-            "composite_score": [70],
-            "综合排序分": [75.0],
-        })
+        mock_p2.return_value = pd.DataFrame(
+            {
+                "code": ["600000"],
+                "composite_score": [70],
+                "综合排序分": [75.0],
+            }
+        )
         result = es.enhanced_scan(mode="top_sectors")
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 1
@@ -899,31 +1158,37 @@ class TestEnhancedScan:
             ["银行"],
             {"total": 1, "passed": 1},
         )
-        mock_p2.return_value = pd.DataFrame({
-            "code": ["600000"],
-            "composite_score": [70],
-            "综合排序分": [75.0],
-        })
+        mock_p2.return_value = pd.DataFrame(
+            {
+                "code": ["600000"],
+                "composite_score": [70],
+                "综合排序分": [75.0],
+            }
+        )
         es.enhanced_scan()
         mock_save.assert_called_once()
         mock_snap.assert_called_once()
 
+
 # ── Test: _save_to_daily_scores ──────────────────────
+
 
 class TestSaveToDailyScores:
     @patch("stock_analyzer.enhanced_screener.sqlite3.connect")
     def test_success(self, mock_conn):
-        df = pd.DataFrame({
-            "code": ["600000"],
-            "name": ["浦发银行"],
-            "composite_score": [70.0],
-            "rating": ["A"],
-            "动量分": [65.0],
-            "技术分": [70.0],
-            "基本面分": [75.0],
-            "量能分": [60.0],
-            "风险分": [55.0],
-        })
+        df = pd.DataFrame(
+            {
+                "code": ["600000"],
+                "name": ["浦发银行"],
+                "composite_score": [70.0],
+                "rating": ["A"],
+                "动量分": [65.0],
+                "技术分": [70.0],
+                "基本面分": [75.0],
+                "量能分": [60.0],
+                "风险分": [55.0],
+            }
+        )
         es._save_to_daily_scores(df)
         mock_conn.return_value.execute.assert_called()
 
@@ -937,17 +1202,19 @@ class TestSaveToDailyScores:
     @patch("stock_analyzer.enhanced_screener.sqlite3.connect")
     def test_multiple_rows(self, mock_conn):
         """多行写入"""
-        df = pd.DataFrame({
-            "code": ["600000", "000001"],
-            "name": ["浦发", "平安"],
-            "composite_score": [70.0, 65.0],
-            "rating": ["A", "B"],
-            "动量分": [65.0, 55.0],
-            "技术分": [70.0, 60.0],
-            "基本面分": [75.0, 65.0],
-            "量能分": [60.0, 50.0],
-            "风险分": [55.0, 45.0],
-        })
+        df = pd.DataFrame(
+            {
+                "code": ["600000", "000001"],
+                "name": ["浦发", "平安"],
+                "composite_score": [70.0, 65.0],
+                "rating": ["A", "B"],
+                "动量分": [65.0, 55.0],
+                "技术分": [70.0, 60.0],
+                "基本面分": [75.0, 65.0],
+                "量能分": [60.0, 50.0],
+                "风险分": [55.0, 45.0],
+            }
+        )
         es._save_to_daily_scores(df)
         execute = mock_conn.return_value.execute
         assert execute.call_count >= 2
@@ -958,7 +1225,9 @@ class TestSaveToDailyScores:
         es._save_to_daily_scores(pd.DataFrame())
         mock_conn.return_value.__enter__.return_value.execute.assert_not_called()
 
+
 # ── Test: _save_snapshot ──────────────────────────────
+
 
 class TestSaveSnapshot:
     RE = "stock_analyzer.enhanced_screener"
@@ -972,10 +1241,14 @@ class TestSaveSnapshot:
         mock_path.dirname.return_value = "/tmp/reports"
         mock_path.join.return_value = "/tmp/reports/enhanced_scan_20250601_1200.csv"
 
-        es._save_snapshot(pd.DataFrame({
-            "code": ["600000"],
-            "composite_score": [70.0],
-        }))
+        es._save_snapshot(
+            pd.DataFrame(
+                {
+                    "code": ["600000"],
+                    "composite_score": [70.0],
+                }
+            )
+        )
 
         mock_makedirs.assert_called_once()
         mock_csv.assert_called_once()

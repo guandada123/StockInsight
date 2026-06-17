@@ -1,16 +1,18 @@
 """测试 daily_basic.py — 股票日线基本面数据导入"""
+
 import os
 import sys
 import unittest
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 # db_utils 不是独立安装的模块，导入前 mock
 sys.modules["db_utils"] = MagicMock()
 from stock_analyzer.daily_basic import (
+    FIELDS,
     _normalize_ymd,
     _to_bool,
-    FIELDS,
 )
+
 
 class TestNormalizeYmd(unittest.TestCase):
     """_normalize_ymd 日期格式标准化"""
@@ -35,6 +37,7 @@ class TestNormalizeYmd(unittest.TestCase):
     def test_trailing_whitespace(self):
         """尾随空格 → 去除"""
         self.assertEqual(_normalize_ymd("  20250601  "), "20250601")
+
 
 class TestToBool(unittest.TestCase):
     """_to_bool 布尔值转换"""
@@ -78,7 +81,9 @@ class TestToBool(unittest.TestCase):
         self.assertTrue(_to_bool(" 1 "))
         self.assertFalse(_to_bool(" 0 "))
 
+
 # ── 数据库相关函数（需要 mock MySQL cursor）──
+
 
 class TestResolveDates(unittest.TestCase):
     """_resolve_dates 交易日窗口解析"""
@@ -90,14 +95,19 @@ class TestResolveDates(unittest.TestCase):
         """DATA_JOB_TRADE_DATE 环境变量 → 返回单日期"""
         with patch.dict(os.environ, {"DATA_JOB_TRADE_DATE": "2025-06-01"}, clear=True):
             from stock_analyzer.daily_basic import _resolve_dates
+
             dates, full_refresh = _resolve_dates(self.cursor)
             self.assertEqual(dates, ["20250601"])
 
     def test_full_refresh_flag(self):
         """DATA_JOB_FULL_REFRESH=true → full_refresh=True"""
-        with patch.dict(os.environ, {"DATA_JOB_TRADE_DATE": "2025-06-01",
-                                      "DATA_JOB_FULL_REFRESH": "1"}, clear=True):
+        with patch.dict(
+            os.environ,
+            {"DATA_JOB_TRADE_DATE": "2025-06-01", "DATA_JOB_FULL_REFRESH": "1"},
+            clear=True,
+        ):
             from stock_analyzer.daily_basic import _resolve_dates
+
             dates, full_refresh = _resolve_dates(self.cursor)
             self.assertTrue(full_refresh)
 
@@ -106,6 +116,7 @@ class TestResolveDates(unittest.TestCase):
         self.cursor.fetchone.side_effect = [("20250615",)]
         with patch.dict(os.environ, {"DATA_JOB_START_DATE": "2025-06-01"}, clear=True):
             from stock_analyzer.daily_basic import _resolve_dates
+
             dates, full_refresh = _resolve_dates(self.cursor)
             # 验证查询了交易日历
             self.cursor.execute.assert_any_call(
@@ -117,17 +128,23 @@ class TestResolveDates(unittest.TestCase):
         self.cursor.fetchone.side_effect = [("20250615",), ("20250610",)]
         with patch.dict(os.environ, {}, clear=True):
             from stock_analyzer.daily_basic import _resolve_dates
+
             dates, full_refresh = _resolve_dates(self.cursor)
             self.assertFalse(full_refresh)
 
     def test_no_dates_when_start_after_end(self):
         """start_date > end_date → 空列表"""
         self.cursor.fetchone.side_effect = [("20250601",)]
-        with patch.dict(os.environ, {"DATA_JOB_START_DATE": "2025-06-15",
-                                      "DATA_JOB_END_DATE": "2025-06-01"}, clear=True):
+        with patch.dict(
+            os.environ,
+            {"DATA_JOB_START_DATE": "2025-06-15", "DATA_JOB_END_DATE": "2025-06-01"},
+            clear=True,
+        ):
             from stock_analyzer.daily_basic import _resolve_dates
+
             dates, full_refresh = _resolve_dates(self.cursor)
             self.assertEqual(dates, [])
+
 
 class TestEnsureTable(unittest.TestCase):
     """_ensure_table 表创建"""
@@ -136,11 +153,13 @@ class TestEnsureTable(unittest.TestCase):
         """执行建表 SQL"""
         cursor = MagicMock()
         from stock_analyzer.daily_basic import _ensure_table
+
         _ensure_table(cursor)
         cursor.execute.assert_called_once()
         sql = cursor.execute.call_args[0][0]
         self.assertIn("CREATE TABLE IF NOT EXISTS stock_daily_basic", sql)
         self.assertIn("PRIMARY KEY (ts_code,trade_date)", sql)
+
 
 class TestDeleteForRefresh(unittest.TestCase):
     """_delete_for_refresh 删除旧数据"""
@@ -149,6 +168,7 @@ class TestDeleteForRefresh(unittest.TestCase):
         """full_refresh=False → 不执行删除"""
         cursor = MagicMock()
         from stock_analyzer.daily_basic import _delete_for_refresh
+
         _delete_for_refresh(cursor, ["20250601"], False)
         cursor.execute.assert_not_called()
 
@@ -156,6 +176,7 @@ class TestDeleteForRefresh(unittest.TestCase):
         """空日期列表 → 不执行删除"""
         cursor = MagicMock()
         from stock_analyzer.daily_basic import _delete_for_refresh
+
         _delete_for_refresh(cursor, [], True)
         cursor.execute.assert_not_called()
 
@@ -163,10 +184,12 @@ class TestDeleteForRefresh(unittest.TestCase):
         """刷新时按 min/max 日期删除"""
         cursor = MagicMock()
         from stock_analyzer.daily_basic import _delete_for_refresh
+
         _delete_for_refresh(cursor, ["20250601", "20250603", "20250602"], True)
         cursor.execute.assert_called_once()
         sql = cursor.execute.call_args[0][0]
         self.assertIn("DELETE FROM stock_daily_basic", sql)
+
 
 class TestSaveTradeDate(unittest.TestCase):
     """_save_trade_date 数据写入"""
@@ -178,22 +201,42 @@ class TestSaveTradeDate(unittest.TestCase):
     def test_empty_df(self):
         """空 DataFrame → 返回 0"""
         import pandas as pd
+
         from stock_analyzer.daily_basic import _save_trade_date
+
         n = _save_trade_date(self.cursor, self.conn, pd.DataFrame())
         self.assertEqual(n, 0)
 
     def test_insert_called(self):
         """正常数据 → 调用 executemany + commit"""
         import pandas as pd
+
         from stock_analyzer.daily_basic import _save_trade_date
-        df = pd.DataFrame([{
-            "ts_code": "000001.SZ", "trade_date": "20250601",
-            "close": 12.5, "turnover_rate": 1.2, "turnover_rate_f": 1.0,
-            "volume_ratio": 0.8, "pe": 10.0, "pe_ttm": 9.5, "pb": 1.2,
-            "ps": 2.0, "ps_ttm": 1.8, "dv_ratio": 2.5, "dv_ttm": 2.3,
-            "total_share": 1000000, "float_share": 800000, "free_share": 700000,
-            "total_mv": 12500000, "circ_mv": 10000000,
-        }])
+
+        df = pd.DataFrame(
+            [
+                {
+                    "ts_code": "000001.SZ",
+                    "trade_date": "20250601",
+                    "close": 12.5,
+                    "turnover_rate": 1.2,
+                    "turnover_rate_f": 1.0,
+                    "volume_ratio": 0.8,
+                    "pe": 10.0,
+                    "pe_ttm": 9.5,
+                    "pb": 1.2,
+                    "ps": 2.0,
+                    "ps_ttm": 1.8,
+                    "dv_ratio": 2.5,
+                    "dv_ttm": 2.3,
+                    "total_share": 1000000,
+                    "float_share": 800000,
+                    "free_share": 700000,
+                    "total_mv": 12500000,
+                    "circ_mv": 10000000,
+                }
+            ]
+        )
         n = _save_trade_date(self.cursor, self.conn, df)
         self.assertEqual(n, 1)
         self.cursor.executemany.assert_called_once()
@@ -201,20 +244,38 @@ class TestSaveTradeDate(unittest.TestCase):
 
     def test_na_values_replaced(self):
         """NaN/None 被替换为 None"""
-        import pandas as pd
         import numpy as np
+        import pandas as pd
+
         from stock_analyzer.daily_basic import _save_trade_date
-        df = pd.DataFrame([{
-            "ts_code": "000001.SZ", "trade_date": "20250601",
-            "close": None, "turnover_rate": float("nan"),
-            "turnover_rate_f": None, "volume_ratio": None,
-            "pe": None, "pe_ttm": None, "pb": None,
-            "ps": None, "ps_ttm": None, "dv_ratio": None, "dv_ttm": None,
-            "total_share": None, "float_share": None, "free_share": None,
-            "total_mv": None, "circ_mv": None,
-        }])
+
+        df = pd.DataFrame(
+            [
+                {
+                    "ts_code": "000001.SZ",
+                    "trade_date": "20250601",
+                    "close": None,
+                    "turnover_rate": float("nan"),
+                    "turnover_rate_f": None,
+                    "volume_ratio": None,
+                    "pe": None,
+                    "pe_ttm": None,
+                    "pb": None,
+                    "ps": None,
+                    "ps_ttm": None,
+                    "dv_ratio": None,
+                    "dv_ttm": None,
+                    "total_share": None,
+                    "float_share": None,
+                    "free_share": None,
+                    "total_mv": None,
+                    "circ_mv": None,
+                }
+            ]
+        )
         n = _save_trade_date(self.cursor, self.conn, df)
         self.assertEqual(n, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

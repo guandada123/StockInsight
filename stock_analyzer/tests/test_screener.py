@@ -3,7 +3,7 @@
 import json
 import os
 import tempfile
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pandas as pd
 import pytest
@@ -23,6 +23,7 @@ from stock_analyzer.screener import (
 # ==============================================================================
 # Tests: load_all_a_shares
 # ==============================================================================
+
 
 class TestLoadAllAShares:
     def test_cache_hit(self):
@@ -76,9 +77,11 @@ class TestLoadAllAShares:
                 result = load_all_a_shares()
         assert result == list(DEFAULT_POOL)
 
+
 # ==============================================================================
 # Tests: quick_filter
 # ==============================================================================
+
 
 class TestQuickFilter:
     @patch("stock_analyzer.screener.sina_real_time")
@@ -94,7 +97,12 @@ class TestQuickFilter:
         }
         codes = ["000001", "002415", "600519", "300750", "000999", "888888"]
         result = quick_filter(
-            codes, min_price=6, max_price=500, exclude_st=True, exclude_bj=True, min_volume=2_000_000
+            codes,
+            min_price=6,
+            max_price=500,
+            exclude_st=True,
+            exclude_bj=True,
+            min_volume=2_000_000,
         )
         # 平安银行15元通过，海康40元通过，茅台1800超过max_price被排除
         # 宁德时代200通过，ST华硕被排除，北交所被排除
@@ -138,9 +146,11 @@ class TestQuickFilter:
         result = quick_filter(codes, exclude_st=False, min_volume=0, min_price=0, max_price=0)
         assert "000001" in result
 
+
 # ==============================================================================
 # Tests: load_stock_pool
 # ==============================================================================
+
 
 class TestLoadStockPool:
     def test_default_pool(self):
@@ -209,9 +219,11 @@ class TestLoadStockPool:
         assert call_kwargs["exclude_st"] is False
         assert call_kwargs["max_price"] == 500  # 默认保留
 
+
 # ==============================================================================
 # Tests: get_stock_name
 # ==============================================================================
+
 
 class TestGetStockName:
     def test_from_cache(self):
@@ -234,9 +246,11 @@ class TestGetStockName:
         result = get_stock_name("999999")
         assert result == ""
 
+
 # ==============================================================================
 # Tests: three_layer_funnel
 # ==============================================================================
+
 
 class TestThreeLayerFunnel:
     def _make_candidate(self, code, price=15, score=70, **kw):
@@ -273,16 +287,18 @@ class TestThreeLayerFunnel:
         """L2 完整评分：combo + resonance + funnel_score 计算"""
         candidates = [self._make_candidate("000001", price=15, score=70)]
         mock_kline = pd.DataFrame({"收盘": [10.0, 11.0]})
-        with patch("stock_analyzer.cache.cached_kline", return_value=mock_kline):
-            with patch(
+        with (
+            patch("stock_analyzer.cache.cached_kline", return_value=mock_kline),
+            patch(
                 "stock_analyzer.short_term.calc_combo_signals",
                 return_value={"信号": "买入", "强度": 3},
-            ):
-                with patch(
-                    "stock_analyzer.short_term.calc_multi_timeframe_resonance",
-                    return_value={"共振强度": 20, "状态": "共振"},
-                ):
-                    result = three_layer_funnel(candidates, top_n=5)
+            ),
+            patch(
+                "stock_analyzer.short_term.calc_multi_timeframe_resonance",
+                return_value={"共振强度": 20, "状态": "共振"},
+            ),
+        ):
+            result = three_layer_funnel(candidates, top_n=5)
         c = result["最终推荐"][0]
         assert c["combo_signal"] == "买入"
         assert c["combo_strength"] == 3
@@ -309,15 +325,15 @@ class TestThreeLayerFunnel:
             vals = {"000001": 20, "000002": 10, "000003": -30}
             return {"共振强度": vals.get(code, 0), "状态": "?"}
 
-        with patch("stock_analyzer.cache.cached_kline", return_value=mock_kline):
-            with patch(
-                "stock_analyzer.short_term.calc_combo_signals", side_effect=mock_combo
-            ):
-                with patch(
-                    "stock_analyzer.short_term.calc_multi_timeframe_resonance",
-                    side_effect=mock_resonance,
-                ):
-                    result = three_layer_funnel(candidates, top_n=2)
+        with (
+            patch("stock_analyzer.cache.cached_kline", return_value=mock_kline),
+            patch("stock_analyzer.short_term.calc_combo_signals", side_effect=mock_combo),
+            patch(
+                "stock_analyzer.short_term.calc_multi_timeframe_resonance",
+                side_effect=mock_resonance,
+            ),
+        ):
+            result = three_layer_funnel(candidates, top_n=2)
         picks = result["最终推荐"]
         codes = [c["code"] for c in picks]
         assert "000001" in codes  # combo=3 >=2, reso=20 > -20 ✓
@@ -336,9 +352,11 @@ class TestThreeLayerFunnel:
                     result = three_layer_funnel(candidates, top_n=5)
         assert result["最终推荐"][0]["funnel_score"] == 60
 
+
 # ==============================================================================
 # Tests: run_screener (核心—但简单验证)
 # ==============================================================================
+
 
 class TestRunScreener:
     NOW = pd.Timestamp.now()
@@ -623,9 +641,11 @@ class TestRunScreener:
         # 涨跌幅为 0（因为从 kline 取不到涨跌幅列）
         assert df.iloc[0]["涨跌幅"] == 1.0  # 从 kline 涨跌幅最后值
 
+
 # ==============================================================================
 # Tests: filter_by_conditions
 # ==============================================================================
+
 
 class TestFilterByConditions:
     def test_empty_df(self):
@@ -636,10 +656,12 @@ class TestFilterByConditions:
 
     def test_filter_by_price_and_score(self):
         """按价格和评分过滤"""
-        df = pd.DataFrame({
-            "最新价": [10.0, 3.0, 20.0],
-            "综合评分": [70, 80, 50],
-        })
+        df = pd.DataFrame(
+            {
+                "最新价": [10.0, 3.0, 20.0],
+                "综合评分": [70, 80, 50],
+            }
+        )
         result = filter_by_conditions(df, min_price=5, min_score=60)
         assert len(result) == 1
         assert result.iloc[0]["最新价"] == 10.0
@@ -665,18 +687,22 @@ class TestFilterByConditions:
         assert len(result) == 1
         assert result.iloc[0]["最新价"] == 10.0
 
+
 # ==============================================================================
 # Tests: save_screener_result
 # ==============================================================================
 
+
 class TestSaveScreenerResult:
     def test_save_to_specified_path(self):
         """保存到指定路径"""
-        df = pd.DataFrame({
-            "代码": ["000001"],
-            "名称": ["平安银行"],
-            "综合评分": [75],
-        })
+        df = pd.DataFrame(
+            {
+                "代码": ["000001"],
+                "名称": ["平安银行"],
+                "综合评分": [75],
+            }
+        )
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             path = f.name
         try:

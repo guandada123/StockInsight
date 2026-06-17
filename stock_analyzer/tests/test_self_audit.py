@@ -4,15 +4,19 @@ AuditReport 是纯逻辑类，可以在不 mock 任何依赖的情况下完整�
 _clear_cache_pattern 和 _preload_name_map 需要 mock 内部依赖。
 run_audit 通过 patch 各个审计函数来验证编排逻辑。
 """
+
 import os
 import sys
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+
 class TestAuditReport(unittest.TestCase):
     """AuditReport 数据收集与摘要"""
 
     def setUp(self):
         from stock_analyzer.self_audit import AuditReport
+
         self.report = AuditReport()
 
     def test_initial_state(self):
@@ -90,6 +94,7 @@ class TestAuditReport(unittest.TestCase):
         self.assertIn("[A] 问题1", s)
         self.assertIn("[B] 问题2", s)
 
+
 class TestClearCachePattern(unittest.TestCase):
     """_clear_cache_pattern 缓存清理"""
 
@@ -114,6 +119,7 @@ class TestClearCachePattern(unittest.TestCase):
             result = _clear_cache_pattern("test:%")
             self.assertFalse(result)
 
+
 class TestPreloadNameMap(unittest.TestCase):
     """_preload_name_map 名称映射预加载"""
 
@@ -130,10 +136,12 @@ class TestPreloadNameMap(unittest.TestCase):
         """异常 → 返回 False"""
         from stock_analyzer.self_audit import _preload_name_map
 
-        with patch("stock_analyzer.fetcher._load_stock_name_map",
-                   side_effect=Exception("Network error")):
+        with patch(
+            "stock_analyzer.fetcher._load_stock_name_map", side_effect=Exception("Network error")
+        ):
             result = _preload_name_map()
             self.assertFalse(result)
+
 
 class TestRunAudit(unittest.TestCase):
     """run_audit 主入口编排"""
@@ -147,12 +155,20 @@ class TestRunAudit(unittest.TestCase):
             # mock 所有审计函数，避免真正执行
             with patch("stock_analyzer.self_audit.audit_api_data_consistency") as mock_a1:
                 with patch("stock_analyzer.self_audit.audit_internal_key_consistency") as mock_a2:
-                    with patch("stock_analyzer.self_audit.audit_cross_source_validation") as mock_a3:
+                    with patch(
+                        "stock_analyzer.self_audit.audit_cross_source_validation"
+                    ) as mock_a3:
                         with patch("stock_analyzer.self_audit.audit_score_validity") as mock_a4:
                             with patch("stock_analyzer.self_audit.audit_performance") as mock_a5:
-                                with patch("stock_analyzer.self_audit.audit_fund_flow_sign") as mock_a6:
-                                    with patch("stock_analyzer.self_audit.audit_api_health") as mock_a7:
-                                        with patch("stock_analyzer.self_audit.audit_storage_benchmark") as mock_a8:
+                                with patch(
+                                    "stock_analyzer.self_audit.audit_fund_flow_sign"
+                                ) as mock_a6:
+                                    with patch(
+                                        "stock_analyzer.self_audit.audit_api_health"
+                                    ) as mock_a7:
+                                        with patch(
+                                            "stock_analyzer.self_audit.audit_storage_benchmark"
+                                        ) as mock_a8:
                                             report = run_audit(auto_fix=False, verbose=False)
 
         # 所有审计函数都被调用
@@ -167,6 +183,7 @@ class TestRunAudit(unittest.TestCase):
 
         # 返回的是 AuditReport 实例
         from stock_analyzer.self_audit import AuditReport
+
         self.assertIsInstance(report, AuditReport)
 
     def test_audit_function_error_caught(self):
@@ -174,15 +191,19 @@ class TestRunAudit(unittest.TestCase):
         from stock_analyzer.self_audit import run_audit
 
         with patch("stock_analyzer.self_audit.AUTO_FIX_LIST", []):
-            with patch("stock_analyzer.self_audit.audit_api_data_consistency",
-                       side_effect=ValueError("模拟错误")):
+            with patch(
+                "stock_analyzer.self_audit.audit_api_data_consistency",
+                side_effect=ValueError("模拟错误"),
+            ):
                 with patch("stock_analyzer.self_audit.audit_internal_key_consistency"):
                     with patch("stock_analyzer.self_audit.audit_cross_source_validation"):
                         with patch("stock_analyzer.self_audit.audit_score_validity"):
                             with patch("stock_analyzer.self_audit.audit_performance"):
                                 with patch("stock_analyzer.self_audit.audit_fund_flow_sign"):
                                     with patch("stock_analyzer.self_audit.audit_api_health"):
-                                        with patch("stock_analyzer.self_audit.audit_storage_benchmark"):
+                                        with patch(
+                                            "stock_analyzer.self_audit.audit_storage_benchmark"
+                                        ):
                                             report = run_audit(auto_fix=False, verbose=False)
 
         # 应有一个问题记录（异常的哪个审计步骤）
@@ -207,10 +228,13 @@ class TestRunAudit(unittest.TestCase):
                             with patch("stock_analyzer.self_audit.audit_performance"):
                                 with patch("stock_analyzer.self_audit.audit_fund_flow_sign"):
                                     with patch("stock_analyzer.self_audit.audit_api_health"):
-                                        with patch("stock_analyzer.self_audit.audit_storage_benchmark"):
+                                        with patch(
+                                            "stock_analyzer.self_audit.audit_storage_benchmark"
+                                        ):
                                             report = run_audit(auto_fix=True, verbose=False)
 
         mock_action.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

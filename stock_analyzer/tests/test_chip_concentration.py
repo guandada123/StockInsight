@@ -1,12 +1,15 @@
 """测试 chip_concentration.py — 筹码集中度计算"""
+
 import os
 import sys
 import unittest
-from unittest.mock import patch, MagicMock
-import pandas as pd
+from unittest.mock import MagicMock, patch
+
 import numpy as np
+import pandas as pd
 
 from stock_analyzer import chip_concentration
+
 
 def _kline(rows=60, seed=42):
     """构造带筹码分析所需字段的 K 线 DataFrame"""
@@ -15,14 +18,17 @@ def _kline(rows=60, seed=42):
     vol = np.random.randint(500_000, 3_000_000, rows)
     # 让最后几天成交量放大以模拟主力建仓
     vol[-10:] = vol[-10:] * 2
-    return pd.DataFrame({
-        "日期": pd.date_range("2025-01-01", periods=rows),
-        "开盘": close * 0.99,
-        "收盘": close,
-        "最高": close * 1.02,
-        "最低": close * 0.98,
-        "成交量": vol,
-    })
+    return pd.DataFrame(
+        {
+            "日期": pd.date_range("2025-01-01", periods=rows),
+            "开盘": close * 0.99,
+            "收盘": close,
+            "最高": close * 1.02,
+            "最低": close * 0.98,
+            "成交量": vol,
+        }
+    )
+
 
 class TestCalcChipConcentration(unittest.TestCase):
     """calc_chip_concentration 主函数测试"""
@@ -30,8 +36,17 @@ class TestCalcChipConcentration(unittest.TestCase):
     def test_normal_concentration(self):
         """正常数据 → 返回完整结构"""
         result = chip_concentration.calc_chip_concentration(_kline(60))
-        for key in ["pct90", "pct70", "avg_cost", "current_price", "level",
-                     "risk_warning", "cost_range_90", "cost_range_70", "lookback_days"]:
+        for key in [
+            "pct90",
+            "pct70",
+            "avg_cost",
+            "current_price",
+            "level",
+            "risk_warning",
+            "cost_range_90",
+            "cost_range_70",
+            "lookback_days",
+        ]:
             self.assertIn(key, result)
         self.assertGreater(result["lookback_days"], 0)
 
@@ -55,6 +70,7 @@ class TestCalcChipConcentration(unittest.TestCase):
         """自定义 lookback 参数"""
         result = chip_concentration.calc_chip_concentration(_kline(100), lookback=30)
         self.assertEqual(result["lookback_days"], 30)
+
 
 class TestRiskAssessment(unittest.TestCase):
     """_assess_risk 各风险等级"""
@@ -91,6 +107,7 @@ class TestRiskAssessment(unittest.TestCase):
         _, w = chip_concentration._assess_risk(12, 6, 9, 10)  # 亏损10%
         self.assertIn("亏损", w)
 
+
 class TestFindCostRange(unittest.TestCase):
     """_find_cost_range 边界条件"""
 
@@ -115,6 +132,7 @@ class TestFindCostRange(unittest.TestCase):
         self.assertEqual(low, 15.0)
         self.assertEqual(high, 15.0)
 
+
 class TestFallback(unittest.TestCase):
     """_fallback 返回值结构"""
 
@@ -124,6 +142,7 @@ class TestFallback(unittest.TestCase):
         self.assertIn("测试原因", result["risk_warning"])
         self.assertEqual(result["pct90"], 0)
         self.assertEqual(result["cost_range_90"], [0, 0])
+
 
 class TestQuickChipCheck(unittest.TestCase):
     """quick_chip_check 集成测试"""
@@ -135,6 +154,7 @@ class TestQuickChipCheck(unittest.TestCase):
         result = chip_concentration.quick_chip_check("000001")
         self.assertIn("level", result)
         mock_kline.assert_called_once_with("000001", days=120)
+
 
 class TestEdgeCases(unittest.TestCase):
     """边界情况"""
@@ -161,6 +181,7 @@ class TestEdgeCases(unittest.TestCase):
         for s in [1, 7, 42, 99, 100]:
             result = chip_concentration.calc_chip_concentration(_kline(60, seed=s))
             self.assertIn(result["level"], ["安全", "正常", "谨慎", "危险", "极度危险"])
+
 
 if __name__ == "__main__":
     unittest.main()

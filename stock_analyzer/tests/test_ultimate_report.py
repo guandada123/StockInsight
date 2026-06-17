@@ -14,14 +14,14 @@ ultimate_analysis(code) 是一个 455 行的大函数，内部所有 import 都�
 7. 国家队持仓异常
 """
 
-from unittest.mock import patch, MagicMock
-import pandas as pd
-import numpy as np
-import pytest
-
 # ── 把项目根目录加入 sys.path（不依赖 conftest）──
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pandas as pd
+import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -31,25 +31,29 @@ sys.path.insert(0, str(PROJECT_ROOT))
 #  Helper：生成模拟 K 线 DataFrame
 # ══════════════════════════════════════════
 
+
 def _make_kline_df(length: int = 252) -> pd.DataFrame:
     """生成模拟日线 K 线（包含 full_technical_analysis 输出的列）"""
     dates = pd.date_range("2025-01-01", periods=length, freq="D")
     base = np.linspace(10, 12, length) + np.random.default_rng(42).normal(0, 0.15, length)
-    return pd.DataFrame({
-        "开盘": base * (1 + np.random.default_rng(100).normal(0, 0.005, length)),
-        "收盘": base,
-        "最高": base * np.random.default_rng(200).uniform(1.01, 1.04, length),
-        "最低": base * np.random.default_rng(300).uniform(0.96, 0.99, length),
-        "成交量": np.random.default_rng(400).integers(1_000_000, 5_000_000, length),
-        "ATR": np.full(length, 0.30),
-        "MACD": np.random.default_rng(500).normal(0, 0.5, length),
-        "MACD信号": np.random.default_rng(600).normal(0, 0.5, length),
-        "MACD柱": np.random.default_rng(700).normal(0, 0.3, length),
-        "RSI": np.random.default_rng(800).uniform(30, 70, length),
-        "KDJ_K": np.random.default_rng(900).uniform(20, 80, length),
-        "KDJ_D": np.random.default_rng(910).uniform(20, 80, length),
-        "KDJ_J": np.random.default_rng(920).uniform(20, 80, length),
-    }, index=dates)
+    return pd.DataFrame(
+        {
+            "开盘": base * (1 + np.random.default_rng(100).normal(0, 0.005, length)),
+            "收盘": base,
+            "最高": base * np.random.default_rng(200).uniform(1.01, 1.04, length),
+            "最低": base * np.random.default_rng(300).uniform(0.96, 0.99, length),
+            "成交量": np.random.default_rng(400).integers(1_000_000, 5_000_000, length),
+            "ATR": np.full(length, 0.30),
+            "MACD": np.random.default_rng(500).normal(0, 0.5, length),
+            "MACD信号": np.random.default_rng(600).normal(0, 0.5, length),
+            "MACD柱": np.random.default_rng(700).normal(0, 0.3, length),
+            "RSI": np.random.default_rng(800).uniform(30, 70, length),
+            "KDJ_K": np.random.default_rng(900).uniform(20, 80, length),
+            "KDJ_D": np.random.default_rng(910).uniform(20, 80, length),
+            "KDJ_J": np.random.default_rng(920).uniform(20, 80, length),
+        },
+        index=dates,
+    )
 
 
 # ══════════════════════════════════════════
@@ -59,16 +63,16 @@ def _make_kline_df(length: int = 252) -> pd.DataFrame:
 MOCK_MARKET = {
     "000001": {"最新价": "3350.50", "涨跌幅": "+0.85"},
     "399001": {"最新价": "10500.00", "涨跌幅": "+1.20"},
-    "399006": {"最新价": "2200.00",  "涨跌幅": "-0.30"},
-    "000688": {"最新价": "980.00",   "涨跌幅": "+0.50"},
+    "399006": {"最新价": "2200.00", "涨跌幅": "-0.30"},
+    "000688": {"最新价": "980.00", "涨跌幅": "+0.50"},
 }
 
 MOCK_SECTORS = {
-    "半导体": {"涨跌幅": "3.50",   "资金净流入": "2500000000"},
-    "白酒":   {"涨跌幅": "2.15",   "资金净流入": "850000000"},
-    "银行":   {"涨跌幅": "1.05",   "资金净流入": "320000000"},
-    "新能源": {"涨跌幅": "-0.52",  "资金净流入": "-150000000"},
-    "医药":   {"涨跌幅": "-1.20",  "资金净流入": "-500000000"},
+    "半导体": {"涨跌幅": "3.50", "资金净流入": "2500000000"},
+    "白酒": {"涨跌幅": "2.15", "资金净流入": "850000000"},
+    "银行": {"涨跌幅": "1.05", "资金净流入": "320000000"},
+    "新能源": {"涨跌幅": "-0.52", "资金净流入": "-150000000"},
+    "医药": {"涨跌幅": "-1.20", "资金净流入": "-500000000"},
 }
 
 MOCK_SECTOR_FULL = "金融 > 银行 > 股份制银行"
@@ -111,11 +115,11 @@ MOCK_QUANT_SCORE = {
     "composite_score": 72,
     "rating": "A-",
     "factor_scores": {
-        "momentum":     {"score": 75},
-        "technical":    {"score": 68},
-        "fundamental":  {"score": 70},
-        "volume":       {"score": 65},
-        "risk":         {"score": 60},
+        "momentum": {"score": 75},
+        "technical": {"score": 68},
+        "fundamental": {"score": 70},
+        "volume": {"score": 65},
+        "risk": {"score": 60},
     },
 }
 
@@ -126,8 +130,8 @@ MOCK_TRADING_STYLE = {"short_term_score": 65, "long_term_score": 55, "style": "�
 MOCK_NT_HOLDINGS = {"holders": ["证金", "汇金", "社保基金"]}
 
 MOCK_DEBATE = {
-    "bull":   {"score": 7, "points": ["技术面看涨", "资金流入", "MACD金叉"]},
-    "bear":   {"score": 3, "points": ["RSI偏高"]},
+    "bull": {"score": 7, "points": ["技术面看涨", "资金流入", "MACD金叉"]},
+    "bear": {"score": 3, "points": ["RSI偏高"]},
     "verdict": "短期偏多",
     "action": "轻仓参与",
 }
@@ -138,9 +142,14 @@ MOCK_ML = {
     "agreement": "高",
     "votes": "3-0",
     "models": {
-        "xgb": {"预测方向": "看涨", "上涨概率": 72, "准确率%": 65, "AUC": 0.72,
-                "重要特征": [{"特征": "动量", "重要性": 0.3}]},
-        "rf":  {"预测方向": "看涨", "上涨概率": 68, "准确率%": 62, "AUC": 0.68},
+        "xgb": {
+            "预测方向": "看涨",
+            "上涨概率": 72,
+            "准确率%": 65,
+            "AUC": 0.72,
+            "重要特征": [{"特征": "动量", "重要性": 0.3}],
+        },
+        "rf": {"预测方向": "看涨", "上涨概率": 68, "准确率%": 62, "AUC": 0.68},
         "lgb": {"预测方向": "看涨", "上涨概率": 70, "准确率%": 63, "AUC": 0.70},
     },
 }
@@ -178,64 +187,64 @@ def mock_all():
     所有 mock 通过单个 dict 聚合，方便各测试方法覆盖特定返回值。
     """
     return {
-        "get_market_overview":        MagicMock(return_value=MOCK_MARKET),
-        "get_stock_sector_full":      MagicMock(return_value=MOCK_SECTOR_FULL),
-        "get_sectors":                MagicMock(return_value=MOCK_SECTORS),
-        "cached_kline":               MagicMock(return_value=MOCK_KLINE),
-        "cached_fundamentals":        MagicMock(return_value=MOCK_FUNDAMENTALS),
-        "full_technical_analysis":    MagicMock(side_effect=lambda x: x),
-        "get_technical_summary":      MagicMock(return_value=MOCK_TECH_SUMMARY),
-        "sina_real_time":             MagicMock(return_value=MOCK_REALTIME),
-        "short_term_score":           MagicMock(return_value=MOCK_SHORT_TERM),
-        "calc_combo_signals":         MagicMock(return_value=MOCK_COMBO),
+        "get_market_overview": MagicMock(return_value=MOCK_MARKET),
+        "get_stock_sector_full": MagicMock(return_value=MOCK_SECTOR_FULL),
+        "get_sectors": MagicMock(return_value=MOCK_SECTORS),
+        "cached_kline": MagicMock(return_value=MOCK_KLINE),
+        "cached_fundamentals": MagicMock(return_value=MOCK_FUNDAMENTALS),
+        "full_technical_analysis": MagicMock(side_effect=lambda x: x),
+        "get_technical_summary": MagicMock(return_value=MOCK_TECH_SUMMARY),
+        "sina_real_time": MagicMock(return_value=MOCK_REALTIME),
+        "short_term_score": MagicMock(return_value=MOCK_SHORT_TERM),
+        "calc_combo_signals": MagicMock(return_value=MOCK_COMBO),
         "calc_multi_timeframe_resonance": MagicMock(return_value=MOCK_MULTI_TF),
-        "calc_turnover_signal":       MagicMock(return_value=MOCK_TURNOVER),
-        "calc_consecutive_days":      MagicMock(return_value=MOCK_CONSECUTIVE),
-        "calc_tail_tendency":         MagicMock(return_value=MOCK_TAIL),
-        "cached_fund_flow":           MagicMock(return_value=pd.DataFrame({
-            "主力净流入-净额": [50_000_000, 30_000_000, -10_000_000]})),
-        "calc_support_resistance":    MagicMock(return_value=MOCK_SUPPORT_RESIST),
-        "calc_stop_levels":           MagicMock(
-            return_value={"止损参考价": 11.20, "止盈参考价": 13.80}),
-        "composite_quant_score":      MagicMock(return_value=MOCK_QUANT_SCORE),
-        "calc_risk_metrics":          MagicMock(return_value=MOCK_RISK),
-        "evaluate_trading_style":     MagicMock(return_value=MOCK_TRADING_STYLE),
+        "calc_turnover_signal": MagicMock(return_value=MOCK_TURNOVER),
+        "calc_consecutive_days": MagicMock(return_value=MOCK_CONSECUTIVE),
+        "calc_tail_tendency": MagicMock(return_value=MOCK_TAIL),
+        "cached_fund_flow": MagicMock(
+            return_value=pd.DataFrame({"主力净流入-净额": [50_000_000, 30_000_000, -10_000_000]})
+        ),
+        "calc_support_resistance": MagicMock(return_value=MOCK_SUPPORT_RESIST),
+        "calc_stop_levels": MagicMock(return_value={"止损参考价": 11.20, "止盈参考价": 13.80}),
+        "composite_quant_score": MagicMock(return_value=MOCK_QUANT_SCORE),
+        "calc_risk_metrics": MagicMock(return_value=MOCK_RISK),
+        "evaluate_trading_style": MagicMock(return_value=MOCK_TRADING_STYLE),
         "cached_national_team_holdings": MagicMock(return_value=MOCK_NT_HOLDINGS),
-        "generate_bull_bear_debate":  MagicMock(return_value=MOCK_DEBATE),
-        "predict_ensemble":           MagicMock(return_value=MOCK_ML),
-        "compare_strategies":         MagicMock(return_value=MOCK_BACKTEST),
-        "macro_market_signal":        MagicMock(return_value=MOCK_MACRO),
+        "generate_bull_bear_debate": MagicMock(return_value=MOCK_DEBATE),
+        "predict_ensemble": MagicMock(return_value=MOCK_ML),
+        "compare_strategies": MagicMock(return_value=MOCK_BACKTEST),
+        "macro_market_signal": MagicMock(return_value=MOCK_MACRO),
     }
 
 
 def _apply_patches(mocks):
     """对 ultimate_analysis 的所有懒加载目标应用 patch，返回 patch 列表。"""
     patch_map = {
-        "get_market_overview":          "stock_analyzer.fetcher.get_market_overview",
-        "get_stock_sector_full":        "stock_analyzer.sector_info.get_stock_sector_full",
-        "get_sectors":                  "stock_analyzer.fetcher.get_sectors",
-        "cached_kline":                 "stock_analyzer.cache.cached_kline",
-        "cached_fundamentals":          "stock_analyzer.cache.cached_fundamentals",
-        "full_technical_analysis":      "stock_analyzer.analysis.full_technical_analysis",
-        "get_technical_summary":        "stock_analyzer.analysis.get_technical_summary",
-        "sina_real_time":               "stock_analyzer.fetcher.sina_real_time",
-        "short_term_score":             "stock_analyzer.short_term.short_term_score",
-        "calc_combo_signals":           "stock_analyzer.short_term.calc_combo_signals",
+        "get_market_overview": "stock_analyzer.fetcher.get_market_overview",
+        "get_stock_sector_full": "stock_analyzer.sector_info.get_stock_sector_full",
+        "get_sectors": "stock_analyzer.fetcher.get_sectors",
+        "cached_kline": "stock_analyzer.cache.cached_kline",
+        "cached_fundamentals": "stock_analyzer.cache.cached_fundamentals",
+        "full_technical_analysis": "stock_analyzer.analysis.full_technical_analysis",
+        "get_technical_summary": "stock_analyzer.analysis.get_technical_summary",
+        "sina_real_time": "stock_analyzer.fetcher.sina_real_time",
+        "short_term_score": "stock_analyzer.short_term.short_term_score",
+        "calc_combo_signals": "stock_analyzer.short_term.calc_combo_signals",
         "calc_multi_timeframe_resonance": "stock_analyzer.short_term.calc_multi_timeframe_resonance",
-        "calc_turnover_signal":         "stock_analyzer.short_term.calc_turnover_signal",
-        "calc_consecutive_days":        "stock_analyzer.short_term.calc_consecutive_days",
-        "calc_tail_tendency":           "stock_analyzer.short_term.calc_tail_tendency",
-        "cached_fund_flow":             "stock_analyzer.cache.cached_fund_flow",
-        "calc_support_resistance":      "stock_analyzer.analysis.calc_support_resistance",
-        "calc_stop_levels":             "stock_analyzer.analysis.calc_stop_levels",
-        "composite_quant_score":        "stock_analyzer.quant.composite_quant_score",
-        "calc_risk_metrics":            "stock_analyzer.quant.calc_risk_metrics",
-        "evaluate_trading_style":       "stock_analyzer.quant.evaluate_trading_style",
+        "calc_turnover_signal": "stock_analyzer.short_term.calc_turnover_signal",
+        "calc_consecutive_days": "stock_analyzer.short_term.calc_consecutive_days",
+        "calc_tail_tendency": "stock_analyzer.short_term.calc_tail_tendency",
+        "cached_fund_flow": "stock_analyzer.cache.cached_fund_flow",
+        "calc_support_resistance": "stock_analyzer.analysis.calc_support_resistance",
+        "calc_stop_levels": "stock_analyzer.analysis.calc_stop_levels",
+        "composite_quant_score": "stock_analyzer.quant.composite_quant_score",
+        "calc_risk_metrics": "stock_analyzer.quant.calc_risk_metrics",
+        "evaluate_trading_style": "stock_analyzer.quant.evaluate_trading_style",
         "cached_national_team_holdings": "stock_analyzer.cache.cached_national_team_holdings",
-        "generate_bull_bear_debate":    "stock_analyzer.nl_report.generate_bull_bear_debate",
-        "predict_ensemble":             "stock_analyzer.ml_predict.predict_ensemble",
-        "compare_strategies":           "stock_analyzer.backtest.compare_strategies",
-        "macro_market_signal":          "stock_analyzer.advanced.macro_market_signal",
+        "generate_bull_bear_debate": "stock_analyzer.nl_report.generate_bull_bear_debate",
+        "predict_ensemble": "stock_analyzer.ml_predict.predict_ensemble",
+        "compare_strategies": "stock_analyzer.backtest.compare_strategies",
+        "macro_market_signal": "stock_analyzer.advanced.macro_market_signal",
     }
     patchers = []
     for key, target in patch_map.items():
@@ -263,6 +272,7 @@ def auto_patch(mock_all, request):
 #  测试用例
 # ══════════════════════════════════════════
 
+
 class TestUltimateAnalysis:
     """ultimate_analysis 主函数测试"""
 
@@ -271,6 +281,7 @@ class TestUltimateAnalysis:
     def test_happy_path_contains_key_sections(self, capsys, mock_all):
         """正常全流程：验证各核心段落的关键字"""
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         out = capsys.readouterr().out
 
@@ -296,6 +307,7 @@ class TestUltimateAnalysis:
     def test_happy_path_prediction_logic(self, capsys, mock_all):
         """正常全流程：验证预测逻辑输出（combo=4 → 2-3天持有）"""
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         out = capsys.readouterr().out
 
@@ -309,6 +321,7 @@ class TestUltimateAnalysis:
     def test_happy_path_risk_warnings_disclaimer(self, capsys, mock_all):
         """正常全流程：验证风控和声明"""
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         out = capsys.readouterr().out
 
@@ -324,6 +337,7 @@ class TestUltimateAnalysis:
         # 重新应用 mock
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -336,6 +350,7 @@ class TestUltimateAnalysis:
         mock_all["cached_kline"].return_value = pd.DataFrame()
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -346,6 +361,7 @@ class TestUltimateAnalysis:
         mock_all["cached_kline"].return_value = _make_kline_df(10)
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -358,6 +374,7 @@ class TestUltimateAnalysis:
         mock_all["get_market_overview"].side_effect = RuntimeError("API down")
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")  # 不应抛出异常
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -368,6 +385,7 @@ class TestUltimateAnalysis:
         mock_all["get_stock_sector_full"].side_effect = ValueError("no sector")
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -378,6 +396,7 @@ class TestUltimateAnalysis:
         mock_all["predict_ensemble"].side_effect = ImportError("xgboost missing")
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -389,6 +408,7 @@ class TestUltimateAnalysis:
         mock_all["compare_strategies"].side_effect = Exception("回测异常")
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -399,6 +419,7 @@ class TestUltimateAnalysis:
         mock_all["macro_market_signal"].side_effect = ConnectionError("timeout")
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -409,6 +430,7 @@ class TestUltimateAnalysis:
         mock_all["cached_fund_flow"].side_effect = Exception("东方财富挂")
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -419,6 +441,7 @@ class TestUltimateAnalysis:
         mock_all["cached_fund_flow"].return_value = pd.DataFrame()
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -429,6 +452,7 @@ class TestUltimateAnalysis:
         mock_all["cached_fund_flow"].return_value = pd.DataFrame({"other_col": [1, 2]})
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -439,6 +463,7 @@ class TestUltimateAnalysis:
         mock_all["cached_national_team_holdings"].side_effect = Exception("API 500")
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -449,6 +474,7 @@ class TestUltimateAnalysis:
         mock_all["cached_national_team_holdings"].return_value = {"holders": []}
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -459,6 +485,7 @@ class TestUltimateAnalysis:
         mock_all["cached_national_team_holdings"].return_value = "error_str"
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -472,6 +499,7 @@ class TestUltimateAnalysis:
         mock_all["get_stock_sector_full"].return_value = "农林牧渔 > 养殖"
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -482,6 +510,7 @@ class TestUltimateAnalysis:
         mock_all["get_sectors"].return_value = {}
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -492,16 +521,19 @@ class TestUltimateAnalysis:
     def test_positive_flow_shows_流入(self, capsys, mock_all):
         """主力净流入 > 0 → 显示 '流入'"""
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         out = capsys.readouterr().out
         assert "流入" in out
 
     def test_negative_flow_shows_流出(self, capsys, mock_all):
         """主力 5 日净流出 → 显示 '流出'"""
-        mock_all["cached_fund_flow"].return_value = pd.DataFrame({
-            "主力净流入-净额": [-100_000_000, -50_000_000]})
+        mock_all["cached_fund_flow"].return_value = pd.DataFrame(
+            {"主力净流入-净额": [-100_000_000, -50_000_000]}
+        )
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -512,10 +544,10 @@ class TestUltimateAnalysis:
     def test_prediction_bearish_combo_zero(self, capsys, mock_all):
         """ML 看跌 + combo ≤ 0 → 综合看跌"""
         mock_all["calc_combo_signals"].return_value = {"信号": "弱势", "强度": 0, "详情": ""}
-        mock_all["predict_ensemble"].return_value = {
-            **MOCK_ML, "ensemble_direction": "看跌"}
+        mock_all["predict_ensemble"].return_value = {**MOCK_ML, "ensemble_direction": "看跌"}
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -525,9 +557,13 @@ class TestUltimateAnalysis:
         """ML 方向未知但 combo ≥ 3 → 看涨(技术面)"""
         mock_all["calc_combo_signals"].return_value = {"信号": "强势", "强度": 3, "详情": ""}
         mock_all["predict_ensemble"].return_value = {
-            **MOCK_ML, "ensemble_direction": "?", "ensemble_confidence": 50}
+            **MOCK_ML,
+            "ensemble_direction": "?",
+            "ensemble_confidence": 50,
+        }
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -538,6 +574,7 @@ class TestUltimateAnalysis:
         mock_all["calc_combo_signals"].return_value = {"信号": "震荡", "强度": 1, "详情": ""}
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -548,6 +585,7 @@ class TestUltimateAnalysis:
         mock_all["calc_combo_signals"].return_value = {"信号": "偏多", "强度": 2, "详情": ""}
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -558,6 +596,7 @@ class TestUltimateAnalysis:
         mock_all["calc_combo_signals"].return_value = {"信号": "偏弱", "强度": 0, "详情": ""}
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -576,6 +615,7 @@ class TestUltimateAnalysis:
         mock_all["cached_kline"].return_value = df
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -590,6 +630,7 @@ class TestUltimateAnalysis:
         mock_all["cached_kline"].return_value = df
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -600,6 +641,7 @@ class TestUltimateAnalysis:
         mock_all["get_technical_summary"].return_value = {**MOCK_TECH_SUMMARY, "rsi_value": 80}
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -607,10 +649,12 @@ class TestUltimateAnalysis:
 
     def test_risk_flow_below_neg1(self, capsys, mock_all):
         """主力 5 日流出 > 1 亿 → 主力 5 日流出风险"""
-        mock_all["cached_fund_flow"].return_value = pd.DataFrame({
-            "主力净流入-净额": [-200_000_000, -100_000_000, -50_000_000]})
+        mock_all["cached_fund_flow"].return_value = pd.DataFrame(
+            {"主力净流入-净额": [-200_000_000, -100_000_000, -50_000_000]}
+        )
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -618,11 +662,11 @@ class TestUltimateAnalysis:
 
     def test_risk_ai_bearish_combo_strong(self, capsys, mock_all):
         """AI 看跌 + combo ≥ 3 → 信号矛盾风险"""
-        mock_all["predict_ensemble"].return_value = {
-            **MOCK_ML, "ensemble_direction": "看跌"}
+        mock_all["predict_ensemble"].return_value = {**MOCK_ML, "ensemble_direction": "看跌"}
         mock_all["calc_combo_signals"].return_value = {"信号": "强势", "强度": 3, "详情": ""}
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -633,6 +677,7 @@ class TestUltimateAnalysis:
         mock_all["calc_combo_signals"].return_value = {"信号": "偏弱", "强度": 0, "详情": ""}
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -643,6 +688,7 @@ class TestUltimateAnalysis:
         mock_all["get_stock_sector_full"].return_value = "农林牧渔 > 养殖"
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -659,13 +705,15 @@ class TestUltimateAnalysis:
         df.loc[df.index[-1], "最低"] = df.loc[df.index[-1], "收盘"] * 0.98
         mock_all["cached_kline"].return_value = df
         mock_all["get_technical_summary"].return_value = {**MOCK_TECH_SUMMARY, "rsi_value": 50}
-        mock_all["cached_fund_flow"].return_value = pd.DataFrame({
-            "主力净流入-净额": [5_000_000, 3_000_000]})
+        mock_all["cached_fund_flow"].return_value = pd.DataFrame(
+            {"主力净流入-净额": [5_000_000, 3_000_000]}
+        )
         mock_all["calc_combo_signals"].return_value = {"信号": "强势", "强度": 3, "详情": ""}
         # 保证板块排名可见（不触发 sector_rank=0 风险）
         mock_all["get_stock_sector_full"].return_value = "金融 > 银行 > 股份制银行"
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -678,6 +726,7 @@ class TestUltimateAnalysis:
         mock_all["compare_strategies"].return_value = {}
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -688,6 +737,7 @@ class TestUltimateAnalysis:
     def test_ai_high_agreement_bullish(self, capsys, mock_all):
         """三模型一致看涨 → 📈 图标"""
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         out = capsys.readouterr().out
         assert "三模型一致" in out
@@ -696,9 +746,13 @@ class TestUltimateAnalysis:
     def test_ai_high_agreement_bearish(self, capsys, mock_all):
         """三模型一致看跌 → 📉 图标"""
         mock_all["predict_ensemble"].return_value = {
-            **MOCK_ML, "ensemble_direction": "看跌", "agreement": "高"}
+            **MOCK_ML,
+            "ensemble_direction": "看跌",
+            "agreement": "高",
+        }
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -707,9 +761,14 @@ class TestUltimateAnalysis:
     def test_ai_disagreement(self, capsys, mock_all):
         """模型分歧 → ⚠️ 分歧"""
         mock_all["predict_ensemble"].return_value = {
-            **MOCK_ML, "ensemble_direction": "看涨", "agreement": "低", "votes": "2-1"}
+            **MOCK_ML,
+            "ensemble_direction": "看涨",
+            "agreement": "低",
+            "votes": "2-1",
+        }
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -722,6 +781,7 @@ class TestUltimateAnalysis:
         mock_all["macro_market_signal"].return_value = {"error": "timeout"}
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out
@@ -737,12 +797,13 @@ class TestUltimateAnalysis:
         # 注意：sector 名不能有子串匹配 — 源码中 nm == sname or sname in nm or nm in sname
         # 用唯一前导码避免误匹配（如 "Sector-XX"）
         mock_all["get_sectors"].return_value = {
-            f"SECTOR_{i:03d}": {"涨跌幅": f"{1.0 - i*0.1:.2f}", "资金净流入": "0"}
+            f"SECTOR_{i:03d}": {"涨跌幅": f"{1.0 - i * 0.1:.2f}", "资金净流入": "0"}
             for i in range(20)
         }
         mock_all["get_stock_sector_full"].return_value = "SECTOR_015"
         patchers = _apply_patches(mock_all)
         from stock_analyzer.ultimate_report import ultimate_analysis
+
         ultimate_analysis("000001")
         _stop_patches(patchers)
         out = capsys.readouterr().out

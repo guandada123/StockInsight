@@ -16,13 +16,14 @@ from stock_analyzer.backtest import (
     strategy_bollinger_breakout,
     strategy_grid,
     strategy_ma_cross,
-    strategy_macd_cross,
     strategy_ma_trend,
+    strategy_macd_cross,
     strategy_momentum_breakout,
     strategy_rsi_reversal,
 )
 
 # 扩展 test_quant.py 中已有的 _make_df，确保测试可重复
+
 
 class TestBacktestStrategies(unittest.TestCase):
     """各策略函数单元测试（纯逻辑，不依赖网络）"""
@@ -30,14 +31,16 @@ class TestBacktestStrategies(unittest.TestCase):
     def _make_df(self, rows=200):
         np.random.seed(42)
         close = 50 + np.cumsum(np.random.randn(rows) * 0.5)
-        return pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=rows),
-            "开盘": close * 0.99,
-            "收盘": close,
-            "最高": close * 1.02,
-            "最低": close * 0.98,
-            "成交量": np.random.randint(1_000_000, 10_000_000, rows),
-        })
+        return pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=rows),
+                "开盘": close * 0.99,
+                "收盘": close,
+                "最高": close * 1.02,
+                "最低": close * 0.98,
+                "成交量": np.random.randint(1_000_000, 10_000_000, rows),
+            }
+        )
 
     def test_run_backtest_returns_dict(self):
         """回测返回字典"""
@@ -77,7 +80,9 @@ class TestBacktestStrategies(unittest.TestCase):
         """RSI 策略不报错"""
         df = self._make_df(200)
         try:
-            result = run_backtest(df, strategy_rsi_reversal, {"period": 14, "oversold": 30, "overbought": 70})
+            result = run_backtest(
+                df, strategy_rsi_reversal, {"period": 14, "oversold": 30, "overbought": 70}
+            )
             self.assertIsInstance(result, dict)
         except Exception as e:
             self.fail(f"strategy_rsi_reversal raised: {e}")
@@ -118,13 +123,17 @@ class TestBacktestStrategies(unittest.TestCase):
         self.assertIn("metrics", result)
         self.assertIn("基准收益%", result["metrics"])
 
+
 # ── 网格交易 ──────────────────────────────────────────────
+
 
 class TestStrategyGrid(unittest.TestCase):
     """strategy_grid 网格交易策略测试"""
 
     def _make_price_series(self, prices):
-        return pd.DataFrame({"收盘": prices, "日期": pd.date_range("2025-01-01", periods=len(prices))})
+        return pd.DataFrame(
+            {"收盘": prices, "日期": pd.date_range("2025-01-01", periods=len(prices))}
+        )
 
     def test_grid_basic(self):
         """正常网格：5% 网格触发买卖"""
@@ -149,7 +158,9 @@ class TestStrategyGrid(unittest.TestCase):
         result = strategy_grid(df, grid_pct=0.05)
         self.assertIn("signal", result.columns)
 
+
 # ── 均线趋势 ────────────────────────────────────────────
+
 
 class TestStrategyMaTrend(unittest.TestCase):
     """strategy_ma_trend 均线多头排列测试"""
@@ -157,12 +168,14 @@ class TestStrategyMaTrend(unittest.TestCase):
     def _make_trend_df(self, rows=60):
         np.random.seed(7)
         close = 50 + np.cumsum(np.random.randn(rows) * 0.8)
-        return pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=rows),
-            "收盘": close,
-            "最高": close * 1.02,
-            "最低": close * 0.98,
-        })
+        return pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=rows),
+                "收盘": close,
+                "最高": close * 1.02,
+                "最低": close * 0.98,
+            }
+        )
 
     def test_trend_returns_signals(self):
         """均线趋势返回 DataFrame 含 signal"""
@@ -184,57 +197,71 @@ class TestStrategyMaTrend(unittest.TestCase):
         result = strategy_ma_trend(df)
         self.assertIsInstance(result, pd.DataFrame)
 
+
 # ── 布林带列路径 ─────────────────────────────────────
+
 
 class TestStrategyBollingerColumns(unittest.TestCase):
     """strategy_bollinger_breakout 不同列名路径测试"""
 
     def test_with_bb_columns(self):
         """df 已有 BB_UPPER/BB_LOWER/BB_MIDDLE 列"""
-        df = pd.DataFrame({
-            "收盘": [50, 51, 52, 53, 54],
-            "BB_UPPER": [55, 56, 57, 58, 59],
-            "BB_LOWER": [45, 44, 43, 42, 41],
-            "BB_MIDDLE": [50, 50, 50, 50, 50],
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [50, 51, 52, 53, 54],
+                "BB_UPPER": [55, 56, 57, 58, 59],
+                "BB_LOWER": [45, 44, 43, 42, 41],
+                "BB_MIDDLE": [50, 50, 50, 50, 50],
+            }
+        )
         result = strategy_bollinger_breakout(df)
         self.assertIn("signal", result.columns)
 
     def test_with_lowercase_columns(self):
         """df 有小写 upper/lower/middle 列"""
-        df = pd.DataFrame({
-            "收盘": [50, 51, 52, 53, 54],
-            "upper": [55, 56, 57, 58, 59],
-            "lower": [45, 44, 43, 42, 41],
-            "middle": [50, 50, 50, 50, 50],
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [50, 51, 52, 53, 54],
+                "upper": [55, 56, 57, 58, 59],
+                "lower": [45, 44, 43, 42, 41],
+                "middle": [50, 50, 50, 50, 50],
+            }
+        )
         result = strategy_bollinger_breakout(df)
         self.assertIn("signal", result.columns)
 
     def test_without_extra_columns(self):
         """只有收盘价列（走 rolling 计算）"""
-        df = pd.DataFrame({
-            "收盘": [50 + i for i in range(30)],
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [50 + i for i in range(30)],
+            }
+        )
         result = strategy_bollinger_breakout(df)
         self.assertIn("signal", result.columns)
 
+
 # ── MACD 列路径 ────────────────────────────────────────
+
 
 class TestStrategyMacdCrossColumns(unittest.TestCase):
     """strategy_macd_cross 已有 DIF/DEA 列"""
 
     def test_with_dif_dea_columns(self):
         """df 已有 DIF/DEA 列"""
-        df = pd.DataFrame({
-            "收盘": [50, 51, 52, 53, 54],
-            "DIF": [0.5, 1.0, 1.5, 2.0, 2.5],
-            "DEA": [0.3, 0.8, 1.2, 1.8, 2.2],
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [50, 51, 52, 53, 54],
+                "DIF": [0.5, 1.0, 1.5, 2.0, 2.5],
+                "DEA": [0.3, 0.8, 1.2, 1.8, 2.2],
+            }
+        )
         result = strategy_macd_cross(df)
         self.assertIn("signal", result.columns)
 
+
 # ── 回测引擎边缘分支 ─────────────────────────────────
+
 
 class TestBacktestEdgeCases(unittest.TestCase):
     """run_backtest 边缘分支测试"""
@@ -242,13 +269,15 @@ class TestBacktestEdgeCases(unittest.TestCase):
     def _make_kline(self, rows=200):
         np.random.seed(42)
         close = 50 + np.cumsum(np.random.randn(rows) * 0.5)
-        return pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=rows),
-            "收盘": close,
-            "最高": close * 1.02,
-            "最低": close * 0.98,
-            "成交量": np.random.randint(1_000_000, 10_000_000, rows),
-        })
+        return pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=rows),
+                "收盘": close,
+                "最高": close * 1.02,
+                "最低": close * 0.98,
+                "成交量": np.random.randint(1_000_000, 10_000_000, rows),
+            }
+        )
 
     def test_missing_close_column(self):
         """缺少 '收盘' 列 → ValueError"""
@@ -258,8 +287,10 @@ class TestBacktestEdgeCases(unittest.TestCase):
 
     def test_signals_all_zero(self):
         """信号全零 → 0 交易"""
+
         def _noop_strategy(df):
             return pd.DataFrame({"signal": [0] * len(df)}, index=df.index)
+
         df = self._make_kline(100)
         result = run_backtest(df, _noop_strategy)
         self.assertIsNotNone(result)
@@ -277,27 +308,52 @@ class TestBacktestEdgeCases(unittest.TestCase):
         result = run_backtest(df, strategy_ma_cross, None)
         self.assertIsInstance(result, dict)
 
+
 # ── 止盈止损风控 ──────────────────────────────────
+
 
 class TestBacktestRiskControl(unittest.TestCase):
     """run_backtest 止盈止损移动止损测试"""
 
     def _trend_df(self):
         """单边下跌后反弹的 K 线"""
-        prices = [100, 99, 98, 97, 96, 95, 94, 93, 92, 91,
-                  90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100]
-        return pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=len(prices)),
-            "收盘": prices,
-            "最高": [p * 1.01 for p in prices],
-            "最低": [p * 0.99 for p in prices],
-        })
+        prices = [
+            100,
+            99,
+            98,
+            97,
+            96,
+            95,
+            94,
+            93,
+            92,
+            91,
+            90,
+            91,
+            92,
+            93,
+            94,
+            95,
+            96,
+            97,
+            98,
+            99,
+            100,
+        ]
+        return pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=len(prices)),
+                "收盘": prices,
+                "最高": [p * 1.01 for p in prices],
+                "最低": [p * 0.99 for p in prices],
+            }
+        )
 
     def _buy_hold_strategy(self, df):
         """始终买入持有直至卖出信号"""
         sig = pd.Series(0, index=df.index)
-        sig.iloc[1] = 1     # 第2天买入
-        sig.iloc[-2] = -1   # 倒数第2天卖出
+        sig.iloc[1] = 1  # 第2天买入
+        sig.iloc[-2] = -1  # 倒数第2天卖出
         return pd.DataFrame({"signal": sig})
 
     def test_stop_loss_triggers(self):
@@ -313,14 +369,15 @@ class TestBacktestRiskControl(unittest.TestCase):
     def test_take_profit_triggers(self):
         """固定止盈触发 → 在止盈价卖出"""
         # 价格从100跌到90再涨到120 → 止盈路径
-        prices = [100, 99, 98, 97, 96, 95, 94, 93, 92, 91,
-                  90, 95, 100, 105, 110, 115, 120, 125]
-        df = pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=len(prices)),
-            "收盘": prices,
-            "最高": [p * 1.01 for p in prices],
-            "最低": [p * 0.99 for p in prices],
-        })
+        prices = [100, 99, 98, 97, 96, 95, 94, 93, 92, 91, 90, 95, 100, 105, 110, 115, 120, 125]
+        df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=len(prices)),
+                "收盘": prices,
+                "最高": [p * 1.01 for p in prices],
+                "最低": [p * 0.99 for p in prices],
+            }
+        )
         result = run_backtest(df, self._buy_hold_strategy, take_profit=0.15)
         sells = [t for t in result["trades"] if t["action"] == "SELL"]
         reasons = [t.get("exit_reason", "") for t in sells]
@@ -330,21 +387,24 @@ class TestBacktestRiskControl(unittest.TestCase):
     def test_trailing_stop_triggers(self):
         """移动止损触发"""
         # 先涨后跌 → 从高点回撤触发
-        prices = [100, 102, 105, 108, 110, 112, 115, 113, 110, 107,
-                  104, 101, 98, 95, 92, 90]
-        df = pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=len(prices)),
-            "收盘": prices,
-            "最高": [p * 1.01 for p in prices],
-            "最低": [p * 0.99 for p in prices],
-        })
+        prices = [100, 102, 105, 108, 110, 112, 115, 113, 110, 107, 104, 101, 98, 95, 92, 90]
+        df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=len(prices)),
+                "收盘": prices,
+                "最高": [p * 1.01 for p in prices],
+                "最低": [p * 0.99 for p in prices],
+            }
+        )
         result = run_backtest(df, self._buy_hold_strategy, trailing_stop=0.08)
         sells = [t for t in result["trades"] if t["action"] == "SELL"]
         reasons = [t.get("exit_reason", "") for t in sells]
         has_ts = any("移动止损" in r for r in reasons)
         self.assertTrue(has_ts, f"Expected 移动止损 in reasons: {reasons}")
 
+
 # ── 多策略对比 ──────────────────────────────────
+
 
 class TestCompareStrategies(unittest.TestCase):
     """compare_strategies 多策略对比测试"""
@@ -352,12 +412,14 @@ class TestCompareStrategies(unittest.TestCase):
     def _make_kline(self, rows=200):
         np.random.seed(42)
         close = 50 + np.cumsum(np.random.randn(rows) * 0.5)
-        return pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=rows),
-            "收盘": close,
-            "最高": close * 1.02,
-            "最低": close * 0.98,
-        })
+        return pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=rows),
+                "收盘": close,
+                "最高": close * 1.02,
+                "最低": close * 0.98,
+            }
+        )
 
     def test_default_strategies(self):
         """默认策略列表全部运行"""
@@ -380,7 +442,8 @@ class TestCompareStrategies(unittest.TestCase):
     def test_verbose_output(self):
         """verbose=True 时打印跳过信息（仅测不报错）"""
         df = self._make_kline(200)
-        import io, sys
+        import io
+
         captured = io.StringIO()
         old_stdout = sys.stdout
         sys.stdout = captured
@@ -398,7 +461,9 @@ class TestCompareStrategies(unittest.TestCase):
         results = compare_strategies(df, strategies=["nonexistent"], verbose=False)
         self.assertEqual(len(results), 0)
 
+
 # ── 参数优化 ──────────────────────────────────
+
 
 class TestOptimizeStrategy(unittest.TestCase):
     """optimize_strategy 参数网格优化测试"""
@@ -406,12 +471,14 @@ class TestOptimizeStrategy(unittest.TestCase):
     def _make_kline(self, rows=200):
         np.random.seed(42)
         close = 50 + np.cumsum(np.random.randn(rows) * 0.5)
-        return pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=rows),
-            "收盘": close,
-            "最高": close * 1.02,
-            "最低": close * 0.98,
-        })
+        return pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=rows),
+                "收盘": close,
+                "最高": close * 1.02,
+                "最低": close * 0.98,
+            }
+        )
 
     def test_unknown_strategy(self):
         """未知策略返回 None"""
@@ -444,7 +511,8 @@ class TestOptimizeStrategy(unittest.TestCase):
         """超过10组参数 → 触发进度输出"""
         df = self._make_kline(200)
         grid = {"fast": [3, 5, 8, 10], "slow": [15, 20, 30]}  # 3*4=12 combos
-        import io, sys
+        import io
+
         captured = io.StringIO()
         old_stderr = sys.stderr
         sys.stderr = captured
@@ -457,7 +525,9 @@ class TestOptimizeStrategy(unittest.TestCase):
         self.assertIn("优化进度", output)
         self.assertIn("优化完成", output)
 
+
 # ── JSON 导出 ──────────────────────────────────
+
 
 class TestExportBacktestJson(unittest.TestCase):
     """export_backtest_json 测试"""
@@ -465,6 +535,7 @@ class TestExportBacktestJson(unittest.TestCase):
     def test_export_to_tempfile(self):
         """导出到临时文件并验证内容"""
         import tempfile
+
         result = {
             "metrics": {"总收益率%": 12.5},
             "trades": [{"action": "BUY", "price": 50.0}],
@@ -476,6 +547,7 @@ class TestExportBacktestJson(unittest.TestCase):
         try:
             export_backtest_json(result, path)
             import json
+
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             self.assertEqual(data["metrics"]["总收益率%"], 12.5)

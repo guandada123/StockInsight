@@ -64,7 +64,7 @@ def _get_sector_stocks(sector_name):
         if row:
             import pickle
 
-            data = pickle.loads(row[0])
+            data = pickle.loads(row[0])  # nosec — 从本地 SQLite 读取，非不可信数据
             if isinstance(data, dict) and "stocks" in data:
                 return data["stocks"]
     except Exception:

@@ -11,16 +11,18 @@
 """
 
 import hashlib
+from unittest.mock import ANY, MagicMock, patch
+
 import numpy as np
 import pandas as pd
 import pytest
-from unittest.mock import MagicMock, patch, ANY
 
 from stock_analyzer import ml_predict
 
 # ═══════════════════════════════════════════════════════════
 # 测试数据生成
 # ═══════════════════════════════════════════════════════════
+
 
 def _make_kline_df(n=200, seed=42):
     """生成模拟 K 线 DataFrame"""
@@ -29,31 +31,37 @@ def _make_kline_df(n=200, seed=42):
     close = 100 + np.cumsum(rng.normal(0, 0.5, n))
     high = close * (1 + np.abs(rng.normal(0, 0.01, n)))
     low = close * (1 - np.abs(rng.normal(0, 0.01, n)))
-    return pd.DataFrame({
-        "日期": dates,
-        "开盘": close * (1 + rng.normal(0, 0.005, n)),
-        "收盘": close,
-        "最高": high,
-        "最低": low,
-        "成交量": rng.integers(100_000, 10_000_000, n),
-        "成交额": rng.integers(1_000_000, 100_000_000, n),
-        "昨收": pd.Series(close).shift(1).values,
-        "涨跌幅": pd.Series(close).pct_change().values * 100,
-        "涨跌额": pd.Series(close).diff().values,
-        "振幅": (high - low) / close * 100,
-    })
+    return pd.DataFrame(
+        {
+            "日期": dates,
+            "开盘": close * (1 + rng.normal(0, 0.005, n)),
+            "收盘": close,
+            "最高": high,
+            "最低": low,
+            "成交量": rng.integers(100_000, 10_000_000, n),
+            "成交额": rng.integers(1_000_000, 100_000_000, n),
+            "昨收": pd.Series(close).shift(1).values,
+            "涨跌幅": pd.Series(close).pct_change().values * 100,
+            "涨跌额": pd.Series(close).diff().values,
+            "振幅": (high - low) / close * 100,
+        }
+    )
+
 
 def _make_mock_model(n_features=35, n_samples=30):
     """创建 mock RF/RF 模型实例"""
     model = MagicMock()
     model.fit.return_value = None
     model.predict.return_value = np.ones(n_samples, dtype=int)
-    model.predict_proba.return_value = np.column_stack([
-        np.full(n_samples + 1, 0.3),
-        np.full(n_samples + 1, 0.7),
-    ])
+    model.predict_proba.return_value = np.column_stack(
+        [
+            np.full(n_samples + 1, 0.3),
+            np.full(n_samples + 1, 0.7),
+        ]
+    )
     model.feature_importances_ = np.random.default_rng(42).random(n_features)
     return model
+
 
 def _make_mock_regressor(n_samples=30):
     """创建 mock 回归模型实例"""
@@ -62,9 +70,11 @@ def _make_mock_regressor(n_samples=30):
     model.predict.return_value = np.full(n_samples + 1, 0.005)
     return model
 
+
 # ═══════════════════════════════════════════════════════════
 # build_features — 特征工程（纯 pandas/numpy，无 mock）
 # ═══════════════════════════════════════════════════════════
+
 
 class TestBuildFeatures:
     def test_basic(self):
@@ -109,11 +119,28 @@ class TestBuildFeatures:
         """特征名列包含预期特征"""
         df = _make_kline_df(200)
         X, y, y_pct, names, idx = ml_predict.build_features(df)
-        expected = {"returns_1d", "returns_5d", "ma_5", "ma_60", "ma_60_dist",
-                     "volatility_5d", "volatility_20d", "volume_ma5", "volume_ma20",
-                     "volume_ratio", "rsi", "macd_dif", "macd_bar",
-                     "bb_width", "bb_position", "kdj_k", "kdj_d",
-                     "trend_strength", "adx_plus", "adx_minus"}
+        expected = {
+            "returns_1d",
+            "returns_5d",
+            "ma_5",
+            "ma_60",
+            "ma_60_dist",
+            "volatility_5d",
+            "volatility_20d",
+            "volume_ma5",
+            "volume_ma20",
+            "volume_ratio",
+            "rsi",
+            "macd_dif",
+            "macd_bar",
+            "bb_width",
+            "bb_position",
+            "kdj_k",
+            "kdj_d",
+            "trend_strength",
+            "adx_plus",
+            "adx_minus",
+        }
         assert expected.issubset(set(names)), f"缺少特征: {expected - set(names)}"
 
     def test_target_is_binary(self):
@@ -136,9 +163,11 @@ class TestBuildFeatures:
         ml_predict.build_features(df)
         assert set(df.columns) == orig_cols
 
+
 # ═══════════════════════════════════════════════════════════
 # predict_direction — 方向预测
 # ═══════════════════════════════════════════════════════════
+
 
 class TestPredictDirection:
     def setup_method(self):
@@ -232,10 +261,12 @@ class TestPredictDirection:
         # 预测全部为 0（下跌）
         n = 30
         model.predict.return_value = np.zeros(n, dtype=int)
-        model.predict_proba.return_value = np.column_stack([
-            np.full(n + 1, 0.7),
-            np.full(n + 1, 0.3),
-        ])
+        model.predict_proba.return_value = np.column_stack(
+            [
+                np.full(n + 1, 0.7),
+                np.full(n + 1, 0.3),
+            ]
+        )
         model.feature_importances_ = np.random.default_rng(42).random(35)
         mock_rf.return_value = model
 
@@ -258,10 +289,11 @@ class TestPredictDirection:
         # patch roc_auc_score 来验证它不被调用
         with patch("sklearn.metrics.roc_auc_score") as mock_roc:
             mock_roc.return_value = 0.9
-            with patch("sklearn.metrics.accuracy_score", return_value=0.85), \
-                 patch("sklearn.metrics.precision_score", return_value=0.80), \
-                 patch("sklearn.metrics.recall_score", return_value=0.75):
-
+            with (
+                patch("sklearn.metrics.accuracy_score", return_value=0.85),
+                patch("sklearn.metrics.precision_score", return_value=0.80),
+                patch("sklearn.metrics.recall_score", return_value=0.75),
+            ):
                 # 让 y_test 全为 1 → 单标签：这只发生在极端情况下
                 # 我们用 build_features 自然跑，所以 y_test 通常有 mixed labels
                 # 这个测试验证如果有 single label，AUC 被设为 0
@@ -278,15 +310,20 @@ class TestPredictDirection:
         model = MagicMock(spec=["fit", "predict", "predict_proba"])
         model.fit.return_value = None
         model.predict.return_value = np.ones(30, dtype=int)
-        model.predict_proba.return_value = np.column_stack([
-            np.full(31, 0.3), np.full(31, 0.7),
-        ])
+        model.predict_proba.return_value = np.column_stack(
+            [
+                np.full(31, 0.3),
+                np.full(31, 0.7),
+            ]
+        )
         mock_rf.return_value = model
 
-        with patch("sklearn.metrics.accuracy_score", return_value=0.85), \
-             patch("sklearn.metrics.precision_score", return_value=0.80), \
-             patch("sklearn.metrics.recall_score", return_value=0.75), \
-             patch("sklearn.metrics.roc_auc_score", return_value=0.90):
+        with (
+            patch("sklearn.metrics.accuracy_score", return_value=0.85),
+            patch("sklearn.metrics.precision_score", return_value=0.80),
+            patch("sklearn.metrics.recall_score", return_value=0.75),
+            patch("sklearn.metrics.roc_auc_score", return_value=0.90),
+        ):
             result = ml_predict.predict_direction(self.df)
             assert result["重要特征"] == []
 
@@ -296,7 +333,13 @@ class TestPredictDirection:
         mock_X = np.random.default_rng(42).random((100, 30))
         mock_y = np.ones(100, dtype=int)
         with patch("stock_analyzer.ml_predict.build_features") as mock_bf:
-            mock_bf.return_value = (mock_X, mock_y, np.zeros(100), [f"f{i}" for i in range(30)], None)
+            mock_bf.return_value = (
+                mock_X,
+                mock_y,
+                np.zeros(100),
+                [f"f{i}" for i in range(30)],
+                None,
+            )
             result = ml_predict.predict_direction(self.df)
             assert "error" in result
             assert "训练数据标签单一" in result["error"]
@@ -309,17 +352,21 @@ class TestPredictDirection:
         model.fit.side_effect = ValueError("训练失败")
         mock_rf.return_value = model
 
-        with patch("sklearn.metrics.accuracy_score", return_value=0.85), \
-             patch("sklearn.metrics.precision_score", return_value=0.80), \
-             patch("sklearn.metrics.recall_score", return_value=0.75), \
-             patch("sklearn.metrics.roc_auc_score", return_value=0.90):
+        with (
+            patch("sklearn.metrics.accuracy_score", return_value=0.85),
+            patch("sklearn.metrics.precision_score", return_value=0.80),
+            patch("sklearn.metrics.recall_score", return_value=0.75),
+            patch("sklearn.metrics.roc_auc_score", return_value=0.90),
+        ):
             result = ml_predict.predict_direction(self.df)
             assert "error" in result
             assert "训练失败" in result["error"]
 
+
 # ═══════════════════════════════════════════════════════════
 # predict_return — 涨跌幅预测
 # ═══════════════════════════════════════════════════════════
+
 
 class TestPredictReturn:
     def setup_method(self):
@@ -369,16 +416,21 @@ class TestPredictReturn:
         result = ml_predict.predict_return(self.df)
         assert "error" in result
 
+
 # ═══════════════════════════════════════════════════════════
 # ml_enhanced_score — ML 增强评分
 # ═══════════════════════════════════════════════════════════
+
 
 class TestMlEnhancedScore:
     def setup_method(self):
         self.df = _make_kline_df(200)
         # 成功结果
         self._success_direction = {
-            "预测方向": "看涨", "上涨概率": 70.0, "准确率%": 85.0, "AUC": 0.9
+            "预测方向": "看涨",
+            "上涨概率": 70.0,
+            "准确率%": 85.0,
+            "AUC": 0.9,
         }
         self._success_return = {"预测涨跌幅%": 1.5}
 
@@ -431,9 +483,11 @@ class TestMlEnhancedScore:
         result = ml_predict.ml_enhanced_score(self.df)
         assert result["ml_AUC"] == 0
 
+
 # ═══════════════════════════════════════════════════════════
 # predict_ensemble — 集成投票
 # ═══════════════════════════════════════════════════════════
+
 
 class TestPredictEnsemble:
     def setup_method(self):
@@ -508,7 +562,7 @@ class TestPredictEnsemble:
         """两个模型 error → 数据不足（仅 1 个有效）"""
         mock_dir.side_effect = [
             {"预测方向": "看涨", "上涨概率": 70.0},  # xgb: valid
-            {"error": "数据不足"},                    # rf: error
+            {"error": "数据不足"},  # rf: error
         ]
         mock_lgb.return_value = {"error": "数据不足"}  # lgb: error
 
@@ -520,9 +574,11 @@ class TestPredictEnsemble:
         assert "rf" in result["models"]
         assert "lgb" in result["models"]
 
+
 # ═══════════════════════════════════════════════════════════
 # predict_dual_model — 双模型验证（委托给 ensemble）
 # ═══════════════════════════════════════════════════════════
+
 
 class TestPredictDualModel:
     def test_delegates_to_ensemble(self):
@@ -534,9 +590,11 @@ class TestPredictDualModel:
             assert result["ensemble_direction"] == "看涨"
             mock_ens.assert_called_once_with(df, None)
 
+
 # ═══════════════════════════════════════════════════════════
 # _cached_predict_ensemble — 缓存机制
 # ═══════════════════════════════════════════════════════════
+
 
 class TestCachedPredictEnsemble:
     def test_cache_hit(self):
@@ -587,9 +645,11 @@ class TestCachedPredictEnsemble:
             assert expected_key in ml_predict._RESULT_CACHE
             assert ml_predict._RESULT_CACHE[expected_key] == {"ensemble_direction": "看涨"}
 
+
 # ═══════════════════════════════════════════════════════════
 # _predict_lgb — LightGBM 降级测试
 # ═══════════════════════════════════════════════════════════
+
 
 class TestPredictLgb:
     @patch("lightgbm.LGBMClassifier", side_effect=ImportError("test"))

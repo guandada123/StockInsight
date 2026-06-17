@@ -13,16 +13,20 @@ from stock_analyzer import portfolio
 
 # ── 测试辅助函数 ─────────────────────────────────
 
+
 def _make_kline(close_prices, start_date="2026-01-01"):
     """构建与 cached_kline 返回值一致的 mock DataFrame"""
     dates = pd.date_range(start_date, periods=len(close_prices), freq="D")
     return pd.DataFrame({"日期": dates, "收盘": close_prices})
 
+
 def _portf(name="test", stocks=None):
     """快速构造一个组合 dict"""
     return {"name": name, "created_at": "2026-06-14", "stocks": stocks or []}
 
+
 # ── _empty_result ────────────────────────────────
+
 
 class TestEmptyResult:
     def test_returns_correct_structure(self):
@@ -37,7 +41,9 @@ class TestEmptyResult:
             "stocks": [],
         }
 
+
 # ── 内部路径/目录工具 ──────────────────────────
+
 
 class TestPortfolioPathUtils:
     def test_ensure_dir_creates_directory(self, tmp_path):
@@ -58,7 +64,9 @@ class TestPortfolioPathUtils:
             assert path.endswith("my_portfolio.json")
             assert str(tmp_path) in path
 
+
 # ── _get_current_price ─────────────────────────
+
 
 class TestGetCurrentPrice:
     def test_normal_returns_last_close(self):
@@ -70,7 +78,9 @@ class TestGetCurrentPrice:
         with patch("stock_analyzer.portfolio.cached_kline", return_value=pd.DataFrame()):
             assert portfolio._get_current_price("000001") is None
 
+
 # ── _get_daily_returns_series ──────────────────
+
 
 class TestGetDailyReturnsSeries:
     def test_normal_returns_pct_change(self):
@@ -95,7 +105,9 @@ class TestGetDailyReturnsSeries:
         assert isinstance(sr, pd.Series)
         assert sr.empty
 
+
 # ── create_portfolio ───────────────────────────
+
 
 class TestCreatePortfolio:
     def test_with_stocks(self):
@@ -120,7 +132,9 @@ class TestCreatePortfolio:
                 result = portfolio.create_portfolio("dated")
         assert result["created_at"] == "2026-06-14"
 
+
 # ── save_portfolio ─────────────────────────────
+
 
 class TestSavePortfolio:
     def test_saves_json_to_correct_path(self, tmp_path):
@@ -137,7 +151,9 @@ class TestSavePortfolio:
             with patch("builtins.open", MagicMock()):
                 assert portfolio.save_portfolio(_portf("x")) is True
 
+
 # ── load_portfolio ─────────────────────────────
+
 
 class TestLoadPortfolio:
     def test_loads_existing(self, tmp_path):
@@ -152,7 +168,9 @@ class TestLoadPortfolio:
         with patch("stock_analyzer.portfolio.PORTFOLIO_DIR", str(tmp_path)):
             assert portfolio.load_portfolio("nonexistent") is None
 
+
 # ── list_portfolios ───────────────────────────
+
 
 class TestListPortfolios:
     def test_lists_json_files_sorted(self, tmp_path):
@@ -169,7 +187,9 @@ class TestListPortfolios:
         with patch("stock_analyzer.portfolio.PORTFOLIO_DIR", str(tmp_path)):
             assert portfolio.list_portfolios() == []
 
+
 # ── add_stock ─────────────────────────────────
+
 
 class TestAddStock:
     def test_add_new_stock(self):
@@ -192,14 +212,19 @@ class TestAddStock:
         portfolio.add_stock(pf, "000001", 100, 10.0)
         assert pf["stocks"] == [{"code": "000001", "weight": 100, "cost": 10.0}]  # type: ignore[comparison-overlap]
 
+
 # ── remove_stock ──────────────────────────────
+
 
 class TestRemoveStock:
     def test_remove_existing(self):
-        pf = _portf("p", [
-            {"code": "000001", "weight": 100, "cost": 10.0},
-            {"code": "000002", "weight": 200, "cost": 8.0},
-        ])
+        pf = _portf(
+            "p",
+            [
+                {"code": "000001", "weight": 100, "cost": 10.0},
+                {"code": "000002", "weight": 200, "cost": 8.0},
+            ],
+        )
         result = portfolio.remove_stock(pf, "000001")
         assert len(result["stocks"]) == 1
         assert result["stocks"][0]["code"] == "000002"
@@ -214,7 +239,9 @@ class TestRemoveStock:
         result = portfolio.remove_stock(pf, "000001")
         assert result["stocks"] == []
 
+
 # ── analyze_portfolio ─────────────────────────
+
 
 class TestAnalyzePortfolio:
     """注意：analyze_portfolio 内部调用 _get_current_price / _get_daily_returns_series，
@@ -253,13 +280,18 @@ class TestAnalyzePortfolio:
         """两只股票 → 可以计算协方差和夏普"""
         kline_a = _make_kline([10.0, 10.5, 11.0, 11.5, 12.0])
         kline_b = _make_kline([8.0, 8.2, 9.0, 9.5, 10.0])
-        pf = _portf("多票", [
-            {"code": "000001", "weight": 100, "cost": 10.0},
-            {"code": "000002", "weight": 200, "cost": 8.0},
-        ])
+        pf = _portf(
+            "多票",
+            [
+                {"code": "000001", "weight": 100, "cost": 10.0},
+                {"code": "000002", "weight": 200, "cost": 8.0},
+            ],
+        )
         with patch("stock_analyzer.portfolio.cached_kline") as mock_kl:
+
             def side_effect(code, days=120):
                 return {"000001": kline_a, "000002": kline_b}.get(code, pd.DataFrame())
+
             mock_kl.side_effect = side_effect
 
             result = portfolio.analyze_portfolio(pf)
@@ -280,14 +312,19 @@ class TestAnalyzePortfolio:
 
     def test_stock_with_none_price(self):
         """一只股票无现价 → 使用 fallback 逻辑"""
-        pf = _portf("无价", [
-            {"code": "000001", "weight": 100, "cost": 10.0},
-            {"code": "000002", "weight": 200, "cost": 8.0},
-        ])
+        pf = _portf(
+            "无价",
+            [
+                {"code": "000001", "weight": 100, "cost": 10.0},
+                {"code": "000002", "weight": 200, "cost": 8.0},
+            ],
+        )
         kline_a = _make_kline([10.0, 10.5, 11.0, 11.5, 12.0])
         with patch("stock_analyzer.portfolio.cached_kline") as mock_kl:
+
             def side_effect(code, days=120):
                 return kline_a if code == "000001" else pd.DataFrame()
+
             mock_kl.side_effect = side_effect
 
             result = portfolio.analyze_portfolio(pf)
@@ -299,10 +336,13 @@ class TestAnalyzePortfolio:
 
     def test_all_prices_none(self):
         """全部无价格 → total_value = total_cost = weights sum"""
-        pf = _portf("全无", [
-            {"code": "000001", "weight": 100, "cost": 10.0},
-            {"code": "000002", "weight": 200, "cost": 8.0},
-        ])
+        pf = _portf(
+            "全无",
+            [
+                {"code": "000001", "weight": 100, "cost": 10.0},
+                {"code": "000002", "weight": 200, "cost": 8.0},
+            ],
+        )
         with patch("stock_analyzer.portfolio.cached_kline", return_value=pd.DataFrame()):
             result = portfolio.analyze_portfolio(pf)
         # total_value = 100 (from any_none_price fallback: weight * 1.0)
@@ -319,13 +359,18 @@ class TestAnalyzePortfolio:
     def test_single_valid_return_series(self):
         """只有一只股票有有效的收益率序列 → vol=0"""
         kline = _make_kline([10.0, 10.5, 11.0, 11.5, 12.0])
-        pf = _portf("单序列", [
-            {"code": "000001", "weight": 100, "cost": 10.0},
-            {"code": "000002", "weight": 200, "cost": 8.0},
-        ])
+        pf = _portf(
+            "单序列",
+            [
+                {"code": "000001", "weight": 100, "cost": 10.0},
+                {"code": "000002", "weight": 200, "cost": 8.0},
+            ],
+        )
         with patch("stock_analyzer.portfolio.cached_kline") as mock_kl:
+
             def side_effect(code, days=120):
                 return kline if code == "000001" else pd.DataFrame()
+
             mock_kl.side_effect = side_effect
 
             result = portfolio.analyze_portfolio(pf)
@@ -337,14 +382,17 @@ class TestAnalyzePortfolio:
         # 股票A：3天数据，股票B：3天但完全不同的日期
         kline_a = _make_kline([10.0, 11.0, 12.0], start_date="2026-01-01")
         kline_b = _make_kline([8.0, 9.0, 10.0], start_date="2026-02-01")
-        pf = _portf("日期不重叠", [
-            {"code": "000001", "weight": 100, "cost": 10.0},
-            {"code": "000002", "weight": 200, "cost": 8.0},
-        ])
+        pf = _portf(
+            "日期不重叠",
+            [
+                {"code": "000001", "weight": 100, "cost": 10.0},
+                {"code": "000002", "weight": 200, "cost": 8.0},
+            ],
+        )
         with patch("stock_analyzer.portfolio.cached_kline") as mock_kl:
-            mock_kl.side_effect = lambda code, days=120: {
-                "000001": kline_a, "000002": kline_b
-            }.get(code, pd.DataFrame())
+            mock_kl.side_effect = lambda code, days=120: {"000001": kline_a, "000002": kline_b}.get(
+                code, pd.DataFrame()
+            )
 
             result = portfolio.analyze_portfolio(pf)
         # 虽然 len(valid_ret) >= 2，但 dropna 后 ret_df 为空 → vol = 0
@@ -359,7 +407,9 @@ class TestAnalyzePortfolio:
         assert round(result["total_return_pct"], 2) == 0.0
         assert result["stocks"][0]["贡献度%"] == 0.0
 
+
 # ── rebalance ──────────────────────────────────
+
 
 class TestRebalance:
     def test_empty_portfolio_returns_empty_list(self):
@@ -401,7 +451,9 @@ class TestRebalance:
         assert len(suggestions) == 1
         assert suggestions[0]["建议"] == "持有"  # 100% vs 100%
 
+
 # ── optimize_portfolio ─────────────────────────
+
 
 class TestOptimizePortfolio:
     """optimize_portfolio 需要 cached_kline 返回含至少30行「收盘」数据的 DataFrame"""
@@ -426,8 +478,10 @@ class TestOptimizePortfolio:
         # 000001 返回不足30行，000002 返回空
         kline_short = self._make_mock_kline([10.0] * 20)  # 只有20行 < 30
         with patch("stock_analyzer.portfolio.cached_kline") as mock_kl:
+
             def side_effect(code, days=120):
                 return kline_short if code == "000001" else pd.DataFrame()
+
             mock_kl.side_effect = side_effect
 
             result = portfolio.optimize_portfolio(holdings)
@@ -442,9 +496,9 @@ class TestOptimizePortfolio:
         kline_a = self._make_mock_kline([10 + i * 0.2 for i in range(60)])
         kline_b = self._make_mock_kline([8 + i * 0.1 for i in range(60)])
         with patch("stock_analyzer.portfolio.cached_kline") as mock_kl:
-            mock_kl.side_effect = lambda code, days=120: {
-                "000001": kline_a, "000002": kline_b
-            }.get(code, pd.DataFrame())
+            mock_kl.side_effect = lambda code, days=120: {"000001": kline_a, "000002": kline_b}.get(
+                code, pd.DataFrame()
+            )
 
             result = portfolio.optimize_portfolio(holdings, method="equal_weight")
         assert result["method"] == "equal_weight"
@@ -477,9 +531,9 @@ class TestOptimizePortfolio:
         kline_b = self._make_mock_kline(close_b.tolist())
 
         with patch("stock_analyzer.portfolio.cached_kline") as mock_kl:
-            mock_kl.side_effect = lambda code, days=120: {
-                "000001": kline_a, "000002": kline_b
-            }.get(code, pd.DataFrame())
+            mock_kl.side_effect = lambda code, days=120: {"000001": kline_a, "000002": kline_b}.get(
+                code, pd.DataFrame()
+            )
 
             result = portfolio.optimize_portfolio(holdings, method="max_sharpe")
         assert result["method"] == "max_sharpe"
@@ -511,9 +565,9 @@ class TestOptimizePortfolio:
         kline_b = self._make_mock_kline(close_b.tolist())
 
         with patch("stock_analyzer.portfolio.cached_kline") as mock_kl:
-            mock_kl.side_effect = lambda code, days=120: {
-                "000001": kline_a, "000002": kline_b
-            }.get(code, pd.DataFrame())
+            mock_kl.side_effect = lambda code, days=120: {"000001": kline_a, "000002": kline_b}.get(
+                code, pd.DataFrame()
+            )
 
             result = portfolio.optimize_portfolio(holdings, method="min_variance")
         assert result["method"] == "min_variance"
@@ -541,9 +595,9 @@ class TestOptimizePortfolio:
         kline_b = self._make_mock_kline(close_b.tolist())
 
         with patch("stock_analyzer.portfolio.cached_kline") as mock_kl:
-            mock_kl.side_effect = lambda code, days=120: {
-                "000001": kline_a, "000002": kline_b
-            }.get(code, pd.DataFrame())
+            mock_kl.side_effect = lambda code, days=120: {"000001": kline_a, "000002": kline_b}.get(
+                code, pd.DataFrame()
+            )
 
             result = portfolio.optimize_portfolio(holdings, method="risk_parity")
         assert result["method"] == "risk_parity"

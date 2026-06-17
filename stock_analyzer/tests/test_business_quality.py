@@ -1,15 +1,16 @@
 import os
 import sys
 import unittest
+from typing import Any
 
 import pandas as pd
-from typing import Any
 
 from stock_analyzer import business_quality as bq
 
 # ═══════════════════════════════════════════
 # 工具函数
 # ═══════════════════════════════════════════
+
 
 class TestSafeGet(unittest.TestCase):
     """_safe_get 安全取值"""
@@ -38,6 +39,7 @@ class TestSafeGet(unittest.TestCase):
         df = pd.DataFrame()
         result = bq._safe_get(df, "A")
         self.assertEqual(result, "")
+
 
 class TestSafeFloat(unittest.TestCase):
     """_safe_float 安全取浮点数"""
@@ -72,9 +74,11 @@ class TestSafeFloat(unittest.TestCase):
         result = bq._safe_float(row, "A")
         self.assertEqual(result, 0.0)
 
+
 # ═══════════════════════════════════════════
 # Fallback 函数
 # ═══════════════════════════════════════════
+
 
 class TestFallbacks(unittest.TestCase):
     """各类 fallback 返回函数"""
@@ -96,9 +100,11 @@ class TestFallbacks(unittest.TestCase):
         self.assertEqual(result["confidence"], 0)
         self.assertIn("数据不足", result["signals"])
 
+
 # ═══════════════════════════════════════════
 # 护城河评估
 # ═══════════════════════════════════════════
+
 
 class TestMoatAssessment(unittest.TestCase):
     """_moat_assessment 文本生成"""
@@ -121,9 +127,11 @@ class TestMoatAssessment(unittest.TestCase):
         self.assertIn("无明显护城河", text)
         self.assertIn("竞争激烈", text)
 
+
 # ═══════════════════════════════════════════
 # 生命周期分类
 # ═══════════════════════════════════════════
+
 
 class TestClassifyLifecycle(unittest.TestCase):
     """生命周期阶段判断"""
@@ -178,9 +186,11 @@ class TestClassifyLifecycle(unittest.TestCase):
         result = bq.classify_lifecycle("000001", financials=financials)
         self.assertEqual(result["stage"], "mature")  # >= 0 path
 
+
 # ═══════════════════════════════════════════
 # 估值评分
 # ═══════════════════════════════════════════
+
 
 class TestScoreValuation(unittest.TestCase):
     """估值评分"""
@@ -235,9 +245,11 @@ class TestScoreValuation(unittest.TestCase):
         result = bq.score_valuation("000001", price=50, financials=financials)
         self.assertIsNotNone(result["pb"])
 
+
 # ═══════════════════════════════════════════
 # 综合摘要
 # ═══════════════════════════════════════════
+
 
 class TestScoreMoat(unittest.TestCase):
     """Q4: 护城河五维度评分"""
@@ -440,26 +452,34 @@ class TestScoreMoat(unittest.TestCase):
             self.assertIn(key, r)
         self.assertEqual(len(r["dimensions"]), 5)
 
+
 # ═══════════════════════════════════════════
 # 估值评分 (扩展：覆盖所有PE/PEG/PB区间)
 # ═══════════════════════════════════════════
+
 
 class TestScoreValuationExtended(unittest.TestCase):
     """估值评分 — 覆盖剩余未测区间"""
 
     def test_pe_25_to_50(self):
         """PE 25-50 → pe_score=15"""
-        r = bq.score_valuation("000001", price=50, financials={"市盈率": 35, "市净率": 2, "营收增长": 20})
+        r = bq.score_valuation(
+            "000001", price=50, financials={"市盈率": 35, "市净率": 2, "营收增长": 20}
+        )
         self.assertIn("偏高", r["assessment"])
 
     def test_pe_50_to_100(self):
         """PE 50-100 → pe_score=8"""
-        r = bq.score_valuation("000001", price=50, financials={"市盈率": 70, "市净率": 5, "营收增长": 5})
+        r = bq.score_valuation(
+            "000001", price=50, financials={"市盈率": 70, "市净率": 5, "营收增长": 5}
+        )
         self.assertIn(r["level"], ["高估", "泡沫"])
 
     def test_pe_over_100(self):
         """PE > 100 → pe_score=3"""
-        r = bq.score_valuation("000001", price=50, financials={"市盈率": 150, "市净率": 8, "营收增长": 2})
+        r = bq.score_valuation(
+            "000001", price=50, financials={"市盈率": 150, "市净率": 8, "营收增长": 2}
+        )
         self.assertIn(">100倍", r["assessment"])
 
     def test_peg_1_to_2(self):
@@ -478,48 +498,66 @@ class TestScoreValuationExtended(unittest.TestCase):
 
     def test_pb_very_high(self):
         """PB >= 10 → pb_score=2"""
-        r = bq.score_valuation("000001", price=50, financials={"市盈率": 15, "市净率": 12, "营收增长": 5})
+        r = bq.score_valuation(
+            "000001", price=50, financials={"市盈率": 15, "市净率": 12, "营收增长": 5}
+        )
         self.assertIn("极高", r["assessment"])
 
     def test_pb_high_range(self):
         """PB 6-10 → pb_score=5"""
-        r = bq.score_valuation("000001", price=50, financials={"市盈率": 20, "市净率": 8, "营收增长": 10})
+        r = bq.score_valuation(
+            "000001", price=50, financials={"市盈率": 20, "市净率": 8, "营收增长": 10}
+        )
         self.assertIn("高", r["assessment"])
 
     def test_level_overvalued(self):
         """总分 20-35 → level='高估'"""
-        r = bq.score_valuation("000001", price=50, financials={"市盈率": 45, "市净率": 4, "营收增长": 10})
+        r = bq.score_valuation(
+            "000001", price=50, financials={"市盈率": 45, "市净率": 4, "营收增长": 10}
+        )
         self.assertEqual(r["level"], "高估")
 
     def test_level_bubble(self):
         """总分 < 20 → level='泡沫'"""
-        r = bq.score_valuation("000001", price=50, financials={"市盈率": 200, "市净率": 15, "营收增长": 1})
+        r = bq.score_valuation(
+            "000001", price=50, financials={"市盈率": 200, "市净率": 15, "营收增长": 1}
+        )
         self.assertEqual(r["level"], "泡沫")
 
     def test_level_reasonable_high(self):
         """总分 35-50 → '合理偏高'"""
-        r = bq.score_valuation("000001", price=50, financials={"市盈率": 25, "市净率": 2.5, "营收增长": 15})
+        r = bq.score_valuation(
+            "000001", price=50, financials={"市盈率": 25, "市净率": 2.5, "营收增长": 15}
+        )
         self.assertEqual(r["level"], "合理偏高")
 
     def test_level_reasonable_low(self):
         """总分 50-65 → '合理偏低'"""
-        r = bq.score_valuation("000001", price=50, financials={"市盈率": 18, "市净率": 2.5, "营收增长": 15})
+        r = bq.score_valuation(
+            "000001", price=50, financials={"市盈率": 18, "市净率": 2.5, "营收增长": 15}
+        )
         self.assertEqual(r["level"], "合理偏低")
 
     def test_level_undervalued(self):
         """总分 >= 65 → '低估'"""
-        r = bq.score_valuation("000001", price=50, financials={"市盈率": 8, "市净率": 0.8, "营收增长": 30})
+        r = bq.score_valuation(
+            "000001", price=50, financials={"市盈率": 8, "市净率": 0.8, "营收增长": 30}
+        )
         self.assertEqual(r["level"], "低估")
 
     def test_no_revenue_growth_default_peg(self):
         """营收增长<=0 时 PEG 走默认 12 分"""
-        r = bq.score_valuation("000001", price=50, financials={"市盈率": 20, "市净率": 2, "营收增长": 0})
+        r = bq.score_valuation(
+            "000001", price=50, financials={"市盈率": 20, "市净率": 2, "营收增长": 0}
+        )
         self.assertIsNone(r["peg"])
         self.assertIsInstance(r["score"], int)
+
 
 # ═══════════════════════════════════════════
 # 综合摘要 (扩展：覆盖剩余分支)
 # ═══════════════════════════════════════════
+
 
 class TestGenerateSummaryExtended(unittest.TestCase):
     """_generate_summary — 覆盖 transition 和 growth 非优质分支"""
@@ -578,6 +616,7 @@ class TestGenerateSummaryExtended(unittest.TestCase):
 
         result = bq._generate_summary("000001", "测试", profile, moat, cf, lifecycle, valuation)
         self.assertIn("质地中等", result)
+
 
 if __name__ == "__main__":
     unittest.main()

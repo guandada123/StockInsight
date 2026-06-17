@@ -1,27 +1,33 @@
 """测试 quant.py — 纯计算函数 + 因子评分 + 信号检测分支覆盖"""
+
 import os
 import sys
 import unittest
 from typing import Any
 from unittest.mock import patch
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 
 from stock_analyzer import quant
+
 
 def _make_df(rows=100):
     """构造带收盘价和成交量的标准 K 线 DataFrame"""
     np.random.seed(42)
     close = 50 + np.cumsum(np.random.randn(rows) * 0.5)
-    df = pd.DataFrame({
-        "日期": pd.date_range("2025-01-01", periods=rows),
-        "开盘": close * 0.99,
-        "收盘": close,
-        "最高": close * 1.02,
-        "最低": close * 0.98,
-        "成交量": np.random.randint(1_000_000, 10_000_000, rows),
-    })
+    df = pd.DataFrame(
+        {
+            "日期": pd.date_range("2025-01-01", periods=rows),
+            "开盘": close * 0.99,
+            "收盘": close,
+            "最高": close * 1.02,
+            "最低": close * 0.98,
+            "成交量": np.random.randint(1_000_000, 10_000_000, rows),
+        }
+    )
     return df
+
 
 def _add_ma(df):
     """添加均线列"""
@@ -31,6 +37,7 @@ def _add_ma(df):
     df["MA20"] = df["收盘"].rolling(20).mean()
     df["MA60"] = df["收盘"].rolling(60).mean()
     return df
+
 
 def _add_indicators(df):
     """添加技术指标列"""
@@ -59,7 +66,9 @@ def _add_indicators(df):
     high = df["最高"]
     low = df["最低"]
     prev_close = close.shift(1)
-    tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(axis=1)
+    tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(
+        axis=1
+    )
     df["ATR"] = tr.ewm(span=14).mean()
     # Bollinger
     df["BB_MIDDLE"] = close.rolling(20).mean()
@@ -73,9 +82,11 @@ def _add_indicators(df):
     df["ADX"] = dx.ewm(span=14).mean()
     return df
 
+
 # ═══════════════════════════════════════════
 # 纯计算函数
 # ═══════════════════════════════════════════
+
 
 class TestNormalizeScore(unittest.TestCase):
     """_normalize_score 归一化"""
@@ -99,6 +110,7 @@ class TestNormalizeScore(unittest.TestCase):
         """invert=True 反向归一化"""
         self.assertAlmostEqual(quant._normalize_score(20, 0, 100, invert=True), 80)
 
+
 class TestDailyReturns(unittest.TestCase):
     """_daily_returns 日收益率"""
 
@@ -111,6 +123,7 @@ class TestDailyReturns(unittest.TestCase):
         df = pd.DataFrame({"收盘": [10.0]})
         rets = quant._daily_returns(df)
         self.assertEqual(len(rets), 0)
+
 
 class TestCalcMaxDrawdown(unittest.TestCase):
     """calc_max_drawdown 最大回撤"""
@@ -150,6 +163,7 @@ class TestCalcMaxDrawdown(unittest.TestCase):
         result = quant.calc_max_drawdown(pd.Series([0.01]))
         self.assertEqual(result["max_drawdown_pct"], 0)
 
+
 class TestCalcSharpeSortino(unittest.TestCase):
     """Sharpe 和 Sortino 比率"""
 
@@ -176,6 +190,7 @@ class TestCalcSharpeSortino(unittest.TestCase):
         ratio = quant.calc_sortino_ratio(rets)
         self.assertIsInstance(ratio, (float, type(None)))
 
+
 class TestCalcVar(unittest.TestCase):
     """VaR 风险值"""
 
@@ -189,6 +204,7 @@ class TestCalcVar(unittest.TestCase):
         rets = pd.Series([0.01, -0.01])
         result = quant.calc_var(rets)
         self.assertIsNotNone(result)
+
 
 class TestCalcCalmar(unittest.TestCase):
     """Calmar 比率"""
@@ -205,9 +221,11 @@ class TestCalcCalmar(unittest.TestCase):
         ratio = quant.calc_calmar_ratio(daily_rets, close)
         self.assertIsNone(ratio)
 
+
 # ═══════════════════════════════════════════
 # 因子评分函数
 # ═══════════════════════════════════════════
+
 
 class TestScoreMomentumFactor(unittest.TestCase):
     """score_momentum_factor 动量因子"""
@@ -228,14 +246,17 @@ class TestScoreMomentumFactor(unittest.TestCase):
     def test_strong_momentum(self):
         """强动量"""
         close = np.concatenate([np.linspace(40, 50, 100), np.linspace(50, 70, 20)])
-        df = pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=120),
-            "收盘": close,
-            "成交量": np.random.randint(1_000_000, 10_000_000, 120),
-        })
+        df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=120),
+                "收盘": close,
+                "成交量": np.random.randint(1_000_000, 10_000_000, 120),
+            }
+        )
         result = quant.score_momentum_factor(df)
         self.assertGreaterEqual(result["score"], 0)
         self.assertLessEqual(result["score"], 100)
+
 
 class TestScoreVolumeFactor(unittest.TestCase):
     """score_volume_factor 量能因子"""
@@ -251,11 +272,13 @@ class TestScoreVolumeFactor(unittest.TestCase):
         vol = np.ones(120) * 5_000_000
         vol[-5:] = 20_000_000  # 最后5天放量
         close = 50 + np.cumsum(np.random.randn(120) * 0.3)
-        df = pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=120),
-            "收盘": close,
-            "成交量": vol,
-        })
+        df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=120),
+                "收盘": close,
+                "成交量": vol,
+            }
+        )
         result = quant.score_volume_factor(df)
         self.assertIsInstance(result, dict)
 
@@ -264,6 +287,7 @@ class TestScoreVolumeFactor(unittest.TestCase):
         df = _make_df(120)
         result = quant.score_volume_factor(df)
         self.assertIn("volume_ratio_score", result["details"])
+
 
 class TestScoreRiskFactor(unittest.TestCase):
     """score_risk_factor 风险因子"""
@@ -283,16 +307,19 @@ class TestScoreRiskFactor(unittest.TestCase):
     def test_high_volatility(self):
         """高波动"""
         close = 50 + np.cumsum(np.random.randn(120) * 2.0)  # high volatility
-        df = pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=120),
-            "收盘": close,
-            "最高": close * 1.03,
-            "最低": close * 0.97,
-            "成交量": np.random.randint(1_000_000, 10_000_000, 120),
-        })
+        df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=120),
+                "收盘": close,
+                "最高": close * 1.03,
+                "最低": close * 0.97,
+                "成交量": np.random.randint(1_000_000, 10_000_000, 120),
+            }
+        )
         df = _add_indicators(df)
         result = quant.score_risk_factor(df)
         self.assertIn("atr_ratio_score", result["details"])
+
 
 class TestScoreFundFlowFactor(unittest.TestCase):
     """score_fund_flow_factor 资金流因子"""
@@ -324,99 +351,120 @@ class TestScoreFundFlowFactor(unittest.TestCase):
         self.assertIn("score", result)
         self.assertIsInstance(result["score"], (int, float))
 
+
 # ═══════════════════════════════════════════
 # 信号检测 — 分支覆盖
 # ═══════════════════════════════════════════
+
 
 class TestDetectMACrossover(unittest.TestCase):
     """均线金叉/死叉检测"""
 
     def test_golden_cross(self):
         """MA5 上穿 MA10"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 20,
-            "MA5": [9.5] * 9 + [10.5] * 11,
-            "MA10": [10.0] * 20,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 20,
+                "MA5": [9.5] * 9 + [10.5] * 11,
+                "MA10": [10.0] * 20,
+            }
+        )
         df.loc[10, "MA5"] = 10.2  # crossover at index 10
         result = quant.detect_ma_crossover(df)
         self.assertIsInstance(result, list)
 
     def test_death_cross(self):
         """MA5 下穿 MA10"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 20,
-            "MA5": [10.5] * 9 + [9.5] * 11,
-            "MA10": [10.0] * 20,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 20,
+                "MA5": [10.5] * 9 + [9.5] * 11,
+                "MA10": [10.0] * 20,
+            }
+        )
         result = quant.detect_ma_crossover(df)
         self.assertIsInstance(result, list)
 
     def test_no_cross(self):
         """无交叉"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 20,
-            "MA5": [11.0] * 20,
-            "MA10": [10.0] * 20,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 20,
+                "MA5": [11.0] * 20,
+                "MA10": [10.0] * 20,
+            }
+        )
         result = quant.detect_ma_crossover(df)
         self.assertEqual(len(result), 0)
+
 
 class TestDetectMACDCrossover(unittest.TestCase):
     """MACD 金叉/死叉"""
 
     def test_golden_cross(self):
-        df = pd.DataFrame({
-            "收盘": [10.0] * 30,
-            "DIF": [-0.1] * 14 + [0.05] * 16,
-            "DEA": [0.0] * 30,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 30,
+                "DIF": [-0.1] * 14 + [0.05] * 16,
+                "DEA": [0.0] * 30,
+            }
+        )
         result = quant.detect_macd_crossover(df)
         self.assertIsInstance(result, list)
 
     def test_death_cross(self):
-        df = pd.DataFrame({
-            "收盘": [10.0] * 30,
-            "DIF": [0.1] * 14 + [-0.05] * 16,
-            "DEA": [0.0] * 30,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 30,
+                "DIF": [0.1] * 14 + [-0.05] * 16,
+                "DEA": [0.0] * 30,
+            }
+        )
         result = quant.detect_macd_crossover(df)
         self.assertIsInstance(result, list)
+
 
 class TestDetectADXTrend(unittest.TestCase):
     """ADX 趋势检测"""
 
     def test_bullish_trend(self):
-        df = pd.DataFrame({
-            "收盘": list(range(10, 40)),
-            "ADX": [30] * 30,
-            "DI_PLUS": [35] * 30,
-            "DI_MINUS": [15] * 30,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": list(range(10, 40)),
+                "ADX": [30] * 30,
+                "DI_PLUS": [35] * 30,
+                "DI_MINUS": [15] * 30,
+            }
+        )
         result = quant.detect_adx_trend(df)
         self.assertIsInstance(result, list)
 
     def test_bearish_trend(self):
-        df = pd.DataFrame({
-            "收盘": list(range(40, 10, -1)),
-            "ADX": [30] * 30,
-            "DI_PLUS": [15] * 30,
-            "DI_MINUS": [35] * 30,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": list(range(40, 10, -1)),
+                "ADX": [30] * 30,
+                "DI_PLUS": [15] * 30,
+                "DI_MINUS": [35] * 30,
+            }
+        )
         result = quant.detect_adx_trend(df)
         self.assertIsInstance(result, list)
 
     def test_ranging(self):
         """ADX<20 震荡——应返回 adx_ranging 信号"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 30,
-            "ADX": [15] * 30,
-            "DI_PLUS": [20] * 30,
-            "DI_MINUS": [20] * 30,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 30,
+                "ADX": [15] * 30,
+                "DI_PLUS": [20] * 30,
+                "DI_MINUS": [20] * 30,
+            }
+        )
         result = quant.detect_adx_trend(df)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["type"], "adx_ranging")
+
 
 class TestDetectChannelBreakout(unittest.TestCase):
     """通道突破检测"""
@@ -424,35 +472,42 @@ class TestDetectChannelBreakout(unittest.TestCase):
     def test_up_breakout(self):
         """向上突破——需要至少 lookback+1=21 行数据"""
         n = 27
-        df = pd.DataFrame({
-            "收盘": list(range(10, 10 + n)),
-            "最高": list(range(11, 11 + n)),
-            "最低": list(range(9, 9 + n)),
-            "成交量": [1_000_000] * (n - 2) + [10_000_000, 15_000_000],
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": list(range(10, 10 + n)),
+                "最高": list(range(11, 11 + n)),
+                "最低": list(range(9, 9 + n)),
+                "成交量": [1_000_000] * (n - 2) + [10_000_000, 15_000_000],
+            }
+        )
         result = quant.detect_channel_breakout(df)
         self.assertIsInstance(result, list)
 
     def test_down_breakout(self):
         """向下突破"""
-        df = pd.DataFrame({
-            "收盘": list(range(40, 15, -1)) + [12, 10],
-            "最高": list(range(41, 16, -1)) + [13, 11],
-            "最低": list(range(39, 14, -1)) + [11, 9],
-            "成交量": [1_000_000] * 25 + [10_000_000, 15_000_000],
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": list(range(40, 15, -1)) + [12, 10],
+                "最高": list(range(41, 16, -1)) + [13, 11],
+                "最低": list(range(39, 14, -1)) + [11, 9],
+                "成交量": [1_000_000] * 25 + [10_000_000, 15_000_000],
+            }
+        )
         result = quant.detect_channel_breakout(df)
         self.assertIsInstance(result, list)
 
     def test_no_breakout(self):
-        df = pd.DataFrame({
-            "收盘": [10.0] * 30,
-            "最高": [11.0] * 30,
-            "最低": [9.0] * 30,
-            "成交量": [1_000_000] * 30,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 30,
+                "最高": [11.0] * 30,
+                "最低": [9.0] * 30,
+                "成交量": [1_000_000] * 30,
+            }
+        )
         result = quant.detect_channel_breakout(df)
         self.assertEqual(len(result), 0)
+
 
 class TestDetectRSIReversal(unittest.TestCase):
     """RSI 反转信号"""
@@ -460,104 +515,125 @@ class TestDetectRSIReversal(unittest.TestCase):
     def test_oversold_bounce(self):
         """超卖反弹 RSI < 25 且上升"""
         rsi = [30] * 15 + [20, 22, 24, 25, 26]
-        df = pd.DataFrame({
-            "收盘": list(range(20, 40)),
-            "RSI": rsi,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": list(range(20, 40)),
+                "RSI": rsi,
+            }
+        )
         result = quant.detect_rsi_reversal(df)
         self.assertIsInstance(result, list)
 
     def test_deep_oversold(self):
         """深度超卖 RSI < 20"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 30,
-            "RSI": [15] * 30,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 30,
+                "RSI": [15] * 30,
+            }
+        )
         result = quant.detect_rsi_reversal(df)
         self.assertIsInstance(result, list)
 
     def test_overbought_drop(self):
         """超买回落 RSI > 75 且下降"""
         rsi = [60] * 15 + [80, 78, 76, 74, 72]
-        df = pd.DataFrame({
-            "收盘": list(range(40, 20, -1)),
-            "RSI": rsi,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": list(range(40, 20, -1)),
+                "RSI": rsi,
+            }
+        )
         result = quant.detect_rsi_reversal(df)
         self.assertIsInstance(result, list)
 
     def test_deep_overbought(self):
         """深度超买 RSI > 80"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 30,
-            "RSI": [85] * 30,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 30,
+                "RSI": [85] * 30,
+            }
+        )
         result = quant.detect_rsi_reversal(df)
         self.assertIsInstance(result, list)
 
     def test_normal_range(self):
         """正常区间无信号"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 30,
-            "RSI": [50] * 30,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 30,
+                "RSI": [50] * 30,
+            }
+        )
         result = quant.detect_rsi_reversal(df)
         self.assertEqual(len(result), 0)
+
 
 class TestDetectBollingerReversion(unittest.TestCase):
     """布林带回归信号"""
 
     def test_touch_upper(self):
         """触及上轨"""
-        df = pd.DataFrame({
-            "收盘": [12.0, 11.5, 11.0, 10.8, 10.5],
-            "BB_UPPER": [11.0] * 5,
-            "BB_LOWER": [9.0] * 5,
-            "BB_MIDDLE": [10.0] * 5,
-            "RSI": [50] * 5,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [12.0, 11.5, 11.0, 10.8, 10.5],
+                "BB_UPPER": [11.0] * 5,
+                "BB_LOWER": [9.0] * 5,
+                "BB_MIDDLE": [10.0] * 5,
+                "RSI": [50] * 5,
+            }
+        )
         result = quant.detect_bollinger_reversion(df)
         self.assertIsInstance(result, list)
 
     def test_touch_lower(self):
         """触及下轨"""
-        df = pd.DataFrame({
-            "收盘": [9.0, 9.2, 9.5, 9.8, 10.0],
-            "BB_UPPER": [11.0] * 5,
-            "BB_LOWER": [10.0] * 5,
-            "BB_MIDDLE": [10.5] * 5,
-            "RSI": [50] * 5,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [9.0, 9.2, 9.5, 9.8, 10.0],
+                "BB_UPPER": [11.0] * 5,
+                "BB_LOWER": [10.0] * 5,
+                "BB_MIDDLE": [10.5] * 5,
+                "RSI": [50] * 5,
+            }
+        )
         result = quant.detect_bollinger_reversion(df)
         self.assertIsInstance(result, list)
 
     def test_touch_upper_rsi_confirm(self):
         """触及上轨 + RSI>70 加强信号"""
-        df = pd.DataFrame({
-            "收盘": [12.5, 12.0, 11.8, 11.5, 11.2],
-            "BB_UPPER": [11.0] * 5,
-            "BB_LOWER": [9.0] * 5,
-            "BB_MIDDLE": [10.0] * 5,
-            "RSI": [75] * 5,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [12.5, 12.0, 11.8, 11.5, 11.2],
+                "BB_UPPER": [11.0] * 5,
+                "BB_LOWER": [9.0] * 5,
+                "BB_MIDDLE": [10.0] * 5,
+                "RSI": [75] * 5,
+            }
+        )
         result = quant.detect_bollinger_reversion(df)
         self.assertIsInstance(result, list)
 
     def test_normal_range(self):
         """在带内无信号"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 10,
-            "BB_UPPER": [11.0] * 10,
-            "BB_LOWER": [9.0] * 10,
-            "BB_MIDDLE": [10.0] * 10,
-            "RSI": [50] * 10,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 10,
+                "BB_UPPER": [11.0] * 10,
+                "BB_LOWER": [9.0] * 10,
+                "BB_MIDDLE": [10.0] * 10,
+                "RSI": [50] * 10,
+            }
+        )
         result = quant.detect_bollinger_reversion(df)
         self.assertEqual(len(result), 0)
+
 
 # ═══════════════════════════════════════════
 # 综合信号生成
 # ═══════════════════════════════════════════
+
 
 class TestGenerateAllSignals(unittest.TestCase):
     """generate_all_signals 综合信号"""
@@ -578,14 +654,29 @@ class TestGenerateAllSignals(unittest.TestCase):
         self.assertEqual(result["total_bullish"], 0)
         self.assertEqual(result["total_bearish"], 0)
 
+
 class TestConsolidateSignals(unittest.TestCase):
     """consolidate_signals 信号整合"""
 
     def test_normal(self):
         signals = {
             "signals": [
-                {"type": "ma_golden_cross", "direction": "bullish", "strength": 3, "name": "MA金叉", "price": 10.0, "value": {}},
-                {"type": "bollinger_lower_touch", "direction": "bullish", "strength": 2, "name": "布林下轨", "price": 10.0, "value": {}},
+                {
+                    "type": "ma_golden_cross",
+                    "direction": "bullish",
+                    "strength": 3,
+                    "name": "MA金叉",
+                    "price": 10.0,
+                    "value": {},
+                },
+                {
+                    "type": "bollinger_lower_touch",
+                    "direction": "bullish",
+                    "strength": 2,
+                    "name": "布林下轨",
+                    "price": 10.0,
+                    "value": {},
+                },
             ],
             "total_bullish": 2,
             "total_bearish": 0,
@@ -607,9 +698,11 @@ class TestConsolidateSignals(unittest.TestCase):
         result = quant.consolidate_signals(signals)
         self.assertEqual(result["bias"], "neutral")
 
+
 # ═══════════════════════════════════════════
 # 综合量化评分
 # ═══════════════════════════════════════════
+
 
 class TestCompositeQuantScore(unittest.TestCase):
     """composite_quant_score 综合评分"""
@@ -631,6 +724,7 @@ class TestCompositeQuantScore(unittest.TestCase):
         result = quant.composite_quant_score(pd.DataFrame())
         self.assertIn("composite_score", result)
 
+
 class TestRiskMetrics(unittest.TestCase):
     """calc_risk_metrics 综合风险指标 (保留原有)"""
 
@@ -638,13 +732,21 @@ class TestRiskMetrics(unittest.TestCase):
         df = _make_df(120)
         result = quant.calc_risk_metrics(df)
         self.assertIsInstance(result, dict)
-        for k in ("annualized_return_pct", "annualized_volatility_pct", "sharpe_ratio",
-                   "sortino_ratio", "max_drawdown_pct", "calmar_ratio", "VaR_95_pct"):
+        for k in (
+            "annualized_return_pct",
+            "annualized_volatility_pct",
+            "sharpe_ratio",
+            "sortino_ratio",
+            "max_drawdown_pct",
+            "calmar_ratio",
+            "VaR_95_pct",
+        ):
             self.assertIn(k, result)
 
     def test_empty(self):
         result = quant.calc_risk_metrics(pd.DataFrame())
         self.assertIsInstance(result, dict)
+
 
 class TestMakeSignal(unittest.TestCase):
     """_make_signal 辅助函数"""
@@ -656,72 +758,82 @@ class TestMakeSignal(unittest.TestCase):
         self.assertEqual(s["direction"], "bullish")
         self.assertEqual(s["strength"], 0.8)
 
+
 # ═══════════════════════════════════════════
 # 技术因子 (score_technical_factor 分支扩展)
 # ═══════════════════════════════════════════
+
 
 class TestScoreTechnicalFactor(unittest.TestCase):
     """技术因子 — 覆盖MACD/RSI/KDJ/均线排列多种状态"""
 
     def test_macd_bullish(self):
         """MACD 多头排列 (DIF>0, DIF>DEA)"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 60,
-            "DIF": [0.5] * 60,
-            "DEA": [0.3] * 60,
-            "MA5": [10.0] * 60,
-            "MA10": [10.0] * 60,
-            "MA20": [10.0] * 60,
-            "MA60": [10.0] * 60,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 60,
+                "DIF": [0.5] * 60,
+                "DEA": [0.3] * 60,
+                "MA5": [10.0] * 60,
+                "MA10": [10.0] * 60,
+                "MA20": [10.0] * 60,
+                "MA60": [10.0] * 60,
+            }
+        )
         result = quant.score_technical_factor(df)
         self.assertIn("macd_score", result["details"])
 
     def test_macd_bearish(self):
         """MACD 空头 (DIF<0, DIF<DEA)"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 60,
-            "DIF": [-0.5] * 60,
-            "DEA": [-0.3] * 60,
-            "MA5": [10.0] * 60,
-            "MA10": [10.0] * 60,
-            "MA20": [10.0] * 60,
-            "MA60": [10.0] * 60,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 60,
+                "DIF": [-0.5] * 60,
+                "DEA": [-0.3] * 60,
+                "MA5": [10.0] * 60,
+                "MA10": [10.0] * 60,
+                "MA20": [10.0] * 60,
+                "MA60": [10.0] * 60,
+            }
+        )
         result = quant.score_technical_factor(df)
         self.assertIn("macd_score", result["details"])
 
     def test_rsi_overbought(self):
         """RSI > 80"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 60,
-            "RSI": [85] * 60,
-            "DIF": [0.1] * 60,
-            "DEA": [0.05] * 60,
-            "K": [50] * 60,
-            "D": [50] * 60,
-            "MA5": [10.0] * 60,
-            "MA10": [10.0] * 60,
-            "MA20": [10.0] * 60,
-            "MA60": [10.0] * 60,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 60,
+                "RSI": [85] * 60,
+                "DIF": [0.1] * 60,
+                "DEA": [0.05] * 60,
+                "K": [50] * 60,
+                "D": [50] * 60,
+                "MA5": [10.0] * 60,
+                "MA10": [10.0] * 60,
+                "MA20": [10.0] * 60,
+                "MA60": [10.0] * 60,
+            }
+        )
         result = quant.score_technical_factor(df)
         self.assertIn("rsi_score", result["details"])
 
     def test_rsi_oversold(self):
         """RSI < 25"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 60,
-            "RSI": [20] * 60,
-            "DIF": [-0.1] * 60,
-            "DEA": [-0.05] * 60,
-            "K": [50] * 60,
-            "D": [50] * 60,
-            "MA5": [10.0] * 60,
-            "MA10": [10.0] * 60,
-            "MA20": [10.0] * 60,
-            "MA60": [10.0] * 60,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 60,
+                "RSI": [20] * 60,
+                "DIF": [-0.1] * 60,
+                "DEA": [-0.05] * 60,
+                "K": [50] * 60,
+                "D": [50] * 60,
+                "MA5": [10.0] * 60,
+                "MA10": [10.0] * 60,
+                "MA20": [10.0] * 60,
+                "MA60": [10.0] * 60,
+            }
+        )
         result = quant.score_technical_factor(df)
         self.assertIn("rsi_score", result["details"])
 
@@ -729,41 +841,47 @@ class TestScoreTechnicalFactor(unittest.TestCase):
         """K 上穿 D"""
         k = [40] * 10 + [60] * 50
         d = [45] * 60
-        df = pd.DataFrame({
-            "收盘": [10.0] * 60,
-            "K": k,
-            "D": d,
-            "RSI": [50] * 60,
-            "DIF": [0.1] * 60,
-            "DEA": [0.05] * 60,
-            "MA5": [10.0] * 60,
-            "MA10": [10.0] * 60,
-            "MA20": [10.0] * 60,
-            "MA60": [10.0] * 60,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 60,
+                "K": k,
+                "D": d,
+                "RSI": [50] * 60,
+                "DIF": [0.1] * 60,
+                "DEA": [0.05] * 60,
+                "MA5": [10.0] * 60,
+                "MA10": [10.0] * 60,
+                "MA20": [10.0] * 60,
+                "MA60": [10.0] * 60,
+            }
+        )
         result = quant.score_technical_factor(df)
         self.assertIn("kdj_score", result["details"])
 
     def test_ma_bullish_alignment(self):
         """均线多头排列 (MA5>MA10>MA20>MA60)"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 60,
-            "MA5": [10.4] * 60,
-            "MA10": [10.3] * 60,
-            "MA20": [10.2] * 60,
-            "MA60": [10.1] * 60,
-            "DIF": [0.1] * 60,
-            "DEA": [0.05] * 60,
-            "RSI": [50] * 60,
-            "K": [50] * 60,
-            "D": [50] * 60,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 60,
+                "MA5": [10.4] * 60,
+                "MA10": [10.3] * 60,
+                "MA20": [10.2] * 60,
+                "MA60": [10.1] * 60,
+                "DIF": [0.1] * 60,
+                "DEA": [0.05] * 60,
+                "RSI": [50] * 60,
+                "K": [50] * 60,
+                "D": [50] * 60,
+            }
+        )
         result = quant.score_technical_factor(df)
         self.assertIsInstance(result, dict)
+
 
 # ═══════════════════════════════════════════
 # 文本情感因子（完全未覆盖）
 # ═══════════════════════════════════════════
+
 
 class TestScoreSentimentFactor(unittest.TestCase):
     """score_sentiment_factor 舆情/情感因子"""
@@ -792,7 +910,9 @@ class TestScoreSentimentFactor(unittest.TestCase):
 
     def test_news_positive_keywords(self):
         """含正面关键词 → 偏正分数"""
-        df_news = pd.DataFrame({"标题": ["公司发布利好公告，业绩超预期，中标大合同", "股价突破创新高"]})
+        df_news = pd.DataFrame(
+            {"标题": ["公司发布利好公告，业绩超预期，中标大合同", "股价突破创新高"]}
+        )
         result = quant.score_sentiment_factor("000001", df_news, None)
         self.assertIsNotNone(result)
         self.assertGreater(result, 50)
@@ -816,10 +936,12 @@ class TestScoreSentimentFactor(unittest.TestCase):
         """微博舆情匹配 → 调整分数"""
         mock_get_name.return_value = "测试公司"
         df_news = pd.DataFrame({"标题": ["利好"]})
-        df_sentiment = pd.DataFrame({
-            "name": ["测试公司"],
-            "rate": [0.5],
-        })
+        df_sentiment = pd.DataFrame(
+            {
+                "name": ["测试公司"],
+                "rate": [0.5],
+            }
+        )
         result = quant.score_sentiment_factor("000001", df_news, df_sentiment)
         self.assertIsNotNone(result)
         # news=50+1/1*40=90, weibo=50+0.5*40=70, composite=90*0.4+70*0.6=78
@@ -830,10 +952,12 @@ class TestScoreSentimentFactor(unittest.TestCase):
         """微博舆情无匹配 → 只用新闻"""
         mock_get_name.return_value = "测试公司"
         df_news = pd.DataFrame({"标题": ["利好"]})
-        df_sentiment = pd.DataFrame({
-            "name": ["其他公司"],
-            "rate": [0.5],
-        })
+        df_sentiment = pd.DataFrame(
+            {
+                "name": ["其他公司"],
+                "rate": [0.5],
+            }
+        )
         result = quant.score_sentiment_factor("000001", df_news, df_sentiment)
         self.assertIsNotNone(result)
         # weibo stays 50 (no match)
@@ -844,10 +968,12 @@ class TestScoreSentimentFactor(unittest.TestCase):
         """微博负面情绪"""
         mock_get_name.return_value = "测试公司"
         df_news = pd.DataFrame({"标题": ["公告"]})
-        df_sentiment = pd.DataFrame({
-            "name": ["测试公司"],
-            "rate": [-0.8],
-        })
+        df_sentiment = pd.DataFrame(
+            {
+                "name": ["测试公司"],
+                "rate": [-0.8],
+            }
+        )
         result = quant.score_sentiment_factor("000001", df_news, df_sentiment)
         self.assertIsNotNone(result)
         # news=55 (no clear sentiment), weibo=50+(-0.8)*40=18
@@ -867,9 +993,11 @@ class TestScoreSentimentFactor(unittest.TestCase):
         # sentiment_df has no "rate" column, so weibo stays 50
         self.assertAlmostEqual(result, 50.0)
 
+
 # ═══════════════════════════════════════════
 # 边缘分支覆盖 — 风险指标
 # ═══════════════════════════════════════════
+
 
 class TestCalcRiskMetricsEdge(unittest.TestCase):
     """calc_annualized_return/volatility/sortino/max_drawdown 边缘"""
@@ -951,9 +1079,11 @@ class TestCalcRiskMetricsEdge(unittest.TestCase):
         for v in result.values():
             self.assertIsNone(v)
 
+
 # ═══════════════════════════════════════════
 # 分支覆盖 — 量能因子
 # ═══════════════════════════════════════════
+
 
 class TestScoreVolumeFactorBranches(unittest.TestCase):
     """score_volume_factor 各分支"""
@@ -1024,20 +1154,24 @@ class TestScoreVolumeFactorBranches(unittest.TestCase):
         result = quant.score_volume_factor(df)
         self.assertEqual(result["score"], 50)
 
+
 # ═══════════════════════════════════════════
 # 分支覆盖 — 资金流因子
 # ═══════════════════════════════════════════
+
 
 class TestScoreFundFlowFactorBranches(unittest.TestCase):
     """score_fund_flow_factor 各金额/比例分支"""
 
     def _make_ff_df(self, main_ratio, super_ratio):
         df = _make_df(30)
-        flows: list[dict[str, Any]] = [{}] * 29 + [{
-            "主力净流入-净占比": main_ratio,
-            "超大单净流入-净占比": super_ratio,
-            "主力净流入-净额": 100_000_000,
-        }]
+        flows: list[dict[str, Any]] = [{}] * 29 + [
+            {
+                "主力净流入-净占比": main_ratio,
+                "超大单净流入-净占比": super_ratio,
+                "主力净流入-净额": 100_000_000,
+            }
+        ]
         df["fund_flow"] = flows
         return df
 
@@ -1088,37 +1222,45 @@ class TestScoreFundFlowFactorBranches(unittest.TestCase):
         result = quant.score_fund_flow_factor(df)
         self.assertEqual(result["score"], 50)
 
+
 # ═══════════════════════════════════════════
 # 分支覆盖 — 风险因子
 # ═══════════════════════════════════════════
+
 
 class TestScoreRiskFactorBranches(unittest.TestCase):
     """score_risk_factor 各 ATR/回撤分支"""
 
     def test_atr_ratio_lt_2(self):
         """ATR占比 < 2%"""
-        df = pd.DataFrame({
-            "收盘": [100.0] * 30,
-            "ATR": [1.5] * 30,  # 1.5/100 = 1.5%
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [100.0] * 30,
+                "ATR": [1.5] * 30,  # 1.5/100 = 1.5%
+            }
+        )
         result = quant.score_risk_factor(df)
         self.assertEqual(result["details"]["atr_ratio_score"], 80)
 
     def test_atr_ratio_gt_6(self):
         """ATR占比 > 6%"""
-        df = pd.DataFrame({
-            "收盘": [100.0] * 30,
-            "ATR": [7.0] * 30,  # 7/100 = 7%
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [100.0] * 30,
+                "ATR": [7.0] * 30,  # 7/100 = 7%
+            }
+        )
         result = quant.score_risk_factor(df)
         self.assertEqual(result["details"]["atr_ratio_score"], 20)
 
     def test_atr_ratio_4_to_6(self):
         """ATR占比 4-6%"""
-        df = pd.DataFrame({
-            "收盘": [100.0] * 30,
-            "ATR": [5.0] * 30,  # 5/100 = 5%
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [100.0] * 30,
+                "ATR": [5.0] * 30,  # 5/100 = 5%
+            }
+        )
         result = quant.score_risk_factor(df)
         self.assertEqual(result["details"]["atr_ratio_score"], 40)
 
@@ -1160,9 +1302,11 @@ class TestScoreRiskFactorBranches(unittest.TestCase):
         result = quant.score_risk_factor(df)
         self.assertEqual(result["details"]["drawdown_20d_score"], 50)
 
+
 # ═══════════════════════════════════════════
 # 分支覆盖 — 综合评分 (chase_penalty + rating)
 # ═══════════════════════════════════════════
+
 
 class TestCompositeQuantScoreBranches(unittest.TestCase):
     """composite_quant_score 追高惩罚 + 评级分支"""
@@ -1170,13 +1314,15 @@ class TestCompositeQuantScoreBranches(unittest.TestCase):
     def test_chase_penalty_extreme(self):
         """近20日涨>40% → 扣15分"""
         close = list(range(50, 180))
-        df = pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=130),
-            "收盘": close,
-            "最高": [c * 1.02 for c in close],
-            "最低": [c * 0.98 for c in close],
-            "成交量": [1_000_000] * 130,
-        })
+        df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=130),
+                "收盘": close,
+                "最高": [c * 1.02 for c in close],
+                "最低": [c * 0.98 for c in close],
+                "成交量": [1_000_000] * 130,
+            }
+        )
         df = _add_indicators(_add_ma(df))
         result = quant.composite_quant_score(df)
         self.assertIn("composite_score", result)
@@ -1184,13 +1330,15 @@ class TestCompositeQuantScoreBranches(unittest.TestCase):
     def test_chase_penalty_high(self):
         """近20日涨30-40% → 扣10分"""
         close = list(range(50, 120))
-        df = pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=70),
-            "收盘": close,
-            "最高": [c * 1.02 for c in close],
-            "最低": [c * 0.98 for c in close],
-            "成交量": [1_000_000] * 70,
-        })
+        df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=70),
+                "收盘": close,
+                "最高": [c * 1.02 for c in close],
+                "最低": [c * 0.98 for c in close],
+                "成交量": [1_000_000] * 70,
+            }
+        )
         df = _add_indicators(_add_ma(df))
         result = quant.composite_quant_score(df)
         self.assertIn("composite_score", result)
@@ -1198,13 +1346,15 @@ class TestCompositeQuantScoreBranches(unittest.TestCase):
     def test_chase_penalty_light(self):
         """近20日涨25-30% → 扣5分"""
         close = list(range(50, 100))
-        df = pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=50),
-            "收盘": close,
-            "最高": [c * 1.02 for c in close],
-            "最低": [c * 0.98 for c in close],
-            "成交量": [1_000_000] * 50,
-        })
+        df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=50),
+                "收盘": close,
+                "最高": [c * 1.02 for c in close],
+                "最低": [c * 0.98 for c in close],
+                "成交量": [1_000_000] * 50,
+            }
+        )
         df = _add_indicators(_add_ma(df))
         result = quant.composite_quant_score(df)
         self.assertIn("composite_score", result)
@@ -1212,13 +1362,15 @@ class TestCompositeQuantScoreBranches(unittest.TestCase):
     def test_chase_penalty_5d(self):
         """近5日涨>15% → 扣3分（但20日不足25%）"""
         close_flat = [50] * 10 + list(range(50, 70))
-        df = pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=len(close_flat)),
-            "收盘": close_flat,
-            "最高": [c * 1.02 for c in close_flat],
-            "最低": [c * 0.98 for c in close_flat],
-            "成交量": [1_000_000] * len(close_flat),
-        })
+        df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=len(close_flat)),
+                "收盘": close_flat,
+                "最高": [c * 1.02 for c in close_flat],
+                "最低": [c * 0.98 for c in close_flat],
+                "成交量": [1_000_000] * len(close_flat),
+            }
+        )
         df = _add_indicators(_add_ma(df))
         result = quant.composite_quant_score(df)
         self.assertIn("composite_score", result)
@@ -1227,13 +1379,15 @@ class TestCompositeQuantScoreBranches(unittest.TestCase):
         """综合分20-40 → Sell"""
         # 下跌趋势使动量因子得分低
         close = list(range(100, 30, -1))
-        df = pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=70),
-            "收盘": close,
-            "最高": [c * 1.01 for c in close],
-            "最低": [c * 0.99 for c in close],
-            "成交量": [1_000_000] * 70,
-        })
+        df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=70),
+                "收盘": close,
+                "最高": [c * 1.01 for c in close],
+                "最低": [c * 0.99 for c in close],
+                "成交量": [1_000_000] * 70,
+            }
+        )
         df = _add_indicators(_add_ma(df))
         result = quant.composite_quant_score(df)
         self.assertIn(result["rating"], ["Sell", "Strong Sell", "Hold"])
@@ -1241,13 +1395,15 @@ class TestCompositeQuantScoreBranches(unittest.TestCase):
     def test_rating_strong_sell(self):
         """综合分<20 → Strong Sell 或 Sell"""
         close = list(range(100, 20, -1))
-        df = pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=80),
-            "收盘": close,
-            "最高": [c * 1.01 for c in close],
-            "最低": [c * 0.99 for c in close],
-            "成交量": [1_000_000] * 80,
-        })
+        df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=80),
+                "收盘": close,
+                "最高": [c * 1.01 for c in close],
+                "最低": [c * 0.99 for c in close],
+                "成交量": [1_000_000] * 80,
+            }
+        )
         df = _add_indicators(_add_ma(df))
         result = quant.composite_quant_score(df)
         self.assertIn(result["rating"], ["Sell", "Strong Sell"])
@@ -1259,44 +1415,52 @@ class TestCompositeQuantScoreBranches(unittest.TestCase):
         # fundamentals available, weight redistribution
         self.assertIn("fundamental", result["factor_scores"])
 
+
 # ═══════════════════════════════════════════
 # 分支覆盖 — 信号检测
 # ═══════════════════════════════════════════
+
 
 class TestSignalDetectionEdge(unittest.TestCase):
     """信号检测边缘分支"""
 
     def test_ma_crossover_nan_col(self):
         """MA列含NaN → 跳过"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 5,
-            "MA5": [np.nan] * 5,
-            "MA10": [10.0] * 5,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 5,
+                "MA5": [np.nan] * 5,
+                "MA10": [10.0] * 5,
+            }
+        )
         result = quant.detect_ma_crossover(df)
         self.assertEqual(len(result), 0)
 
     def test_ma_crossover_golden(self):
         """MA5/MA10 金叉 — 最后一根K线MA5上穿MA10"""
         # prev (idx -2): MA5=9.5, MA10=10.0, last (idx -1): MA5=10.5, MA10=10.0
-        df = pd.DataFrame({
-            "收盘": [10.0] * 10,
-            "MA5": [9.5, 9.5, 9.5, 9.5, 9.5, 9.5, 9.5, 9.5, 9.5, 10.5],
-            "MA10": [10.0] * 10,
-            "MA20": [10.0] * 10,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 10,
+                "MA5": [9.5, 9.5, 9.5, 9.5, 9.5, 9.5, 9.5, 9.5, 9.5, 10.5],
+                "MA10": [10.0] * 10,
+                "MA20": [10.0] * 10,
+            }
+        )
         result = quant.detect_ma_crossover(df)
         self.assertGreater(len(result), 0)
 
     def test_ma_crossover_death(self):
         """MA5/MA10 死叉 — 最后一根K线MA5下穿MA10"""
         # prev (idx -2): MA5=10.5, MA10=10.0, last (idx -1): MA5=9.5, MA10=10.0
-        df = pd.DataFrame({
-            "收盘": [10.0] * 10,
-            "MA5": [10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 9.5],
-            "MA10": [10.0] * 10,
-            "MA20": [10.0] * 10,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 10,
+                "MA5": [10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 9.5],
+                "MA10": [10.0] * 10,
+                "MA20": [10.0] * 10,
+            }
+        )
         result = quant.detect_ma_crossover(df)
         self.assertGreater(len(result), 0)
 
@@ -1313,12 +1477,14 @@ class TestSignalDetectionEdge(unittest.TestCase):
 
     def test_adx_nan_values(self):
         """ADX值为NaN"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 25,
-            "ADX": [np.nan] * 25,
-            "DI_PLUS": [20] * 25,
-            "DI_MINUS": [20] * 25,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 25,
+                "ADX": [np.nan] * 25,
+                "DI_PLUS": [20] * 25,
+                "DI_MINUS": [20] * 25,
+            }
+        )
         result = quant.detect_adx_trend(df)
         self.assertEqual(len(result), 0)
 
@@ -1330,28 +1496,34 @@ class TestSignalDetectionEdge(unittest.TestCase):
 
     def test_rsi_reversal_oversold_bounce(self):
         """RSI < 25 且上升 → 超卖反弹"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 10 + [10.5],
-            "RSI": [20, 20, 20, 20, 20, 20, 20, 20, 20, 22, 24],
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 10 + [10.5],
+                "RSI": [20, 20, 20, 20, 20, 20, 20, 20, 20, 22, 24],
+            }
+        )
         result = quant.detect_rsi_reversal(df)
         self.assertGreater(len(result), 0)
 
     def test_rsi_reversal_overbought_drop(self):
         """RSI > 75 且下降 → 超买回落"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 10 + [9.5],
-            "RSI": [80, 80, 80, 80, 80, 80, 80, 80, 80, 78, 76],
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 10 + [9.5],
+                "RSI": [80, 80, 80, 80, 80, 80, 80, 80, 80, 78, 76],
+            }
+        )
         result = quant.detect_rsi_reversal(df)
         self.assertGreater(len(result), 0)
 
     def test_rsi_no_signal_neutral(self):
         """RSI中性 → 无信号"""
-        df = pd.DataFrame({
-            "收盘": [10.0] * 10,
-            "RSI": [50.0] * 10,
-        })
+        df = pd.DataFrame(
+            {
+                "收盘": [10.0] * 10,
+                "RSI": [50.0] * 10,
+            }
+        )
         result = quant.detect_rsi_reversal(df)
         self.assertEqual(len(result), 0)
 
@@ -1400,9 +1572,11 @@ class TestSignalDetectionEdge(unittest.TestCase):
         result = quant.consolidate_signals(signals)
         self.assertEqual(result["bias"], "bearish")
 
+
 # ═══════════════════════════════════════════
 # 短线/长线风格评估（完全未覆盖）
 # ═══════════════════════════════════════════
+
 
 def _rich_kline(rows=100, trend_up=True):
     """构建适合 evaluate_trading_style 的丰富 K 线"""
@@ -1411,14 +1585,16 @@ def _rich_kline(rows=100, trend_up=True):
         close = 50 + np.cumsum(np.random.randn(rows) * 0.3) + np.linspace(0, 15, rows)
     else:
         close = 50 + np.cumsum(np.random.randn(rows) * 0.3) - np.linspace(0, 15, rows)
-    df = pd.DataFrame({
-        "日期": pd.date_range("2025-01-01", periods=rows),
-        "开盘": close * 0.99,
-        "收盘": close,
-        "最高": close * 1.02,
-        "最低": close * 0.98,
-        "成交量": np.random.randint(1_000_000, 10_000_000, rows),
-    })
+    df = pd.DataFrame(
+        {
+            "日期": pd.date_range("2025-01-01", periods=rows),
+            "开盘": close * 0.99,
+            "收盘": close,
+            "最高": close * 1.02,
+            "最低": close * 0.98,
+            "成交量": np.random.randint(1_000_000, 10_000_000, rows),
+        }
+    )
     df["MA5"] = df["收盘"].rolling(5).mean()
     df["MA10"] = df["收盘"].rolling(10).mean()
     df["MA20"] = df["收盘"].rolling(20).mean()
@@ -1442,7 +1618,9 @@ def _rich_kline(rows=100, trend_up=True):
     high = df["最高"]
     low = df["最低"]
     prev_close = df["收盘"].shift(1)
-    tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(axis=1)
+    tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(
+        axis=1
+    )
     df["ATR"] = tr.ewm(span=14).mean()
     df["BB_MIDDLE"] = df["收盘"].rolling(20).mean()
     bb_std = df["收盘"].rolling(20).std()
@@ -1455,6 +1633,7 @@ def _rich_kline(rows=100, trend_up=True):
     df["ADX"] = dx.ewm(span=14).mean()
     df["volume_ratio"] = df["成交量"] / df["成交量"].rolling(20).mean()
     return df.dropna()
+
 
 class TestEvaluateTradingStyle(unittest.TestCase):
     """evaluate_trading_style 短线/长线风格评估"""
@@ -1500,20 +1679,27 @@ class TestEvaluateTradingStyle(unittest.TestCase):
         """长线风格（基本面好但短线弱）"""
         # 给一个震荡或下跌的k线
         close = 50 + np.cumsum(np.random.randn(120) * 0.3) - np.linspace(0, 5, 120)
-        df = pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=120),
-            "开盘": close * 0.99,
-            "收盘": close,
-            "最高": close * 1.02,
-            "最低": close * 0.98,
-            "成交量": np.random.randint(1_000_000, 10_000_000, 120),
-        })
+        df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=120),
+                "开盘": close * 0.99,
+                "收盘": close,
+                "最高": close * 1.02,
+                "最低": close * 0.98,
+                "成交量": np.random.randint(1_000_000, 10_000_000, 120),
+            }
+        )
         df = _add_indicators(_add_ma(df))
         df["channel_high_20"] = df["最高"].rolling(20).max()
         df["volume_ratio"] = df["成交量"] / df["成交量"].rolling(20).mean()
         df = df.dropna()
         fundamentals = {"ROE": 20.0, "营收增长": 30.0}
-        risk_metrics = {"sharpe_ratio": 0.8, "max_drawdown_pct": -12.0, "annualized_volatility_pct": 22.0, "current_drawdown_pct": -3.0}
+        risk_metrics = {
+            "sharpe_ratio": 0.8,
+            "max_drawdown_pct": -12.0,
+            "annualized_volatility_pct": 22.0,
+            "current_drawdown_pct": -3.0,
+        }
         result = quant.evaluate_trading_style(df, fundamentals, risk_metrics)
         self.assertIn("style", result)
 
@@ -1562,7 +1748,12 @@ class TestEvaluateTradingStyle(unittest.TestCase):
         """ROE≥15 → 盈利能力优秀"""
         df = _rich_kline(80, trend_up=True)
         fundamentals = {"ROE": 18.0}
-        risk_metrics = {"sharpe_ratio": 0.6, "max_drawdown_pct": -5.0, "annualized_volatility_pct": 22.0, "current_drawdown_pct": -2.0}
+        risk_metrics = {
+            "sharpe_ratio": 0.6,
+            "max_drawdown_pct": -5.0,
+            "annualized_volatility_pct": 22.0,
+            "current_drawdown_pct": -2.0,
+        }
         result = quant.evaluate_trading_style(df, fundamentals, risk_metrics)
         self.assertIn("ROE", result["long_term_basis"])
 
@@ -1570,7 +1761,12 @@ class TestEvaluateTradingStyle(unittest.TestCase):
         """ROE 10-15 → 盈利能力良好"""
         df = _rich_kline(80, trend_up=True)
         fundamentals = {"ROE": 12.0}
-        risk_metrics = {"sharpe_ratio": 0.6, "max_drawdown_pct": -5.0, "annualized_volatility_pct": 22.0, "current_drawdown_pct": -2.0}
+        risk_metrics = {
+            "sharpe_ratio": 0.6,
+            "max_drawdown_pct": -5.0,
+            "annualized_volatility_pct": 22.0,
+            "current_drawdown_pct": -2.0,
+        }
         result = quant.evaluate_trading_style(df, fundamentals, risk_metrics)
         self.assertIn("ROE", result["long_term_basis"])
 
@@ -1578,14 +1774,24 @@ class TestEvaluateTradingStyle(unittest.TestCase):
         """ROE < 10 → 盈利能力一般"""
         df = _rich_kline(80, trend_up=True)
         fundamentals = {"ROE": 5.0}
-        risk_metrics = {"sharpe_ratio": 0.6, "max_drawdown_pct": -5.0, "annualized_volatility_pct": 22.0, "current_drawdown_pct": -2.0}
+        risk_metrics = {
+            "sharpe_ratio": 0.6,
+            "max_drawdown_pct": -5.0,
+            "annualized_volatility_pct": 22.0,
+            "current_drawdown_pct": -2.0,
+        }
         result = quant.evaluate_trading_style(df, fundamentals, risk_metrics)
         self.assertIn("ROE", result["long_term_basis"])
 
     def test_sharpe_below_0_5(self):
         """夏普比率偏低"""
         df = _rich_kline(80, trend_up=True)
-        risk_metrics = {"sharpe_ratio": 0.2, "max_drawdown_pct": -5.0, "annualized_volatility_pct": 22.0, "current_drawdown_pct": -2.0}
+        risk_metrics = {
+            "sharpe_ratio": 0.2,
+            "max_drawdown_pct": -5.0,
+            "annualized_volatility_pct": 22.0,
+            "current_drawdown_pct": -2.0,
+        }
         result = quant.evaluate_trading_style(df, {"ROE": 10.0}, risk_metrics)
         self.assertIn("夏普", result["long_term_basis"])
 
@@ -1633,26 +1839,34 @@ class TestEvaluateTradingStyle(unittest.TestCase):
     def test_lt_trend_below_ma60(self):
         """股价在MA60下方 → 趋势承压"""
         df = _rich_kline(80, trend_up=False)
-        risk_metrics = {"sharpe_ratio": 0.5, "max_drawdown_pct": -5.0, "annualized_volatility_pct": 22.0, "current_drawdown_pct": -2.0}
+        risk_metrics = {
+            "sharpe_ratio": 0.5,
+            "max_drawdown_pct": -5.0,
+            "annualized_volatility_pct": 22.0,
+            "current_drawdown_pct": -2.0,
+        }
         result = quant.evaluate_trading_style(df, {"ROE": 10.0}, risk_metrics)
         self.assertIn("MA60", result.get("long_term_basis", ""))
 
     def test_ret_60d_below_neg15(self):
         """60日涨幅 < -15%"""
         close = list(range(100, 20, -1))  # 大跌
-        df = pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=80),
-            "收盘": close,
-            "最高": [c * 1.02 for c in close],
-            "最低": [c * 0.98 for c in close],
-            "成交量": np.random.randint(1_000_000, 10_000_000, 80),
-        })
+        df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=80),
+                "收盘": close,
+                "最高": [c * 1.02 for c in close],
+                "最低": [c * 0.98 for c in close],
+                "成交量": np.random.randint(1_000_000, 10_000_000, 80),
+            }
+        )
         df = _add_indicators(_add_ma(df))
         df["channel_high_20"] = df["最高"].rolling(20).max()
         df["volume_ratio"] = df["成交量"] / df["成交量"].rolling(20).mean()
         df = df.dropna()
         result = quant.evaluate_trading_style(df, None, None)
         self.assertIsInstance(result["long_term_score"], (int, float))
+
 
 if __name__ == "__main__":
     unittest.main()

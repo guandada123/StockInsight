@@ -1,13 +1,16 @@
 """测试 build_concept_db.py — 概念板块数据库构建"""
+
 import os
+import sqlite3
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch, MagicMock
-import sqlite3
+from unittest.mock import MagicMock, patch
+
 import pandas as pd
 
 from stock_analyzer import build_concept_db
+
 
 class TestBuild(unittest.TestCase):
     """build() 构建概念板块数据库"""
@@ -28,9 +31,12 @@ class TestBuild(unittest.TestCase):
         build_concept_db.DB_PATH = self.db
 
         # mock akshare 返回概念列表
-        self.akshare_mock.stock_board_concept_name_em.return_value = pd.DataFrame({
-            "板块名称": ["AI概念", "新能源", "半导体"],
-        })
+        self.akshare_mock.stock_board_concept_name_em.return_value = pd.DataFrame(
+            {
+                "板块名称": ["AI概念", "新能源", "半导体"],
+            }
+        )
+
         # mock 成分股查询
         def mock_cons_em(symbol):
             data = {
@@ -39,6 +45,7 @@ class TestBuild(unittest.TestCase):
                 "半导体": pd.DataFrame({"代码": ["000004", "000005", "000006"]}),
             }
             return data.get(symbol, pd.DataFrame())
+
         self.akshare_mock.stock_board_concept_cons_em.side_effect = mock_cons_em
 
         result = build_concept_db.build()
@@ -53,14 +60,19 @@ class TestBuild(unittest.TestCase):
     def test_build_with_progress_cb(self):
         """progress_cb 被调用"""
         build_concept_db.DB_PATH = self.db
-        self.akshare_mock.stock_board_concept_name_em.return_value = pd.DataFrame({
-            "板块名称": ["A", "B", "C", "D", "E"],
-        })
-        self.akshare_mock.stock_board_concept_cons_em.return_value = pd.DataFrame({
-            "代码": ["000001", "000002"],
-        })
+        self.akshare_mock.stock_board_concept_name_em.return_value = pd.DataFrame(
+            {
+                "板块名称": ["A", "B", "C", "D", "E"],
+            }
+        )
+        self.akshare_mock.stock_board_concept_cons_em.return_value = pd.DataFrame(
+            {
+                "代码": ["000001", "000002"],
+            }
+        )
 
         calls = []
+
         def progress(i, total, name):
             calls.append((i, total, name))
 
@@ -73,6 +85,7 @@ class TestBuild(unittest.TestCase):
         self.akshare_mock.stock_board_concept_name_em.return_value = pd.DataFrame({"板块名称": []})
         result = build_concept_db.build()
         self.assertEqual(result, 0)
+
 
 class TestGetConcepts(unittest.TestCase):
     """get_concepts() 查询"""
@@ -115,6 +128,7 @@ class TestGetConcepts(unittest.TestCase):
         build_concept_db.DB_PATH = "/nonexistent/path/db.sqlite"
         self.assertEqual(build_concept_db.get_concepts("000001"), [])
 
+
 class TestGetSectorAll(unittest.TestCase):
     """get_sector_all() 全量板块信息"""
 
@@ -133,7 +147,9 @@ class TestGetSectorAll(unittest.TestCase):
         conn.execute("""CREATE TABLE IF NOT EXISTS stock_sector_v2 (
             code TEXT, sector TEXT, sub_sector TEXT, type TEXT,
             PRIMARY KEY (code, type))""")
-        conn.execute("INSERT INTO stock_sector_v2 VALUES ('000001', '银行', '股份制银行', 'industry')")
+        conn.execute(
+            "INSERT INTO stock_sector_v2 VALUES ('000001', '银行', '股份制银行', 'industry')"
+        )
         conn.execute("INSERT INTO stock_concept VALUES ('000001', '破净股', 'eastmoney')")
         conn.commit()
         conn.close()
@@ -153,6 +169,7 @@ class TestGetSectorAll(unittest.TestCase):
         info = build_concept_db.get_sector_all("999999")
         self.assertEqual(info["industry"], "未知")
         self.assertEqual(info["concepts"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

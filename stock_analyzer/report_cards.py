@@ -4,19 +4,19 @@
 """
 
 from .report_html_utils import (
-    _escape_html,
     _change_color,
     _change_sign,
-    _fmt_num,
-    _rating_color,
-    _rating_bg_color,
     _color_for_value,
+    _escape_html,
+    _fmt_num,
+    _rating_bg_color,
+    _rating_color,
     _tip,
 )
 from .report_narratives import (
-    _build_stock_narrative,
     _build_news_section,
     _build_operation_advice,
+    _build_stock_narrative,
 )
 
 

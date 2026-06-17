@@ -1,16 +1,19 @@
 """测试 feishu_bot.py — 飞书群机器人消息发送"""
+
 import json
 import os
 import sys
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from stock_analyzer.feishu_bot import (
-    _webhook_url,
-    send_text,
-    send_post,
-    send_alert,
     _post,
+    _webhook_url,
+    send_alert,
+    send_post,
+    send_text,
 )
+
 
 class TestWebhookURL(unittest.TestCase):
     """_webhook_url 获取 Webhook URL（env.py 统一加载 .env 文件）"""
@@ -29,6 +32,7 @@ class TestWebhookURL(unittest.TestCase):
     def test_empty_env_var(self):
         """环境变量为空字符串"""
         self.assertEqual(_webhook_url(), "")
+
 
 class TestPost(unittest.TestCase):
     """_post 底层 HTTP 请求"""
@@ -68,8 +72,13 @@ class TestPost(unittest.TestCase):
     def test_http_error(self, mock_urlopen):
         """HTTPError 处理"""
         import urllib.error
+
         mock_urlopen.side_effect = urllib.error.HTTPError(
-            "https://example.com", 403, "Forbidden", {}, None  # type: ignore[arg-type]
+            "https://example.com",
+            403,
+            "Forbidden",
+            {},
+            None,  # type: ignore[arg-type]
         )
         result = _post("https://example.com", {})
         self.assertFalse(result["ok"])
@@ -82,6 +91,7 @@ class TestPost(unittest.TestCase):
         result = _post("https://example.com", {})
         self.assertFalse(result["ok"])
         self.assertIn("network unavailable", result["error"])
+
 
 class TestSendText(unittest.TestCase):
     """send_text 纯文本消息"""
@@ -105,6 +115,7 @@ class TestSendText(unittest.TestCase):
         self.assertEqual(call_args[0], "https://hook.test")
         self.assertEqual(call_args[1]["msg_type"], "text")
         self.assertEqual(call_args[1]["content"]["text"], "hello world")
+
 
 class TestSendPost(unittest.TestCase):
     """send_post 富文本消息"""
@@ -132,6 +143,7 @@ class TestSendPost(unittest.TestCase):
         self.assertEqual(zh_cn["title"], "测试标题")
         self.assertEqual(zh_cn["content"], paragraphs)
 
+
 class TestSendAlert(unittest.TestCase):
     """send_alert 预警消息"""
 
@@ -153,6 +165,7 @@ class TestSendAlert(unittest.TestCase):
         mock_post.return_value = {"ok": True}
         send_alert("测试", "内容", webhook_url="https://custom.hook/test")
         self.assertEqual(mock_post.call_args[0][0], "https://custom.hook/test")
+
 
 if __name__ == "__main__":
     unittest.main()

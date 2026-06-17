@@ -4,7 +4,7 @@ import os
 import sys
 from datetime import datetime, time
 from typing import Any
-from unittest.mock import MagicMock, call, patch, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, call, patch
 
 import pandas as pd
 import pytest
@@ -22,9 +22,11 @@ _MOCK_DOCX_MODULES = {
     "docx.shared": MagicMock(),
 }
 
+
 # 枚举值 —— 用简单对象而非 MagicMock 以便 isinstance / 属性访问
 class _WDTableAlign:
     CENTER = "center"
+
 
 class _WDAlignParagraph:
     CENTER = "center"
@@ -32,23 +34,14 @@ class _WDAlignParagraph:
     RIGHT = "right"
     JUSTIFY = "justify"
 
+
 _MOCK_DOCX_MODULES["docx.enum.table"].WD_TABLE_ALIGNMENT = _WDTableAlign()
 _MOCK_DOCX_MODULES["docx.enum.text"].WD_ALIGN_PARAGRAPH = _WDAlignParagraph()
-_MOCK_DOCX_MODULES["docx.oxml"].OxmlElement = MagicMock(
-    return_value=MagicMock()
-)
-_MOCK_DOCX_MODULES["docx.oxml.ns"].qn = MagicMock(
-    side_effect=lambda x: f"ns:{x}"
-)
-_MOCK_DOCX_MODULES["docx.shared"].Cm = MagicMock(
-    side_effect=lambda x: f"cm:{x}"
-)
-_MOCK_DOCX_MODULES["docx.shared"].Pt = MagicMock(
-    side_effect=lambda x: f"pt:{x}"
-)
-_MOCK_DOCX_MODULES["docx.shared"].RGBColor = MagicMock(
-    return_value="mock_rgb"
-)
+_MOCK_DOCX_MODULES["docx.oxml"].OxmlElement = MagicMock(return_value=MagicMock())
+_MOCK_DOCX_MODULES["docx.oxml.ns"].qn = MagicMock(side_effect=lambda x: f"ns:{x}")
+_MOCK_DOCX_MODULES["docx.shared"].Cm = MagicMock(side_effect=lambda x: f"cm:{x}")
+_MOCK_DOCX_MODULES["docx.shared"].Pt = MagicMock(side_effect=lambda x: f"pt:{x}")
+_MOCK_DOCX_MODULES["docx.shared"].RGBColor = MagicMock(return_value="mock_rgb")
 
 # Document 类 —— 提供一个可用的 mock
 _DOCUMENT_CLASS = MagicMock()
@@ -66,6 +59,7 @@ from stock_analyzer import reporter
 # Fixtures
 # ══════════════════════════════════════════════════════════════════════
 
+
 @pytest.fixture
 def mock_doc():
     """返回一个可用的 mock Document 实例"""
@@ -75,6 +69,7 @@ def mock_doc():
     doc.add_table.return_value = MagicMock()
     doc.sections = [MagicMock()]
     return doc
+
 
 @pytest.fixture
 def sample_sectors():
@@ -90,6 +85,7 @@ def sample_sectors():
         }
     )
 
+
 @pytest.fixture
 def sample_picks():
     """模拟推荐股票 DataFrame"""
@@ -103,6 +99,7 @@ def sample_picks():
             "量比": [1.5, 0.8],
         }
     )
+
 
 @pytest.fixture
 def sample_details():
@@ -141,9 +138,11 @@ def sample_details():
         },
     }
 
+
 # ══════════════════════════════════════════════════════════════════════
 # Tests — add_title
 # ══════════════════════════════════════════════════════════════════════
+
 
 class TestAddTitle:
     def test_level_0_calls_heading_level_1(self, mock_doc):
@@ -168,9 +167,11 @@ class TestAddTitle:
         reporter.add_title(mock_doc, "默认")
         mock_doc.add_heading.assert_called_once_with("默认", level=1)
 
+
 # ══════════════════════════════════════════════════════════════════════
 # Tests — add_para
 # ══════════════════════════════════════════════════════════════════════
+
 
 class TestAddPara:
     def test_basic(self, mock_doc):
@@ -211,18 +212,18 @@ class TestAddPara:
         p = mock_doc.add_paragraph.return_value
         assert p.alignment == align
 
+
 # ══════════════════════════════════════════════════════════════════════
 # Tests — add_image
 # ══════════════════════════════════════════════════════════════════════
+
 
 class TestAddImage:
     def test_path_exists(self, mock_doc):
         """路径存在 → 添加图片"""
         with patch("os.path.exists", return_value=True):
             result = reporter.add_image(mock_doc, "/tmp/img.png", width=14)
-        mock_doc.add_picture.assert_called_once_with(
-            "/tmp/img.png", width="cm:14"
-        )
+        mock_doc.add_picture.assert_called_once_with("/tmp/img.png", width="cm:14")
         assert result is True
 
     def test_path_none(self, mock_doc):
@@ -242,13 +243,13 @@ class TestAddImage:
         """自定义宽度"""
         with patch("os.path.exists", return_value=True):
             reporter.add_image(mock_doc, "/tmp/img.png", width=10)
-        mock_doc.add_picture.assert_called_once_with(
-            "/tmp/img.png", width="cm:10"
-        )
+        mock_doc.add_picture.assert_called_once_with("/tmp/img.png", width="cm:10")
+
 
 # ══════════════════════════════════════════════════════════════════════
 # Tests — _set_cell_shading
 # ══════════════════════════════════════════════════════════════════════
+
 
 class TestSetCellShading:
     def test_sets_shading(self):
@@ -275,9 +276,11 @@ class TestSetCellShading:
         tc_pr = cell._tc.get_or_add_tcPr.return_value
         tc_pr.append.assert_called_once_with(shading_elem)
 
+
 # ══════════════════════════════════════════════════════════════════════
 # Tests — _make_header_row
 # ══════════════════════════════════════════════════════════════════════
+
 
 class TestMakeHeaderRow:
     def test_sets_headers(self):
@@ -294,9 +297,7 @@ class TestMakeHeaderRow:
             cell = row_cells[i]
             assert cell.text == ""
             p = cell.paragraphs[0]
-            assert p.alignment == _MOCK_DOCX_MODULES[
-                "docx.enum.text"
-            ].WD_ALIGN_PARAGRAPH.CENTER
+            assert p.alignment == _MOCK_DOCX_MODULES["docx.enum.text"].WD_ALIGN_PARAGRAPH.CENTER
             run = p.add_run.return_value
             p.add_run.assert_called_once_with(h)
             assert run.bold is True
@@ -315,9 +316,11 @@ class TestMakeHeaderRow:
         shading_elem = OxmlElement.return_value
         shading_elem.set.assert_any_call("ns:w:fill", "4472C4")
 
+
 # ══════════════════════════════════════════════════════════════════════
 # Tests — _add_table_row
 # ══════════════════════════════════════════════════════════════════════
+
 
 class TestAddTableRow:
     def test_adds_values(self):
@@ -356,16 +359,14 @@ class TestAddTableRow:
         table.add_row.return_value = new_row
 
         reporter._add_table_row(table, [123, 45.6])
-        new_row.cells[0].paragraphs[0].add_run.assert_called_once_with(
-            "123"
-        )
-        new_row.cells[1].paragraphs[0].add_run.assert_called_once_with(
-            "45.6"
-        )
+        new_row.cells[0].paragraphs[0].add_run.assert_called_once_with("123")
+        new_row.cells[1].paragraphs[0].add_run.assert_called_once_with("45.6")
+
 
 # ══════════════════════════════════════════════════════════════════════
 # Tests — _create_table
 # ══════════════════════════════════════════════════════════════════════
+
 
 class TestCreateTable:
     def test_create_basic(self, mock_doc):
@@ -418,9 +419,11 @@ class TestCreateTable:
         reporter._create_table(mock_doc, headers, rows, col_widths)
         assert fake_row.cells[0].width == "cm:3"
 
+
 # ══════════════════════════════════════════════════════════════════════
 # Tests — generate_report
 # ══════════════════════════════════════════════════════════════════════
+
 
 class TestGenerateReport:
     def mk_doc(self):
@@ -435,9 +438,7 @@ class TestGenerateReport:
     @patch("stock_analyzer.reporter.Document")
     @patch("stock_analyzer.reporter.os.makedirs")
     @patch("stock_analyzer.reporter.os.path.exists", return_value=True)
-    def test_basic_report_with_all_data(
-        self, mock_exists, mock_makedirs, mock_document_class
-    ):
+    def test_basic_report_with_all_data(self, mock_exists, mock_makedirs, mock_document_class):
         """完整报告：有板块、有推荐、有详情"""
         doc = self.mk_doc()
         mock_document_class.return_value = doc
@@ -498,9 +499,7 @@ class TestGenerateReport:
 
     @patch("stock_analyzer.reporter.Document")
     @patch("stock_analyzer.reporter.os.makedirs")
-    def test_empty_sectors(
-        self, mock_makedirs, mock_document_class
-    ):
+    def test_empty_sectors(self, mock_makedirs, mock_document_class):
         """sectors_df 为空 → 跳过排行榜和深度分析"""
         doc = self.mk_doc()
         mock_document_class.return_value = doc
@@ -523,9 +522,7 @@ class TestGenerateReport:
 
     @patch("stock_analyzer.reporter.Document")
     @patch("stock_analyzer.reporter.os.makedirs")
-    def test_empty_picks(
-        self, mock_makedirs, mock_document_class
-    ):
+    def test_empty_picks(self, mock_makedirs, mock_document_class):
         """picks_df 为空 → 跳过推荐汇总"""
         doc = self.mk_doc()
         mock_document_class.return_value = doc
@@ -547,9 +544,7 @@ class TestGenerateReport:
 
     @patch("stock_analyzer.reporter.Document")
     @patch("stock_analyzer.reporter.os.makedirs")
-    def test_three_sectors_top3(
-        self, mock_makedirs, mock_document_class
-    ):
+    def test_three_sectors_top3(self, mock_makedirs, mock_document_class):
         """3 个板块 → TOP 3 深度分析生成"""
         doc = self.mk_doc()
         mock_document_class.return_value = doc
@@ -571,9 +566,7 @@ class TestGenerateReport:
 
     @patch("stock_analyzer.reporter.Document")
     @patch("stock_analyzer.reporter.os.makedirs")
-    def test_custom_output_name(
-        self, mock_makedirs, mock_document_class
-    ):
+    def test_custom_output_name(self, mock_makedirs, mock_document_class):
         """自定义输出文件名"""
         doc = self.mk_doc()
         mock_document_class.return_value = doc
@@ -630,9 +623,7 @@ class TestGenerateReport:
     @patch("stock_analyzer.reporter.Document")
     @patch("stock_analyzer.reporter.os.makedirs")
     @patch("stock_analyzer.reporter.os.path.exists", return_value=True)
-    def test_images_exist(
-        self, mock_exists, mock_makedirs, mock_document_class
-    ):
+    def test_images_exist(self, mock_exists, mock_makedirs, mock_document_class):
         """所有图片路径都存在"""
         doc = self.mk_doc()
         mock_document_class.return_value = doc
@@ -674,9 +665,7 @@ class TestGenerateReport:
     @patch("stock_analyzer.reporter.Document")
     @patch("stock_analyzer.reporter.os.makedirs")
     @patch("stock_analyzer.reporter.os.path.exists", return_value=False)
-    def test_images_not_exist(
-        self, mock_exists, mock_makedirs, mock_document_class
-    ):
+    def test_images_not_exist(self, mock_exists, mock_makedirs, mock_document_class):
         """图片路径存在但文件不存在"""
         doc = self.mk_doc()
         mock_document_class.return_value = doc
@@ -717,9 +706,7 @@ class TestGenerateReport:
 
     @patch("stock_analyzer.reporter.Document")
     @patch("stock_analyzer.reporter.os.makedirs")
-    def test_high_funda_score_green(
-        self, mock_makedirs, mock_document_class
-    ):
+    def test_high_funda_score_green(self, mock_makedirs, mock_document_class):
         """基本面评分≥60 显示绿色"""
         doc = self.mk_doc()
         mock_document_class.return_value = doc

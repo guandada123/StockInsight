@@ -13,6 +13,7 @@ TMP_ALERTS_LOG = os.path.join(tempfile.gettempdir(), "test_alerts_log.txt")
 
 os.environ["FEISHU_ALERTS_ENABLED"] = "0"  # 禁用飞书推送
 
+
 class TestAlertCRUD(unittest.TestCase):
     """预警 CRUD 操作测试"""
 
@@ -47,6 +48,7 @@ class TestAlertCRUD(unittest.TestCase):
     def test_load_alerts_empty(self):
         """文件不存在时返回空列表"""
         from stock_analyzer.alert import load_alerts
+
         self.assertEqual(load_alerts(), [])
 
     def test_load_alerts_empty_file(self):
@@ -54,13 +56,16 @@ class TestAlertCRUD(unittest.TestCase):
         with open(TMP_ALERTS, "w") as f:
             f.write("")
         from stock_analyzer.alert import load_alerts
+
         self.assertEqual(load_alerts(), [])
 
     def test_add_and_load(self):
         """添加后能加载"""
         from stock_analyzer.alert import add_alert, load_alerts
 
-        alert_id = add_alert({"type": "price", "code": "000001", "direction": "above", "target": 15})
+        alert_id = add_alert(
+            {"type": "price", "code": "000001", "direction": "above", "target": 15}
+        )
         self.assertIsInstance(alert_id, str)
         self.assertEqual(len(alert_id), 8)
 
@@ -82,6 +87,7 @@ class TestAlertCRUD(unittest.TestCase):
     def test_remove_nonexistent(self):
         """删除不存在的 ID"""
         from stock_analyzer.alert import remove_alert
+
         self.assertFalse(remove_alert("nonexistent"))
 
     def test_multiple_alerts(self):
@@ -100,6 +106,7 @@ class TestAlertCRUD(unittest.TestCase):
         alert_id = add_alert({"type": "price", "code": "000001", "direction": "below", "target": 5})
         alert = next(a for a in load_alerts() if a["id"] == alert_id)
         self.assertTrue(alert["enabled"])
+
 
 class TestCheckAlerts(unittest.TestCase):
     """check_alerts 分发逻辑测试"""
@@ -129,6 +136,7 @@ class TestCheckAlerts(unittest.TestCase):
         result = check_alerts([{"type": "price", "code": "000001", "enabled": False}])
         self.assertEqual(result, [])
 
+
 class TestRunAllAlerts(unittest.TestCase):
     """run_all_alerts 集成测试"""
 
@@ -146,6 +154,7 @@ class TestRunAllAlerts(unittest.TestCase):
     def test_run_no_alerts(self):
         """无预警时返回空列表"""
         from stock_analyzer.alert import run_all_alerts
+
         result = run_all_alerts()
         self.assertEqual(result, [])
 
@@ -158,6 +167,7 @@ class TestRunAllAlerts(unittest.TestCase):
             result = run_all_alerts()
             self.assertEqual(result, [])
 
+
 class TestPriceAlert(unittest.TestCase):
     """价格预警检查测试（纯逻辑，无需数据库）"""
 
@@ -167,7 +177,9 @@ class TestPriceAlert(unittest.TestCase):
         from stock_analyzer.alert import _check_price_alert
 
         mock_price.return_value = 15.5
-        triggered, msg = _check_price_alert({"code": "000001", "direction": "above", "target": 15.0})
+        triggered, msg = _check_price_alert(
+            {"code": "000001", "direction": "above", "target": 15.0}
+        )
         self.assertTrue(triggered)
         self.assertIn("000001", msg)
         self.assertIn("15.5", msg)
@@ -178,7 +190,9 @@ class TestPriceAlert(unittest.TestCase):
         from stock_analyzer.alert import _check_price_alert
 
         mock_price.return_value = 14.0
-        triggered, msg = _check_price_alert({"code": "000001", "direction": "above", "target": 15.0})
+        triggered, msg = _check_price_alert(
+            {"code": "000001", "direction": "above", "target": 15.0}
+        )
         self.assertFalse(triggered)
 
     @patch("stock_analyzer.alert._get_current_price")
@@ -187,7 +201,9 @@ class TestPriceAlert(unittest.TestCase):
         from stock_analyzer.alert import _check_price_alert
 
         mock_price.return_value = 9.5
-        triggered, msg = _check_price_alert({"code": "600000", "direction": "below", "target": 10.0})
+        triggered, msg = _check_price_alert(
+            {"code": "600000", "direction": "below", "target": 10.0}
+        )
         self.assertTrue(triggered)
         self.assertIn("600000", msg)
 
@@ -200,6 +216,7 @@ class TestPriceAlert(unittest.TestCase):
         result, msg = _check_price_alert({"code": "000001", "direction": "above", "target": 15.0})
         self.assertIsNone(result)
 
+
 class TestFundamentalAlert(unittest.TestCase):
     """基本面预警测试"""
 
@@ -209,9 +226,9 @@ class TestFundamentalAlert(unittest.TestCase):
         from stock_analyzer.alert import _check_fundamental_alert
 
         mock_funda.return_value = {"ROE": 8.5}
-        triggered, msg = _check_fundamental_alert({
-            "code": "000001", "metric": "ROE", "condition": "<10"
-        })
+        triggered, msg = _check_fundamental_alert(
+            {"code": "000001", "metric": "ROE", "condition": "<10"}
+        )
         self.assertTrue(triggered)
         self.assertIn("ROE", msg)
 
@@ -221,9 +238,9 @@ class TestFundamentalAlert(unittest.TestCase):
         from stock_analyzer.alert import _check_fundamental_alert
 
         mock_funda.return_value = {"ROE": 18.0}
-        triggered, msg = _check_fundamental_alert({
-            "code": "000001", "metric": "ROE", "condition": "<10"
-        })
+        triggered, msg = _check_fundamental_alert(
+            {"code": "000001", "metric": "ROE", "condition": "<10"}
+        )
         self.assertFalse(triggered)
 
     @patch("stock_analyzer.alert.cached_fundamentals")
@@ -232,9 +249,9 @@ class TestFundamentalAlert(unittest.TestCase):
         from stock_analyzer.alert import _check_fundamental_alert
 
         mock_funda.return_value = {"ROE": 15}
-        result, msg = _check_fundamental_alert({
-            "code": "000001", "metric": "市盈率", "condition": "<10"
-        })
+        result, msg = _check_fundamental_alert(
+            {"code": "000001", "metric": "市盈率", "condition": "<10"}
+        )
         self.assertIsNone(result)
 
     @patch("stock_analyzer.alert.cached_fundamentals")
@@ -243,10 +260,11 @@ class TestFundamentalAlert(unittest.TestCase):
         from stock_analyzer.alert import _check_fundamental_alert
 
         mock_funda.return_value = {"ROE": 15}
-        result, msg = _check_fundamental_alert({
-            "code": "000001", "metric": "ROE", "condition": "abc"
-        })
+        result, msg = _check_fundamental_alert(
+            {"code": "000001", "metric": "ROE", "condition": "abc"}
+        )
         self.assertIsNone(result)
+
 
 class TestNotifyFeishu(unittest.TestCase):
     """飞书推送测试"""
@@ -268,6 +286,7 @@ class TestNotifyFeishu(unittest.TestCase):
         os.environ["FEISHU_ALERTS_ENABLED"] = "1"
 
         from stock_analyzer.alert import _notify_via_feishu
+
         result = _notify_via_feishu([{"type": "price", "message": "test"}])
         self.assertFalse(result)
 
@@ -278,6 +297,7 @@ class TestNotifyFeishu(unittest.TestCase):
         os.environ["FEISHU_ALERTS_ENABLED"] = "0"
 
         from stock_analyzer.alert import _notify_via_feishu
+
         result = _notify_via_feishu([{"type": "price", "message": "test"}])
         self.assertFalse(result)
 
@@ -292,6 +312,7 @@ class TestNotifyFeishu(unittest.TestCase):
         mock_urlopen.return_value.__enter__.return_value = mock_resp
 
         from stock_analyzer.alert import _notify_via_feishu
+
         result = _notify_via_feishu([{"type": "price", "message": "test"}])
         self.assertTrue(result)
 
@@ -306,6 +327,7 @@ class TestNotifyFeishu(unittest.TestCase):
         mock_urlopen.return_value.__enter__.return_value = mock_resp
 
         from stock_analyzer.alert import _notify_via_feishu
+
         result = _notify_via_feishu([{"type": "price", "message": "test"}])
         self.assertFalse(result)
 
@@ -318,8 +340,10 @@ class TestNotifyFeishu(unittest.TestCase):
         mock_urlopen.side_effect = RuntimeError("timeout")
 
         from stock_analyzer.alert import _notify_via_feishu
+
         result = _notify_via_feishu([{"type": "price", "message": "test"}])
         self.assertFalse(result)
+
 
 class TestVolumeAlert(unittest.TestCase):
     """放量预警测试"""
@@ -350,6 +374,7 @@ class TestVolumeAlert(unittest.TestCase):
     def test_empty_df(self, mock_kline):
         """空 DataFrame"""
         import pandas as pd
+
         from stock_analyzer.alert import _check_volume_alert
 
         mock_kline.return_value = pd.DataFrame()
@@ -377,19 +402,23 @@ class TestVolumeAlert(unittest.TestCase):
         self.assertIsNone(result)
         self.assertIn("均量为零", msg)
 
+
 class TestTechnicalAlert(unittest.TestCase):
     """技术指标预警测试"""
 
     def _make_tech_df(self, rsi_val=50, dif=None, dea=None):
         """构造含技术指标数据的 DataFrame（已通过 full_technical_analysis）"""
         import pandas as pd
-        df = pd.DataFrame({
-            "close": [10.0] * 5,
-            "high": [11.0] * 5,
-            "low": [9.0] * 5,
-            "volume": [100] * 5,
-            "RSI": [float(rsi_val)] * 5,
-        })
+
+        df = pd.DataFrame(
+            {
+                "close": [10.0] * 5,
+                "high": [11.0] * 5,
+                "low": [9.0] * 5,
+                "volume": [100] * 5,
+                "RSI": [float(rsi_val)] * 5,
+            }
+        )
         if dif is not None:
             df["DIF"] = [float(dif)] * 5
         if dea is not None:
@@ -405,9 +434,9 @@ class TestTechnicalAlert(unittest.TestCase):
         df = self._make_tech_df(rsi_val=85)
         mock_kline.return_value = df
         mock_ta.return_value = df
-        triggered, msg = _check_technical_alert({
-            "code": "000001", "indicator": "RSI", "condition": ">80"
-        })
+        triggered, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "RSI", "condition": ">80"}
+        )
         self.assertTrue(triggered)
         self.assertIn("超买", msg)
 
@@ -420,9 +449,9 @@ class TestTechnicalAlert(unittest.TestCase):
         df = self._make_tech_df(rsi_val=15)
         mock_kline.return_value = df
         mock_ta.return_value = df
-        triggered, msg = _check_technical_alert({
-            "code": "000001", "indicator": "RSI", "condition": "<20"
-        })
+        triggered, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "RSI", "condition": "<20"}
+        )
         self.assertTrue(triggered)
         self.assertIn("超卖", msg)
 
@@ -435,9 +464,9 @@ class TestTechnicalAlert(unittest.TestCase):
         df = self._make_tech_df(rsi_val=80)
         mock_kline.return_value = df
         mock_ta.return_value = df
-        triggered, msg = _check_technical_alert({
-            "code": "000001", "indicator": "RSI", "condition": ">75"
-        })
+        triggered, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "RSI", "condition": ">75"}
+        )
         self.assertTrue(triggered)
         self.assertIn("80", msg)
 
@@ -450,9 +479,9 @@ class TestTechnicalAlert(unittest.TestCase):
         df = self._make_tech_df(rsi_val=20)
         mock_kline.return_value = df
         mock_ta.return_value = df
-        triggered, msg = _check_technical_alert({
-            "code": "000001", "indicator": "RSI", "condition": "<25"
-        })
+        triggered, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "RSI", "condition": "<25"}
+        )
         self.assertTrue(triggered)
         self.assertIn("20", msg)
 
@@ -465,9 +494,9 @@ class TestTechnicalAlert(unittest.TestCase):
         df = self._make_tech_df(rsi_val=50)
         mock_kline.return_value = df
         mock_ta.return_value = df
-        triggered, msg = _check_technical_alert({
-            "code": "000001", "indicator": "RSI", "condition": ">80"
-        })
+        triggered, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "RSI", "condition": ">80"}
+        )
         self.assertFalse(triggered)
 
     @patch("stock_analyzer.alert.full_technical_analysis")
@@ -480,9 +509,9 @@ class TestTechnicalAlert(unittest.TestCase):
         df = _make_macd_df(prev_dif=-0.1, prev_dea=0.0, now_dif=0.1, now_dea=0.0)
         mock_kline.return_value = df
         mock_ta.return_value = df
-        triggered, msg = _check_technical_alert({
-            "code": "000001", "indicator": "MACD", "condition": "金叉"
-        })
+        triggered, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "MACD", "condition": "金叉"}
+        )
         self.assertTrue(triggered)
         self.assertIn("金叉", msg)
 
@@ -496,9 +525,9 @@ class TestTechnicalAlert(unittest.TestCase):
         df = _make_macd_df(prev_dif=0.1, prev_dea=0.0, now_dif=-0.1, now_dea=0.0)
         mock_kline.return_value = df
         mock_ta.return_value = df
-        triggered, msg = _check_technical_alert({
-            "code": "000001", "indicator": "MACD", "condition": "死叉"
-        })
+        triggered, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "MACD", "condition": "死叉"}
+        )
         self.assertTrue(triggered)
         self.assertIn("死叉", msg)
 
@@ -511,9 +540,9 @@ class TestTechnicalAlert(unittest.TestCase):
         df = _make_macd_df(prev_dif=0.3, prev_dea=0.2, now_dif=0.6, now_dea=0.3)
         mock_kline.return_value = df
         mock_ta.return_value = df
-        triggered, msg = _check_technical_alert({
-            "code": "000001", "indicator": "MACD", "condition": "DIF>0.5"
-        })
+        triggered, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "MACD", "condition": "DIF>0.5"}
+        )
         self.assertTrue(triggered)
         self.assertIn("0.6", msg)
 
@@ -526,21 +555,22 @@ class TestTechnicalAlert(unittest.TestCase):
         df = _make_kline_df({"close": [10.0] * 5})
         mock_kline.return_value = df
         mock_ta.return_value = df
-        result, msg = _check_technical_alert({
-            "code": "000001", "indicator": "BOLL", "condition": ">80"
-        })
+        result, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "BOLL", "condition": ">80"}
+        )
         self.assertIsNone(result)
 
     @patch("stock_analyzer.alert.cached_kline")
     def test_empty_df(self, mock_kline):
         """空 DataFrame（在 full_technical_analysis 调用前就返回）"""
         import pandas as pd
+
         from stock_analyzer.alert import _check_technical_alert
 
         mock_kline.return_value = pd.DataFrame()
-        result, msg = _check_technical_alert({
-            "code": "000001", "indicator": "RSI", "condition": ">80"
-        })
+        result, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "RSI", "condition": ">80"}
+        )
         self.assertIsNone(result)
 
     @patch("stock_analyzer.alert.full_technical_analysis")
@@ -553,9 +583,9 @@ class TestTechnicalAlert(unittest.TestCase):
         df["RSI"] = float("nan")
         mock_kline.return_value = df
         mock_ta.return_value = df
-        result, msg = _check_technical_alert({
-            "code": "000001", "indicator": "RSI", "condition": ">80"
-        })
+        result, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "RSI", "condition": ">80"}
+        )
         self.assertIsNone(result)
 
     @patch("stock_analyzer.alert.full_technical_analysis")
@@ -569,10 +599,11 @@ class TestTechnicalAlert(unittest.TestCase):
         df["DEA"] = float("nan")
         mock_kline.return_value = df
         mock_ta.return_value = df
-        result, msg = _check_technical_alert({
-            "code": "000001", "indicator": "MACD", "condition": "金叉"
-        })
+        result, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "MACD", "condition": "金叉"}
+        )
         self.assertIsNone(result)
+
 
 class TestCheckAlertsDispatch(unittest.TestCase):
     """check_alerts 全部分发分支 + 异常处理"""
@@ -590,9 +621,9 @@ class TestCheckAlertsDispatch(unittest.TestCase):
         from stock_analyzer.alert import check_alerts
 
         mock_check.return_value = (True, "放量预警 test")
-        result = check_alerts([{
-            "type": "volume", "code": "600000", "multiplier": 2.0, "enabled": True
-        }])
+        result = check_alerts(
+            [{"type": "volume", "code": "600000", "multiplier": 2.0, "enabled": True}]
+        )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["type"], "volume")
         self.assertEqual(result[0]["code"], "600000")
@@ -603,10 +634,17 @@ class TestCheckAlertsDispatch(unittest.TestCase):
         from stock_analyzer.alert import check_alerts
 
         mock_check.return_value = (True, "技术预警 test")
-        result = check_alerts([{
-            "type": "technical", "code": "300750", "indicator": "RSI",
-            "condition": ">80", "enabled": True
-        }])
+        result = check_alerts(
+            [
+                {
+                    "type": "technical",
+                    "code": "300750",
+                    "indicator": "RSI",
+                    "condition": ">80",
+                    "enabled": True,
+                }
+            ]
+        )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["type"], "technical")
 
@@ -616,10 +654,17 @@ class TestCheckAlertsDispatch(unittest.TestCase):
         from stock_analyzer.alert import check_alerts
 
         mock_check.return_value = (True, "基本面预警 test")
-        result = check_alerts([{
-            "type": "fundamental", "code": "000001", "metric": "ROE",
-            "condition": "<10", "enabled": True
-        }])
+        result = check_alerts(
+            [
+                {
+                    "type": "fundamental",
+                    "code": "000001",
+                    "metric": "ROE",
+                    "condition": "<10",
+                    "enabled": True,
+                }
+            ]
+        )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["type"], "fundamental")
 
@@ -627,13 +672,21 @@ class TestCheckAlertsDispatch(unittest.TestCase):
         """检查出现异常时跳过该条，不崩溃"""
         from stock_analyzer.alert import check_alerts
 
-        result = check_alerts([{
-            "type": "price", "code": "000001",
-            "direction": "above", "target": 15, "enabled": True
-        }])
+        result = check_alerts(
+            [
+                {
+                    "type": "price",
+                    "code": "000001",
+                    "direction": "above",
+                    "target": 15,
+                    "enabled": True,
+                }
+            ]
+        )
         # _get_current_price 没 mock，调用 sina_real_time 会抛异常
         # 但 check_alerts 应该捕获并继续
         self.assertEqual(result, [])
+
 
 class TestRunAllAlertsTriggered(unittest.TestCase):
     """run_all_alerts 触发态测试"""
@@ -664,6 +717,7 @@ class TestRunAllAlertsTriggered(unittest.TestCase):
             content = f.read()
         self.assertIn("000001", content)
 
+
 class TestAlertEdgeCases(unittest.TestCase):
     """边缘情况测试"""
 
@@ -679,6 +733,7 @@ class TestAlertEdgeCases(unittest.TestCase):
         with open(TMP_ALERTS, "w", encoding="utf-8") as f:
             f.write("{corrupt json")
         from stock_analyzer.alert import load_alerts
+
         self.assertEqual(load_alerts(), [])
 
     @patch("stock_analyzer.alert.sina_real_time")
@@ -699,6 +754,7 @@ class TestAlertEdgeCases(unittest.TestCase):
         price = _get_current_price("000001")
         self.assertIsNone(price)
 
+
 class TestTechnicalAlertEdgeCases(unittest.TestCase):
     """技术指标预警边缘分支补齐"""
 
@@ -707,13 +763,14 @@ class TestTechnicalAlertEdgeCases(unittest.TestCase):
     def test_ta_returns_empty_df(self, mock_kline, mock_ta):
         """full_technical_analysis 返回空 DF（line 171）"""
         import pandas as pd
+
         from stock_analyzer.alert import _check_technical_alert
 
         mock_kline.return_value = _make_kline_df({"close": [10.0] * 5})
         mock_ta.return_value = pd.DataFrame()
-        result, msg = _check_technical_alert({
-            "code": "000001", "indicator": "RSI", "condition": ">80"
-        })
+        result, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "RSI", "condition": ">80"}
+        )
         self.assertIsNone(result)
 
     @patch("stock_analyzer.alert.full_technical_analysis")
@@ -725,9 +782,9 @@ class TestTechnicalAlertEdgeCases(unittest.TestCase):
         df = _make_macd_df(prev_dif=0.1, prev_dea=0.05, now_dif=0.5, now_dea=0.3)
         mock_kline.return_value = df
         mock_ta.return_value = df
-        triggered, msg = _check_technical_alert({
-            "code": "000001", "indicator": "MACD", "condition": "DIF>=0.5"
-        })
+        triggered, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "MACD", "condition": "DIF>=0.5"}
+        )
         self.assertTrue(triggered)
 
     @patch("stock_analyzer.alert.full_technical_analysis")
@@ -739,9 +796,9 @@ class TestTechnicalAlertEdgeCases(unittest.TestCase):
         df = _make_macd_df(prev_dif=0.5, prev_dea=0.3, now_dif=0.1, now_dea=0.2)
         mock_kline.return_value = df
         mock_ta.return_value = df
-        triggered, msg = _check_technical_alert({
-            "code": "000001", "indicator": "MACD", "condition": "DEA<=0.2"
-        })
+        triggered, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "MACD", "condition": "DEA<=0.2"}
+        )
         self.assertTrue(triggered)
 
     @patch("stock_analyzer.alert.full_technical_analysis")
@@ -755,9 +812,9 @@ class TestTechnicalAlertEdgeCases(unittest.TestCase):
         df["DIF"] = None  # 设为 None
         mock_kline.return_value = df
         mock_ta.return_value = df
-        result, msg = _check_technical_alert({
-            "code": "000001", "indicator": "MACD", "condition": "DIF>0.5"
-        })
+        result, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "MACD", "condition": "DIF>0.5"}
+        )
         self.assertIsNone(result)
 
     @patch("stock_analyzer.alert.full_technical_analysis")
@@ -769,10 +826,11 @@ class TestTechnicalAlertEdgeCases(unittest.TestCase):
         df = _make_macd_df(prev_dif=0.1, prev_dea=0.05, now_dif=0.3, now_dea=0.2)
         mock_kline.return_value = df
         mock_ta.return_value = df
-        triggered, msg = _check_technical_alert({
-            "code": "000001", "indicator": "MACD", "condition": "DIF>0.5"
-        })
+        triggered, msg = _check_technical_alert(
+            {"code": "000001", "indicator": "MACD", "condition": "DIF>0.5"}
+        )
         self.assertFalse(triggered)
+
 
 class TestCheckAlertsException(unittest.TestCase):
     """check_alerts 异常处理（line 327-328）"""
@@ -783,29 +841,42 @@ class TestCheckAlertsException(unittest.TestCase):
         from stock_analyzer.alert import check_alerts
 
         mock_check.side_effect = ValueError("some error")
-        result = check_alerts([{
-            "type": "price", "code": "000001",
-            "direction": "above", "target": 15, "enabled": True,
-            "id": "test-id"
-        }])
+        result = check_alerts(
+            [
+                {
+                    "type": "price",
+                    "code": "000001",
+                    "direction": "above",
+                    "target": 15,
+                    "enabled": True,
+                    "id": "test-id",
+                }
+            ]
+        )
         self.assertEqual(result, [])
+
 
 def _make_kline_df(data):
     """构造测试用 DataFrame"""
     import pandas as pd
+
     return pd.DataFrame(data)
+
 
 def _make_macd_df(prev_dif, prev_dea, now_dif, now_dea):
     """构造含两行 MACD 数据的 DataFrame"""
-    df = _make_kline_df({
-        "close": [10.0, 10.0],
-        "high": [11.0, 11.0],
-        "low": [9.0, 9.0],
-        "volume": [100, 100],
-        "DIF": [prev_dif, now_dif],
-        "DEA": [prev_dea, now_dea],
-    })
+    df = _make_kline_df(
+        {
+            "close": [10.0, 10.0],
+            "high": [11.0, 11.0],
+            "low": [9.0, 9.0],
+            "volume": [100, 100],
+            "DIF": [prev_dif, now_dif],
+            "DEA": [prev_dea, now_dea],
+        }
+    )
     return df
+
 
 if __name__ == "__main__":
     unittest.main()

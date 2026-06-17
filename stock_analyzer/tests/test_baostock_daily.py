@@ -5,10 +5,11 @@
   和 cursor.execute("CREATE TABLE...")，因此必须在导入前预先 mock db_utils。
 - import baostock as bs 也在模块级，同样需要预先 mock。
 """
+
 import os
 import sys
 import unittest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import MagicMock, call, patch
 
 # ── 导入前的准备：mock 模块级依赖 ──────────────────────────────────────
 _pre_mock_db = MagicMock()
@@ -19,6 +20,7 @@ _pre_mock_bs = MagicMock()
 sys.modules["baostock"] = _pre_mock_bs
 # 模块级代码会在 import 时自动执行（使用上方的 mock），cc 先导入一次
 import stock_analyzer.baostock_daily as bd
+
 
 class TestGet60minStockDataBs(unittest.TestCase):
     """get_60min_stock_data_bs — baostock 60分钟线数据获取"""
@@ -34,8 +36,7 @@ class TestGet60minStockDataBs(unittest.TestCase):
     def _make_result_set(self, rows, fields=None):
         """构造模拟的 baostock 结果集对象"""
         if fields is None:
-            fields = ["date", "time", "code", "open", "high", "low", "close",
-                       "volume", "amount"]
+            fields = ["date", "time", "code", "open", "high", "low", "close", "volume", "amount"]
         rs = MagicMock()
         rs.error_code = "0"
         rs.fields = fields
@@ -50,14 +51,31 @@ class TestGet60minStockDataBs(unittest.TestCase):
         """正常查询 → 返回 DataFrame"""
         rs = MagicMock()
         rs.error_code = "0"
-        rs.fields = ["date", "time", "code", "open", "high", "low", "close",
-                      "volume", "amount"]
+        rs.fields = ["date", "time", "code", "open", "high", "low", "close", "volume", "amount"]
         rs.next.side_effect = [True, True, False]
         rs.get_row_data.side_effect = [
-            ["2025-06-01", "20250601140000", "sh.600519", "1500.0", "1510.0",
-             "1490.0", "1505.0", "10000", "15000000.0"],
-            ["2025-06-01", "20250601143000", "sh.600519", "1505.0", "1520.0",
-             "1500.0", "1515.0", "12000", "18180000.0"],
+            [
+                "2025-06-01",
+                "20250601140000",
+                "sh.600519",
+                "1500.0",
+                "1510.0",
+                "1490.0",
+                "1505.0",
+                "10000",
+                "15000000.0",
+            ],
+            [
+                "2025-06-01",
+                "20250601143000",
+                "sh.600519",
+                "1505.0",
+                "1520.0",
+                "1500.0",
+                "1515.0",
+                "12000",
+                "18180000.0",
+            ],
         ]
         self.mock_query.return_value = rs
 
@@ -72,8 +90,7 @@ class TestGet60minStockDataBs(unittest.TestCase):
         """无数据 → 空 DataFrame"""
         rs = MagicMock()
         rs.error_code = "0"
-        rs.fields = ["date", "time", "code", "open", "high", "low", "close",
-                      "volume", "amount"]
+        rs.fields = ["date", "time", "code", "open", "high", "low", "close", "volume", "amount"]
         rs.next.return_value = False
         self.mock_query.return_value = rs
 
@@ -101,6 +118,7 @@ class TestGet60minStockDataBs(unittest.TestCase):
             adjustflag="2",
         )
 
+
 class TestMain(unittest.TestCase):
     """main() 主流程"""
 
@@ -114,7 +132,8 @@ class TestMain(unittest.TestCase):
 
         self.mock_db = MagicMock()
         self.mock_db.DatabaseUtils.connect_to_mysql.return_value = (
-            self.mock_conn, self.mock_cursor
+            self.mock_conn,
+            self.mock_cursor,
         )
         sys.modules["db_utils"] = self.mock_db
 
@@ -125,6 +144,7 @@ class TestMain(unittest.TestCase):
     def _import_module(self):
         """重新导入 baostock_daily 并返回模块对象"""
         import importlib
+
         mod = importlib.import_module("stock_analyzer.baostock_daily")
         return mod
 
@@ -145,16 +165,27 @@ class TestMain(unittest.TestCase):
     def test_normal_flow_with_one_batch(self, mock_get_data):
         """单批次正常流程：获取数据 → 插入 → commit"""
         self.mock_cursor.fetchall.return_value = [
-            ("000001.SZ",), ("600519.SH",),
+            ("000001.SZ",),
+            ("600519.SH",),
         ]
 
         import pandas as pd
-        test_df = pd.DataFrame([{
-            "date": "2025-06-01", "time": "20250601140000",
-            "code": "sz.000001", "open": "10.0", "high": "11.0",
-            "low": "9.5", "close": "10.5", "volume": "100000",
-            "amount": "1050000.0",
-        }])
+
+        test_df = pd.DataFrame(
+            [
+                {
+                    "date": "2025-06-01",
+                    "time": "20250601140000",
+                    "code": "sz.000001",
+                    "open": "10.0",
+                    "high": "11.0",
+                    "low": "9.5",
+                    "close": "10.5",
+                    "volume": "100000",
+                    "amount": "1050000.0",
+                }
+            ]
+        )
         mock_get_data.return_value = test_df
 
         mod = self._import_module()
@@ -179,13 +210,23 @@ class TestMain(unittest.TestCase):
         ]
 
         import pandas as pd
+
         # 制造一行缺 time 字段的数据 → cursor.execute 抛异常
-        bad_df = pd.DataFrame([{
-            "date": "2025-06-01", "time": None,
-            "code": "sz.000001", "open": "10.0", "high": "11.0",
-            "low": "9.5", "close": "10.5", "volume": "100000",
-            "amount": "1050000.0",
-        }])
+        bad_df = pd.DataFrame(
+            [
+                {
+                    "date": "2025-06-01",
+                    "time": None,
+                    "code": "sz.000001",
+                    "open": "10.0",
+                    "high": "11.0",
+                    "low": "9.5",
+                    "close": "10.5",
+                    "volume": "100000",
+                    "amount": "1050000.0",
+                }
+            ]
+        )
         mock_get_data.return_value = bad_df
 
         mod = self._import_module()
@@ -198,6 +239,7 @@ class TestMain(unittest.TestCase):
         self.mock_bs.logout.assert_called_once()
         self.mock_cursor.close.assert_called_once()
         self.mock_conn.close.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

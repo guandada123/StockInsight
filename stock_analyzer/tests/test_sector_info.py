@@ -5,7 +5,14 @@ import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
-from stock_analyzer.sector_info import _CACHE, _query, get_stock_concepts, get_stock_sector_full, get_stock_all_sectors
+from stock_analyzer.sector_info import (
+    _CACHE,
+    _query,
+    get_stock_all_sectors,
+    get_stock_concepts,
+    get_stock_sector_full,
+)
+
 
 class TestSectorInfoNoDB(unittest.TestCase):
     """无数据库时的行为测试"""
@@ -15,25 +22,29 @@ class TestSectorInfoNoDB(unittest.TestCase):
 
     def test_get_stock_sector_full_no_db(self):
         """数据库不可用时返回 '未知'"""
-        with patch("stock_analyzer.sector_info.sqlite3.connect",
-                   side_effect=OSError("DB not found")):
+        with patch(
+            "stock_analyzer.sector_info.sqlite3.connect", side_effect=OSError("DB not found")
+        ):
             result = get_stock_sector_full("000001")
             self.assertEqual(result, "未知")
 
     def test_get_stock_concepts_no_db(self):
         """数据库不可用时返回空列表"""
-        with patch("stock_analyzer.sector_info.sqlite3.connect",
-                   side_effect=OSError("DB not found")):
+        with patch(
+            "stock_analyzer.sector_info.sqlite3.connect", side_effect=OSError("DB not found")
+        ):
             result = get_stock_concepts("000001")
             self.assertEqual(result, [])
 
     def test_get_stock_all_sectors_no_db(self):
         """数据库不可用时返回默认结构"""
-        with patch("stock_analyzer.sector_info.sqlite3.connect",
-                   side_effect=OSError("DB not found")):
+        with patch(
+            "stock_analyzer.sector_info.sqlite3.connect", side_effect=OSError("DB not found")
+        ):
             result = get_stock_all_sectors("000001")
             self.assertEqual(result["industry"], "未知")
             self.assertEqual(result["concepts"], [])
+
 
 class TestSectorInfoCache(unittest.TestCase):
     """缓存行为测试"""
@@ -46,8 +57,7 @@ class TestSectorInfoCache(unittest.TestCase):
         mock_conn = MagicMock()
         mock_conn.execute.return_value.fetchone.return_value = ("信息技术", "半导体")
 
-        with patch("stock_analyzer.sector_info.sqlite3.connect",
-                   return_value=mock_conn):
+        with patch("stock_analyzer.sector_info.sqlite3.connect", return_value=mock_conn):
             result1 = _query("000001")
             self.assertEqual(result1, ("信息技术", "半导体"))
             self.assertIn("000001", _CACHE)
@@ -55,8 +65,10 @@ class TestSectorInfoCache(unittest.TestCase):
     def test_cached_query_no_db_call(self):
         """已缓存的查询不访问数据库"""
         _CACHE["000002"] = ("金融", "银行")
-        with patch("stock_analyzer.sector_info.sqlite3.connect",
-                   side_effect=Exception("should not be called")):
+        with patch(
+            "stock_analyzer.sector_info.sqlite3.connect",
+            side_effect=Exception("should not be called"),
+        ):
             result = _query("000002")
             self.assertEqual(result, ("金融", "银行"))
 
@@ -65,12 +77,12 @@ class TestSectorInfoCache(unittest.TestCase):
         mock_conn = MagicMock()
         mock_conn.execute.return_value.fetchone.return_value = None
 
-        with patch("stock_analyzer.sector_info.sqlite3.connect",
-                   return_value=mock_conn):
+        with patch("stock_analyzer.sector_info.sqlite3.connect", return_value=mock_conn):
             result = _query("999999")
             self.assertIsNone(result)
             self.assertIn("999999", _CACHE)
             self.assertIsNone(_CACHE["999999"])
+
 
 class TestSectorInfoFull(unittest.TestCase):
     """完整数据流测试"""
@@ -83,8 +95,7 @@ class TestSectorInfoFull(unittest.TestCase):
         mock_conn = MagicMock()
         mock_conn.execute.return_value.fetchone.return_value = ("制造业", "汽车零部件")
 
-        with patch("stock_analyzer.sector_info.sqlite3.connect",
-                   return_value=mock_conn):
+        with patch("stock_analyzer.sector_info.sqlite3.connect", return_value=mock_conn):
             result = get_stock_sector_full("600000")
             self.assertEqual(result, "制造业 > 汽车零部件")
 
@@ -92,11 +103,12 @@ class TestSectorInfoFull(unittest.TestCase):
         """概念板块正常返回"""
         mock_conn = MagicMock()
         mock_conn.execute.return_value.fetchall.return_value = [
-            ("新能源车",), ("锂电池",), ("特斯拉",)
+            ("新能源车",),
+            ("锂电池",),
+            ("特斯拉",),
         ]
 
-        with patch("stock_analyzer.sector_info.sqlite3.connect",
-                   return_value=mock_conn):
+        with patch("stock_analyzer.sector_info.sqlite3.connect", return_value=mock_conn):
             result = get_stock_concepts("300750")
             self.assertEqual(result, ["新能源车", "锂电池", "特斯拉"])
 
@@ -105,13 +117,13 @@ class TestSectorInfoFull(unittest.TestCase):
         mock_conn = MagicMock()
         mock_conn.execute.return_value.fetchall.return_value = []
 
-        with patch("stock_analyzer.sector_info.sqlite3.connect",
-                   return_value=mock_conn):
+        with patch("stock_analyzer.sector_info.sqlite3.connect", return_value=mock_conn):
             result = get_stock_concepts("000001")
             self.assertEqual(result, [])
 
     def test_get_stock_all_sectors_full(self):
         """完整板块信息结构正确"""
+
         def mock_connect(*args, **kwargs):
             conn = MagicMock()
             # 根据查询内容返回不同结果
@@ -134,6 +146,7 @@ class TestSectorInfoFull(unittest.TestCase):
             self.assertEqual(result["industry"], "制造业 > 汽车零部件")
             self.assertIn("新能源车", result["concepts"])
             self.assertIn("锂电池", result["concepts"])
+
 
 if __name__ == "__main__":
     unittest.main()

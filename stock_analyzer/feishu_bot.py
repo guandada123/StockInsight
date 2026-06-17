@@ -180,7 +180,7 @@ def _post(url, payload, timeout=10):
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # nosec — webhook POST 到配置 URL，非任意 URL
             result = json.loads(resp.read().decode("utf-8"))
             ok = result.get("code") == 0 or result.get("StatusCode") == 0
             return {"ok": ok, "response": result}

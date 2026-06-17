@@ -4,11 +4,12 @@
 包括 import baostock as bs 和 from .sectors_fallback import SECTOR_STOCKS_FALLBACK。
 所以 patch 必须针对源模块路径生效，不能用 stock_analyzer.build_sector_db 属性路径。
 """
+
 import os
+import sqlite3
 import tempfile
 import unittest
-from unittest.mock import patch, MagicMock
-import sqlite3
+from unittest.mock import MagicMock, patch
 
 import baostock as bs  # noqa: F401 确保 baostock 在 sys.modules 里
 
@@ -43,7 +44,9 @@ class TestBuild(unittest.TestCase):
         self.assertEqual(rows, 2)
         conn.close()
 
-    @patch("stock_analyzer.sectors_fallback.SECTOR_STOCKS_FALLBACK", {"半导体": {"成分股": ["000002"]}})
+    @patch(
+        "stock_analyzer.sectors_fallback.SECTOR_STOCKS_FALLBACK", {"半导体": {"成分股": ["000002"]}}
+    )
     @patch("baostock.login")
     @patch("baostock.query_stock_industry")
     @patch("baostock.logout")
@@ -59,12 +62,8 @@ class TestBuild(unittest.TestCase):
         build_sector_db.build()
 
         conn = sqlite3.connect(build_sector_db.DB_PATH)
-        sector = conn.execute(
-            "SELECT sector FROM stock_sector WHERE code='000002'"
-        ).fetchone()[0]
-        source = conn.execute(
-            "SELECT source FROM stock_sector WHERE code='000002'"
-        ).fetchone()[0]
+        sector = conn.execute("SELECT sector FROM stock_sector WHERE code='000002'").fetchone()[0]
+        source = conn.execute("SELECT source FROM stock_sector WHERE code='000002'").fetchone()[0]
         conn.close()
         self.assertEqual(sector, "半导体")  # 被静态覆盖
         self.assertEqual(source, "static")  # 来源标记为 static

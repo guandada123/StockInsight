@@ -335,7 +335,10 @@ _RESULT_CACHE: dict[str, dict[str, Any]] = {}
 def _cached_predict_ensemble(df, fundamentals=None):
     # Use shape + last 20 closing prices as cache key
     key = hashlib.md5(
-        str(df.shape).encode() + str(df.iloc[-20:, 1].sum()).encode() + str(df.iloc[-1, 1]).encode()
+        str(df.shape).encode()
+        + str(df.iloc[-20:, 1].sum()).encode()
+        + str(df.iloc[-1, 1]).encode(),
+        usedforsecurity=False,
     ).hexdigest()
     if key in _RESULT_CACHE:
         return _RESULT_CACHE[key]

@@ -12,6 +12,7 @@ from stock_analyzer.nl_report import (
 # Fixtures — 标准测试数据骨架
 # ==============================================================================
 
+
 @pytest.fixture
 def bull_data():
     """强多头场景：金叉×2 + 健康RSI + 资金流入 + AI看涨 + 均线多头"""
@@ -31,6 +32,7 @@ def bull_data():
         "fund_flow": {"direction": "净流入"},
         "ai_prediction": {"direction": "看涨", "confidence": 85},
     }
+
 
 @pytest.fixture
 def bear_data():
@@ -52,6 +54,7 @@ def bear_data():
         "ai_prediction": {"direction": "看跌", "confidence": 90},
     }
 
+
 @pytest.fixture
 def neutral_data():
     """均衡场景：无明显信号（RSI避开40-65健康区避免自动加分）"""
@@ -72,9 +75,11 @@ def neutral_data():
         "ai_prediction": {"direction": "中性", "confidence": 50},
     }
 
+
 # ==============================================================================
 # generate_bull_bear_debate — 多空辩论核心
 # ==============================================================================
+
 
 class TestGenerateBullBearDebate:
     """测试各种市场信号组合下的多空评分与结论"""
@@ -433,9 +438,11 @@ class TestGenerateBullBearDebate:
         # RSI<35 also triggers bear "偏弱" point
         assert any("偏弱" in p or "继续下探" in p for p in r["bear"]["points"])
 
+
 # ==============================================================================
 # generate_stock_report — 格式化报告
 # ==============================================================================
+
 
 class TestGenerateStockReport:
     """验证格式化输出的完整性与正确性"""
@@ -517,9 +524,11 @@ class TestGenerateStockReport:
         report = generate_stock_report("600000", "测试", data)
         assert "无明显看空信号" in report
 
+
 # ==============================================================================
 # generate_market_summary — 大盘+持仓摘要
 # ==============================================================================
+
 
 class TestGenerateMarketSummary:
     """测试大盘与持仓简报生成"""

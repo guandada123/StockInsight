@@ -9,12 +9,25 @@ import unittest
 from unittest import mock
 
 import pandas as pd
-from stock_analyzer.data_sources import (CircuitBreaker, DataSource, DataSourceChain, Freshness,
-                                          HTTPSessionPool, FileRateLimiter, _parse_kline_df,
-                                          get_default_kline_chain, get_default_realtime_chain,
-                                          get_default_fundamentals_chain,
-                                          fetch_kline, fetch_realtime, fetch_fundamentals,
-                                          get_sina_rate_limiter, check_sina_rate)
+
+from stock_analyzer.data_sources import (
+    CircuitBreaker,
+    DataSource,
+    DataSourceChain,
+    FileRateLimiter,
+    Freshness,
+    HTTPSessionPool,
+    _parse_kline_df,
+    check_sina_rate,
+    fetch_fundamentals,
+    fetch_kline,
+    fetch_realtime,
+    get_default_fundamentals_chain,
+    get_default_kline_chain,
+    get_default_realtime_chain,
+    get_sina_rate_limiter,
+)
+
 
 class TestFreshness(unittest.TestCase):
     """数据新鲜度枚举测试"""
@@ -33,6 +46,7 @@ class TestFreshness(unittest.TestCase):
         self.assertEqual(Freshness.FRESH.value, "fresh")
         self.assertEqual(Freshness.DEGRADED.value, "degraded")
         self.assertEqual(Freshness.UNAVAILABLE.value, "unavailable")
+
 
 class TestCircuitBreaker(unittest.TestCase):
     """熔断器测试"""
@@ -74,16 +88,18 @@ class TestCircuitBreaker(unittest.TestCase):
         cb = CircuitBreaker("my_api", max_failures=5)
         self.assertEqual(cb.name, "my_api")
 
+
 class TestParseKlineDF(unittest.TestCase):
     """_parse_kline_df 测试"""
 
     def _make_rows(self, count=30):
         import numpy as np
+
         np.random.seed(99)
         base = 50 + np.cumsum(np.random.randn(count) * 0.5)
         return [
             {
-                "日期": f"2025-{(i//30)+1:02d}-{(i%28)+1:02d}",
+                "日期": f"2025-{(i // 30) + 1:02d}-{(i % 28) + 1:02d}",
                 "开盘": float(base[i] * 0.99),
                 "收盘": float(base[i]),
                 "最高": float(base[i] * 1.02),
@@ -118,8 +134,9 @@ class TestParseKlineDF(unittest.TestCase):
         rows = self._make_rows(30)
         df = _parse_kline_df(rows, 30)
         dates = pd.to_datetime(df["日期"])
-        self.assertTrue((dates.diff().dropna() >= pd.Timedelta(0)).all(),
-                        "Dates should be sorted ascending")
+        self.assertTrue(
+            (dates.diff().dropna() >= pd.Timedelta(0)).all(), "Dates should be sorted ascending"
+        )
 
     def test_empty_rows(self):
         """空列表不报错"""
@@ -138,8 +155,8 @@ class TestParseKlineDF(unittest.TestCase):
         rows = self._make_rows(30)
         df = _parse_kline_df(rows, 30)
         for col in ["开盘", "收盘", "最高", "最低"]:
-            self.assertTrue(pd.api.types.is_numeric_dtype(df[col]),
-                            f"{col} should be numeric")
+            self.assertTrue(pd.api.types.is_numeric_dtype(df[col]), f"{col} should be numeric")
+
 
 class TestDataSourceABC(unittest.TestCase):
     """DataSource 抽象基类测试"""
@@ -164,14 +181,18 @@ class TestDataSourceABC(unittest.TestCase):
 
     def test_subclass_name(self):
         """子类名称正确"""
+
         class MySource(DataSource):
             pass
+
         ms = MySource()
         self.assertEqual(ms.name, "MySource")
+
 
 # ============================================================
 # FileRateLimiter 测试
 # ============================================================
+
 
 class TestFileRateLimiter(unittest.TestCase):
     """跨进程速率限制器测试 — 核心逻辑全覆盖"""
@@ -179,7 +200,9 @@ class TestFileRateLimiter(unittest.TestCase):
     def setUp(self):
         """每个测试使用独立临时目录，避免状态污染"""
         self.tmpdir = tempfile.mkdtemp(prefix="test_ratelimit_")
-        self.limiter = FileRateLimiter("test_api", max_requests=3, window=10.0, lock_dir=self.tmpdir)
+        self.limiter = FileRateLimiter(
+            "test_api", max_requests=3, window=10.0, lock_dir=self.tmpdir
+        )
 
     def tearDown(self):
         """清理临时文件"""
@@ -231,10 +254,10 @@ class TestFileRateLimiter(unittest.TestCase):
         start = time.time()
         self.limiter.check_and_wait()
         elapsed = time.time() - start
-        # 等待时间应接近 (10 - (now - oldest)) + 1 ≈ 10 - 1 + 1 = 10s... 
+        # 等待时间应接近 (10 - (now - oldest)) + 1 ≈ 10 - 1 + 1 = 10s...
         # Actually oldest is now-1, so wait = 10 - 1 + 1 = 10s. Too long for test.
         # Let me use shorter window. Let me re-create limiter with 0.5s window
-        pass  # skipped — tested via shorter window below
+        # skipped — tested via shorter window below
 
     def test_check_and_wait_short_window(self):
         """短窗口达上限时等待可通过"""
@@ -269,9 +292,11 @@ class TestFileRateLimiter(unittest.TestCase):
             f.write("not json {{{")
         self.assertEqual(self.limiter._read_timestamps(), [])
 
+
 # ============================================================
 # HTTP 会话池测试
 # ============================================================
+
 
 class TestHTTPSessionPool(unittest.TestCase):
     """HTTPSessionPool 单例模式测试"""
@@ -297,9 +322,11 @@ class TestHTTPSessionPool(unittest.TestCase):
         """sina 和 em 是不同的会话对象"""
         self.assertIsNot(HTTPSessionPool.sina(), HTTPSessionPool.em())
 
+
 # ============================================================
 # DataSourceChain 测试
 # ============================================================
+
 
 class _MockSuccessKlineSource(DataSource):
     """模拟成功返回 K 线的数据源"""
@@ -307,11 +334,13 @@ class _MockSuccessKlineSource(DataSource):
     def fetch_kline(self, code, days=120):
         return pd.DataFrame({"日期": ["2025-01-01"], "收盘": [100.0]})
 
+
 class _MockFailSource(DataSource):
     """模拟总是失败的数据源（返回空 DataFrame）"""
 
     def fetch_kline(self, code, days=120):
         return pd.DataFrame()
+
 
 class _MockExceptionSource(DataSource):
     """模拟抛异常的数据源"""
@@ -319,17 +348,20 @@ class _MockExceptionSource(DataSource):
     def fetch_kline(self, code, days=120):
         raise RuntimeError("模拟异常")
 
+
 class _MockRealtimeSource(DataSource):
     """模拟实时行情源"""
 
     def fetch_realtime(self, codes):
         return {"000001": {"最新价": 50.0, "涨跌幅": 2.5}}
 
+
 class _MockFundamentalsSource(DataSource):
     """模拟基本面源"""
 
     def fetch_fundamentals(self, code):
         return {"ROE": 15.0, "市盈率": 20.0, "市净率": 3.0}
+
 
 class TestDataSourceChain(unittest.TestCase):
     """容灾链测试"""
@@ -407,9 +439,11 @@ class TestDataSourceChain(unittest.TestCase):
         chain = DataSourceChain([_MockSuccessKlineSource()])
         self.assertEqual(len(chain.sources), 1)
 
+
 # ============================================================
 # 默认容灾链工厂函数测试
 # ============================================================
+
 
 class TestDefaultChains(unittest.TestCase):
     """默认容灾链工厂"""
@@ -442,9 +476,11 @@ class TestDefaultChains(unittest.TestCase):
         c2 = get_default_fundamentals_chain()
         self.assertIs(c1, c2)
 
+
 # ============================================================
 # 便捷顶层 API 测试
 # ============================================================
+
 
 class TestConvenienceAPI(unittest.TestCase):
     """便捷 API 测试"""
@@ -477,9 +513,11 @@ class TestConvenienceAPI(unittest.TestCase):
         except Exception as e:
             self.fail(f"check_sina_rate 不应抛异常: {e}")
 
+
 # ============================================================
 # DataSource 子类 K 线源测试（集成/网络依赖验证）
 # ============================================================
+
 
 class TestKlineSources(unittest.TestCase):
     """K 线数据源集成测试 — 验证解析逻辑，依赖网络"""
@@ -492,10 +530,24 @@ class TestKlineSources(unittest.TestCase):
         from stock_analyzer.data_sources import SinaKlineSource
 
         fake_items = [
-            {"day": "2025-06-10", "open": "10.0", "close": "10.5", "high": "10.8",
-             "low": "9.9", "volume": "100000", "amount": "1050000"},
-            {"day": "2025-06-11", "open": "10.5", "close": "11.0", "high": "11.2",
-             "low": "10.4", "volume": "120000", "amount": "1320000"},
+            {
+                "day": "2025-06-10",
+                "open": "10.0",
+                "close": "10.5",
+                "high": "10.8",
+                "low": "9.9",
+                "volume": "100000",
+                "amount": "1050000",
+            },
+            {
+                "day": "2025-06-11",
+                "open": "10.5",
+                "close": "11.0",
+                "high": "11.2",
+                "low": "10.4",
+                "volume": "120000",
+                "amount": "1320000",
+            },
         ]
         mock_resp = mock.MagicMock()
         mock_resp.status_code = 200
@@ -515,10 +567,16 @@ class TestKlineSources(unittest.TestCase):
 
         from stock_analyzer.data_sources import TencentKlineSource
 
-        fake_data = {"data": {"sh600519": {"qfqday": [
-            ["2025-06-10", "10.0", "10.5", "10.8", "9.9", "100000"],
-            ["2025-06-11", "10.5", "11.0", "11.2", "10.4", "120000"],
-        ]}}}
+        fake_data = {
+            "data": {
+                "sh600519": {
+                    "qfqday": [
+                        ["2025-06-10", "10.0", "10.5", "10.8", "9.9", "100000"],
+                        ["2025-06-11", "10.5", "11.0", "11.2", "10.4", "120000"],
+                    ]
+                }
+            }
+        }
         mock_resp = mock.MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = fake_data
@@ -558,9 +616,11 @@ class TestKlineSources(unittest.TestCase):
             token = TushareKlineSource._get_token()
             self.assertEqual(token, "")
 
+
 # ============================================================
 # SinaRealtimeSource 测试
 # ============================================================
+
 
 class TestSinaRealtimeSource(unittest.TestCase):
     """新浪实时行情源测试"""
@@ -584,10 +644,10 @@ class TestSinaRealtimeSource(unittest.TestCase):
         #       卖1量,卖1价,卖2量,卖2价,卖3量,卖3价,卖4量,卖4价,卖5量,卖5价,日期,时间,状态
         fake_body = (
             'var hq_str_sh600519="贵州茅台,'
-            '1850.00,1845.00,1855.00,1860.00,1840.00,1855.00,1845.00,'
-            '100000,185500000,'  # 成交量,成交额
-            '500,1850.00,100,1849.00,200,1851.00,300,1848.00,400,1852.00,'  # 买1-5
-            '500,1860.00,100,1859.00,200,1858.00,300,1857.00,400,1856.00,'  # 卖1-5
+            "1850.00,1845.00,1855.00,1860.00,1840.00,1855.00,1845.00,"
+            "100000,185500000,"  # 成交量,成交额
+            "500,1850.00,100,1849.00,200,1851.00,300,1848.00,400,1852.00,"  # 买1-5
+            "500,1860.00,100,1859.00,200,1858.00,300,1857.00,400,1856.00,"  # 卖1-5
             '2025-06-14,15:00:00,00";\n'
         )
         mock_resp = mock.MagicMock()
@@ -627,6 +687,7 @@ class TestSinaRealtimeSource(unittest.TestCase):
             self.assertEqual(src.fetch_realtime(["600519"]), {})
         finally:
             HTTPSessionPool._sina = orig_sina
+
 
 if __name__ == "__main__":
     unittest.main()

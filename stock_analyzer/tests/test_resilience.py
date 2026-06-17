@@ -2,12 +2,14 @@ import os
 import sys
 import time
 import unittest
+
 from stock_analyzer import resilience
 from stock_analyzer.resilience import CircuitBreakerOpen, _CircuitBreaker
 
 # ═══════════════════════════════════════════
 # _CircuitBreaker 基础功能
 # ═══════════════════════════════════════════
+
 
 class TestCircuitBreakerCore(unittest.TestCase):
     """断路器核心逻辑"""
@@ -73,9 +75,11 @@ class TestCircuitBreakerCore(unittest.TestCase):
         self.assertTrue(self.cb.is_open)
         self.assertEqual(self.cb._state, "OPEN")
 
+
 # ═══════════════════════════════════════════
 # 断路器装饰器
 # ═══════════════════════════════════════════
+
 
 class TestCircuitBreakerDecorator(unittest.TestCase):
     """circuit_breaker 装饰器"""
@@ -127,9 +131,7 @@ class TestCircuitBreakerDecorator(unittest.TestCase):
         self.assertEqual(result, "fallback_value")
 
     def test_fallback_with_args(self):
-        @resilience.circuit_breaker(
-            "test_fb2", failure_threshold=1, fallback=lambda x: f"fb_{x}"
-        )
+        @resilience.circuit_breaker("test_fb2", failure_threshold=1, fallback=lambda x: f"fb_{x}")
         def fail_with_arg(x):
             raise RuntimeError("boom")
 
@@ -179,9 +181,11 @@ class TestCircuitBreakerDecorator(unittest.TestCase):
         result = flaky2()
         self.assertEqual(result, "ok")
 
+
 # ═══════════════════════════════════════════
 # 重试装饰器
 # ═══════════════════════════════════════════
+
 
 class TestRetryDecorator(unittest.TestCase):
     """retry 装饰器"""
@@ -254,9 +258,11 @@ class TestRetryDecorator(unittest.TestCase):
         decorator = resilience.retry(max_retries=3, base_delay=1.0)
         self.assertIsNotNone(decorator)  # 装饰器创建成功
 
+
 # ═══════════════════════════════════════════
 # resilient 组合装饰器
 # ═══════════════════════════════════════════
+
 
 class TestResilientDecorator(unittest.TestCase):
     """resilient 组合装饰器"""
@@ -310,9 +316,11 @@ class TestResilientDecorator(unittest.TestCase):
         result = always_fail()
         self.assertEqual(result, "safe")
 
+
 # ═══════════════════════════════════════════
 # get_breaker_status
 # ═══════════════════════════════════════════
+
 
 class TestGetBreakerStatus(unittest.TestCase):
     """断路器状态查询"""
@@ -340,9 +348,11 @@ class TestGetBreakerStatus(unittest.TestCase):
         self.assertEqual(status["stat_test"]["threshold"], 2)
         self.assertIn(status["stat_test"]["state"], ["CLOSED", "OPEN", "HALF_OPEN"])
 
+
 # ═══════════════════════════════════════════
 # CircuitBreakerOpen 异常
 # ═══════════════════════════════════════════
+
 
 class TestCircuitBreakerOpenException(unittest.TestCase):
     """断路器打开异常"""
@@ -354,6 +364,7 @@ class TestCircuitBreakerOpenException(unittest.TestCase):
     def test_message(self):
         exc = CircuitBreakerOpen("数据源不可用")
         self.assertIn("数据源不可用", str(exc))
+
 
 if __name__ == "__main__":
     unittest.main()

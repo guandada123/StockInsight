@@ -9,6 +9,7 @@ import pandas as pd
 
 from stock_analyzer.custom_factors import FactorExpressionEngine
 
+
 class TestFactorExpressionEngine(unittest.TestCase):
     """因子表达式引擎测试"""
 
@@ -17,18 +18,20 @@ class TestFactorExpressionEngine(unittest.TestCase):
         self.engine = FactorExpressionEngine()
         # 构造标准K线 DataFrame
         closes = 50 + np.cumsum(np.random.randn(30) * 0.5)
-        self.df = pd.DataFrame({
-            "日期": pd.date_range("2025-06-01", periods=30),
-            "open": closes * 0.99,
-            "high": closes * 1.02,
-            "low": closes * 0.98,
-            "close": closes,
-            "pre_close": np.roll(closes, 1),
-            "change_c": closes - np.roll(closes, 1),
-            "pct_chg": np.append([0], np.diff(closes) / closes[:-1] * 100),
-            "vol": np.random.randint(1_000_000, 10_000_000, 30),
-            "amount": np.random.randint(10_000_000, 100_000_000, 30),
-        })
+        self.df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-06-01", periods=30),
+                "open": closes * 0.99,
+                "high": closes * 1.02,
+                "low": closes * 0.98,
+                "close": closes,
+                "pre_close": np.roll(closes, 1),
+                "change_c": closes - np.roll(closes, 1),
+                "pct_chg": np.append([0], np.diff(closes) / closes[:-1] * 100),
+                "vol": np.random.randint(1_000_000, 10_000_000, 30),
+                "amount": np.random.randint(10_000_000, 100_000_000, 30),
+            }
+        )
 
     # ── __init__ 测试 ──
 
@@ -127,7 +130,9 @@ class TestFactorExpressionEngine(unittest.TestCase):
         """取模运算"""
         result = self.engine.evaluate("vol % 100", self.df)
         expected = self.df["vol"] % 100
-        np.testing.assert_array_almost_equal(result["factor_value"].values, expected.values.astype(float))
+        np.testing.assert_array_almost_equal(
+            result["factor_value"].values, expected.values.astype(float)
+        )
 
     def test_unary_neg(self):
         """一元负号"""
@@ -286,20 +291,24 @@ class TestFactorExpressionEngine(unittest.TestCase):
             expected.values[19:],
         )
 
+
 # ═══════════════════════════════════════════
 # 错误路径全覆盖
 # ═══════════════════════════════════════════
+
 
 class TestErrorPaths(unittest.TestCase):
     """覆盖所有 raise ValueError 分支"""
 
     def setUp(self):
         self.engine = FactorExpressionEngine()
-        self.df = pd.DataFrame({
-            "open": [10.0, 11.0],
-            "close": [10.5, 11.5],
-            "vol": [1000000, 2000000],
-        })
+        self.df = pd.DataFrame(
+            {
+                "open": [10.0, 11.0],
+                "close": [10.5, 11.5],
+                "vol": [1000000, 2000000],
+            }
+        )
 
     # ── evaluate 层: 非Series结果 ──
     def test_rolling_without_terminal_method(self):
@@ -348,6 +357,7 @@ class TestErrorPaths(unittest.TestCase):
     def test_unsupported_node_type(self):
         """不支持的 AST 节点 (line 120)"""
         import ast
+
         with self.assertRaises(ValueError) as ctx:
             self.engine._eval_node(ast.List(elts=[], ctx=ast.Load()), self.df)
         self.assertIn("不支持的节点类型", str(ctx.exception))
@@ -452,9 +462,11 @@ class TestErrorPaths(unittest.TestCase):
             self.engine.evaluate("len(close)", self.df)
         self.assertIn("函数不允许", str(ctx.exception))
 
+
 # ═══════════════════════════════════════════
 # SQLite 因子管理
 # ═══════════════════════════════════════════
+
 
 class TestFactorCRUD(unittest.TestCase):
     """因子 SQLite 存储 CRUD 操作"""
@@ -462,11 +474,13 @@ class TestFactorCRUD(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from stock_analyzer.custom_factors import init_factor_table
+
         init_factor_table()
 
     def test_init_table_idempotent(self):
         """重复建表不报错"""
         from stock_analyzer.custom_factors import init_factor_table
+
         init_factor_table()  # 第二次调用
         init_factor_table()  # 第三次调用
 
@@ -497,7 +511,7 @@ class TestFactorCRUD(unittest.TestCase):
 
     def test_delete_factor(self):
         """删除因子后不再出现在列表中"""
-        from stock_analyzer.custom_factors import create_factor, list_factors, delete_factor
+        from stock_analyzer.custom_factors import create_factor, delete_factor, list_factors
 
         create_factor("to_delete", "temp_del", "close.pct_change(3)", description="temp")
         delete_factor("to_delete")
@@ -508,6 +522,7 @@ class TestFactorCRUD(unittest.TestCase):
     def test_delete_nonexistent_no_error(self):
         """删除不存在的因子不报错"""
         from stock_analyzer.custom_factors import delete_factor
+
         delete_factor("does_not_exist_xyz")
 
     def test_factor_stores_metadata(self):
@@ -530,6 +545,7 @@ class TestFactorCRUD(unittest.TestCase):
             "(close - close.rolling(20).mean()) / close.rolling(20).std()",
             description="布林带位置",
         )
+
 
 if __name__ == "__main__":
     unittest.main()

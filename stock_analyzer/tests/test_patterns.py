@@ -9,6 +9,7 @@ import pandas as pd
 
 from stock_analyzer import patterns
 
+
 def _make_df(rows=120):
     """生成模拟 K 线数据，固定 seed 确保可重复"""
     np.random.seed(42)
@@ -17,25 +18,31 @@ def _make_df(rows=120):
     highs = np.maximum(opens, close) + np.abs(np.random.randn(rows) * 0.3)
     lows = np.minimum(opens, close) - np.abs(np.random.randn(rows) * 0.3)
     volumes = np.random.randint(1_000_000, 10_000_000, rows)
-    df = pd.DataFrame({
-        "日期": pd.date_range("2025-01-01", periods=rows),
-        "开盘": np.round(opens, 2),
-        "收盘": np.round(close, 2),
-        "最高": np.round(highs, 2),
-        "最低": np.round(lows, 2),
-        "成交量": volumes,
-    })
+    df = pd.DataFrame(
+        {
+            "日期": pd.date_range("2025-01-01", periods=rows),
+            "开盘": np.round(opens, 2),
+            "收盘": np.round(close, 2),
+            "最高": np.round(highs, 2),
+            "最低": np.round(lows, 2),
+            "成交量": volumes,
+        }
+    )
     return df
+
 
 def _make_row(open_p, close_p, high_p, low_p, volume=5000000):
     """创建单行 K 线数据 (Series)"""
-    return pd.Series({
-        "开盘": float(open_p),
-        "收盘": float(close_p),
-        "最高": float(high_p),
-        "最低": float(low_p),
-        "成交量": volume,
-    })
+    return pd.Series(
+        {
+            "开盘": float(open_p),
+            "收盘": float(close_p),
+            "最高": float(high_p),
+            "最低": float(low_p),
+            "成交量": volume,
+        }
+    )
+
 
 class TestHelpers(unittest.TestCase):
     """K 线辅助函数测试"""
@@ -86,6 +93,7 @@ class TestHelpers(unittest.TestCase):
         """无下影线（最低价等于开盘/收盘较小者）"""
         row = _make_row(10, 12, 14, 10)
         self.assertEqual(patterns._lower_shadow(row), 0.0)
+
 
 class TestSingleCandlePatterns(unittest.TestCase):
     """单根 K 线形态测试"""
@@ -173,6 +181,7 @@ class TestSingleCandlePatterns(unittest.TestCase):
         row = _make_row(11.5, 10.8, 11.6, 9.0)
         self.assertFalse(patterns.is_hanging_man(row, trend="down"))
 
+
 class TestTwoCandlePatterns(unittest.TestCase):
     """两根 K 线形态测试"""
 
@@ -249,6 +258,7 @@ class TestTwoCandlePatterns(unittest.TestCase):
         curr = _make_row(10.2, 10.6, 10.8, 10)
         self.assertFalse(patterns.is_piercing_pattern(prev, curr))
 
+
 class TestThreeCandlePatterns(unittest.TestCase):
     """三根 K 线形态测试"""
 
@@ -318,6 +328,7 @@ class TestThreeCandlePatterns(unittest.TestCase):
         r3 = _make_row(10, 9, 10.2, 8.8)
         self.assertFalse(patterns.is_three_black_crows(r1, r2, r3))
 
+
 class TestTrendDetection(unittest.TestCase):
     """趋势判断测试"""
 
@@ -342,14 +353,16 @@ class TestTrendDetection(unittest.TestCase):
         """纯上升模拟数据应检测为上升趋势"""
         np.random.seed(123)
         closes = 10 + np.arange(120) * 0.15 + np.random.randn(120) * 0.1
-        df = pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=120),
-            "开盘": closes * 0.99,
-            "收盘": closes,
-            "最高": closes * 1.02,
-            "最低": closes * 0.98,
-            "成交量": np.full(120, 5000000),
-        })
+        df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=120),
+                "开盘": closes * 0.99,
+                "收盘": closes,
+                "最高": closes * 1.02,
+                "最低": closes * 0.98,
+                "成交量": np.full(120, 5000000),
+            }
+        )
         result = patterns.detect_trend_phase(df)
         self.assertEqual(result, "上升趋势")
 
@@ -357,16 +370,19 @@ class TestTrendDetection(unittest.TestCase):
         """纯下降模拟数据应检测为下降趋势"""
         np.random.seed(456)
         closes = 100 - np.arange(120) * 0.2 + np.random.randn(120) * 0.1
-        df = pd.DataFrame({
-            "日期": pd.date_range("2025-01-01", periods=120),
-            "开盘": closes * 0.99,
-            "收盘": closes,
-            "最高": closes * 1.02,
-            "最低": closes * 0.98,
-            "成交量": np.full(120, 5000000),
-        })
+        df = pd.DataFrame(
+            {
+                "日期": pd.date_range("2025-01-01", periods=120),
+                "开盘": closes * 0.99,
+                "收盘": closes,
+                "最高": closes * 1.02,
+                "最低": closes * 0.98,
+                "成交量": np.full(120, 5000000),
+            }
+        )
         result = patterns.detect_trend_phase(df)
         self.assertEqual(result, "下降趋势")
+
 
 class TestPatternDetection(unittest.TestCase):
     """detect_patterns 和 generate_kline_interpretation 测试"""
@@ -431,6 +447,7 @@ class TestPatternDetection(unittest.TestCase):
             self.assertEqual(len(result), len(df) + 1)
         except Exception as e:
             self.fail(f"merge_today_data raised: {e}")
+
 
 if __name__ == "__main__":
     unittest.main()

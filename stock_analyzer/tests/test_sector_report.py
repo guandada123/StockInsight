@@ -1,4 +1,5 @@
 """test_sector_report.py — sector_report.py 全覆盖测试"""
+
 import os
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -7,6 +8,7 @@ import pandas as pd
 import pytest
 
 from stock_analyzer import sector_report
+
 
 def _make_screener_df(extra_rows: bool = False) -> pd.DataFrame:
     """创建模拟的 run_screener 返回值 DataFrame"""
@@ -25,6 +27,7 @@ def _make_screener_df(extra_rows: bool = False) -> pd.DataFrame:
     cols = ["代码", "综合评分", "评级", "动量分", "技术分", "基本面分", "量能分", "风险分"]
     return pd.DataFrame(rows, columns=cols)
 
+
 def _mock_sector(code: str) -> str:
     """模拟 get_sector_for_code 返回值"""
     mapping = {
@@ -39,6 +42,7 @@ def _mock_sector(code: str) -> str:
     }
     return mapping.get(code, "其他")
 
+
 class TestGenerateSectorReport:
     """generate_sector_report 函数全覆盖测试"""
 
@@ -48,9 +52,7 @@ class TestGenerateSectorReport:
     @patch("stock_analyzer.sector_report.cached_market_overview")
     @patch("stock_analyzer.sector_report.get_sector_for_code")
     @patch("stock_analyzer.sector_report.run_screener")
-    def test_basic_flow(
-        self, mock_run, mock_sector, mock_mkt, mock_ff, mock_open, mock_mkdir
-    ):
+    def test_basic_flow(self, mock_run, mock_sector, mock_mkt, mock_ff, mock_open, mock_mkdir):
         """基本流程：完整报告生成"""
         mock_run.return_value = _make_screener_df()
         mock_sector.side_effect = _mock_sector
@@ -360,6 +362,7 @@ class TestGenerateSectorReport:
             patch("builtins.open", new_callable=MagicMock) as mock_open,
         ):
             mock_run.return_value = df
+
             # 某个股票属于"银行、金融"（多板块）
             def _multi_sec(code):
                 return {"000001": "银行、金融", "000002": "地产"}.get(code, "其他")

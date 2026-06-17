@@ -7,6 +7,7 @@ import pandas as pd
 
 from stock_analyzer import analysis
 
+
 def _make_df(rows=100):
     """生成模拟 K 线数据，固定 seed 确保可重复"""
     np.random.seed(42)
@@ -22,6 +23,7 @@ def _make_df(rows=100):
         }
     )
     return df
+
 
 class TestAnalysis(unittest.TestCase):
     def test_empty_df(self):
@@ -87,6 +89,7 @@ class TestAnalysis(unittest.TestCase):
         self.assertGreater(len(valid), 0)
         self.assertTrue((valid > 0).all())
 
+
 class TestCalcSupportResistance(unittest.TestCase):
     """支撑位与压力位计算"""
 
@@ -120,6 +123,7 @@ class TestCalcSupportResistance(unittest.TestCase):
         result = analysis.calc_support_resistance(df, lookback=20)
         self.assertIsInstance(result, dict)
 
+
 class TestCalcStopLevels(unittest.TestCase):
     """止损止盈位计算"""
 
@@ -131,11 +135,15 @@ class TestCalcStopLevels(unittest.TestCase):
 
     def test_without_support(self):
         result = analysis.calc_stop_levels(current_price=50, atr=2, support=None, resistance=None)
-        self.assertAlmostEqual(result["止损参考价"], 47.5, delta=1)  # 50 - 2*2 = 46 vs 50*0.95 = 47.5
+        self.assertAlmostEqual(
+            result["止损参考价"], 47.5, delta=1
+        )  # 50 - 2*2 = 46 vs 50*0.95 = 47.5
         self.assertAlmostEqual(result["止盈参考价"], 57.5, delta=1)  # 50*1.15 = 57.5
 
     def test_nan_atr_defaults(self):
-        result = analysis.calc_stop_levels(current_price=100, atr=float("nan"), support=90, resistance=110)
+        result = analysis.calc_stop_levels(
+            current_price=100, atr=float("nan"), support=90, resistance=110
+        )
         self.assertLess(result["止损参考价"], 100)
         self.assertGreater(result["止盈参考价"], 100)
 
@@ -149,6 +157,7 @@ class TestCalcStopLevels(unittest.TestCase):
         self.assertIn("止损幅度%", result)
         self.assertIn("止盈幅度%", result)
         self.assertIn("ATR占比%", result)
+
 
 class TestGetTechnicalSummary(unittest.TestCase):
     """技术分析结论提取"""
@@ -201,6 +210,7 @@ class TestGetTechnicalSummary(unittest.TestCase):
         result = analysis.get_technical_summary(df)
         self.assertIsNone(result["近20日涨跌幅"])
 
+
 class TestScoreFundamental(unittest.TestCase):
     """基本面评分"""
 
@@ -240,39 +250,47 @@ class TestScoreFundamental(unittest.TestCase):
         self.assertIn("ROE", details)
         self.assertIn("营收增长", details)
 
+
 class TestScoreStocksInSector(unittest.TestCase):
     """板块内个股评分"""
 
     def test_scores_added(self):
-        df = pd.DataFrame({
-            "名称": ["A", "B", "C"],
-            "涨跌幅": [5.0, -2.0, 3.0],
-            "量比": [1.5, 0.8, 2.0],
-            "振幅": [3.0, 2.0, 5.0],
-        })
+        df = pd.DataFrame(
+            {
+                "名称": ["A", "B", "C"],
+                "涨跌幅": [5.0, -2.0, 3.0],
+                "量比": [1.5, 0.8, 2.0],
+                "振幅": [3.0, 2.0, 5.0],
+            }
+        )
         result = analysis.score_stocks_in_sector(df)
         self.assertIn("个股评分", result.columns)
 
     def test_sorted_descending(self):
-        df = pd.DataFrame({
-            "名称": ["A", "B", "C"],
-            "涨跌幅": [5.0, -2.0, 3.0],
-            "量比": [1.5, 0.8, 2.0],
-            "振幅": [3.0, 2.0, 5.0],
-        })
+        df = pd.DataFrame(
+            {
+                "名称": ["A", "B", "C"],
+                "涨跌幅": [5.0, -2.0, 3.0],
+                "量比": [1.5, 0.8, 2.0],
+                "振幅": [3.0, 2.0, 5.0],
+            }
+        )
         result = analysis.score_stocks_in_sector(df)
         scores = result["个股评分"].values
         self.assertTrue(all(scores[i] >= scores[i + 1] for i in range(len(scores) - 1)))
 
     def test_single_stock(self):
-        df = pd.DataFrame({
-            "名称": ["A"],
-            "涨跌幅": [5.0],
-            "量比": [1.5],
-            "振幅": [3.0],
-        })
+        df = pd.DataFrame(
+            {
+                "名称": ["A"],
+                "涨跌幅": [5.0],
+                "量比": [1.5],
+                "振幅": [3.0],
+            }
+        )
         result = analysis.score_stocks_in_sector(df)
         self.assertEqual(len(result), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

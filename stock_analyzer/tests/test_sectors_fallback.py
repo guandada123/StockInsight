@@ -9,6 +9,7 @@ from stock_analyzer.sectors_fallback import SECTOR_STOCKS_FALLBACK
 
 CODE_PATTERN = re.compile(r"^\d{6}$")
 
+
 class TestSectorsFallback(unittest.TestCase):
     """静态板块数据测试"""
 
@@ -18,8 +19,7 @@ class TestSectorsFallback(unittest.TestCase):
 
     def test_has_sectors(self):
         """包含多个板块分类"""
-        self.assertGreater(len(SECTOR_STOCKS_FALLBACK), 10,
-                           "Should have at least 10 sectors")
+        self.assertGreater(len(SECTOR_STOCKS_FALLBACK), 10, "Should have at least 10 sectors")
 
     def test_every_entry_has_representative(self):
         """每个板块有代表股"""
@@ -41,27 +41,29 @@ class TestSectorsFallback(unittest.TestCase):
         for name, data in SECTOR_STOCKS_FALLBACK.items():
             # 检查代表股
             rep = data["代表"]
-            self.assertRegex(rep, CODE_PATTERN.pattern,  # type: ignore[type-var]
-                             f"'{name}' 代表股 '{rep}' 应为 6 位数字")
+            self.assertRegex(
+                rep,
+                CODE_PATTERN.pattern,  # type: ignore[type-var]
+                f"'{name}' 代表股 '{rep}' 应为 6 位数字",
+            )
             # 检查成分股
             for code in data["成分股"]:
-                self.assertRegex(code, CODE_PATTERN.pattern,
-                                 f"'{name}' 成分股 '{code}' 应为 6 位数字")
+                self.assertRegex(
+                    code, CODE_PATTERN.pattern, f"'{name}' 成分股 '{code}' 应为 6 位数字"
+                )
 
     def test_representative_in_constituents(self):
         """代表股必须在成分股列表中"""
         for name, data in SECTOR_STOCKS_FALLBACK.items():
             rep = data["代表"]
             stocks = data["成分股"]
-            self.assertIn(rep, stocks,
-                          f"'{name}' 代表股 '{rep}' 不在成分股列表中")
+            self.assertIn(rep, stocks, f"'{name}' 代表股 '{rep}' 不在成分股列表中")
 
     def test_no_duplicate_constituents_per_sector(self):
         """每个板块内成分股无重复"""
         for name, data in SECTOR_STOCKS_FALLBACK.items():
             stocks = data["成分股"]
-            self.assertEqual(len(stocks), len(set(stocks)),
-                             f"'{name}' 成分股存在重复")
+            self.assertEqual(len(stocks), len(set(stocks)), f"'{name}' 成分股存在重复")
 
     def test_sector_names_not_empty(self):
         """板块名称非空"""
@@ -74,16 +76,21 @@ class TestSectorsFallback(unittest.TestCase):
         for name, data in SECTOR_STOCKS_FALLBACK.items():
             for code in data["成分股"]:
                 if code.startswith("6"):
-                    self.assertIn(code[:3], ["600", "601", "603", "605", "688"],
-                                  f"'{name}' 沪市代码 '{code}' 前缀异常")
+                    self.assertIn(
+                        code[:3],
+                        ["600", "601", "603", "605", "688"],
+                        f"'{name}' 沪市代码 '{code}' 前缀异常",
+                    )
 
     def test_sz_stocks_have_valid_prefix(self):
         """深市股票以 0/3 开头"""
         for name, data in SECTOR_STOCKS_FALLBACK.items():
             for code in data["成分股"]:
                 if not code.startswith("6"):
-                    self.assertTrue(code.startswith("0") or code.startswith("3"),
-                                    f"'{name}' 深市代码 '{code}' 前缀异常")
+                    self.assertTrue(
+                        code.startswith("0") or code.startswith("3"),
+                        f"'{name}' 深市代码 '{code}' 前缀异常",
+                    )
 
     def test_sector_count_range(self):
         """每个板块成分股数量 5-500 之间"""
@@ -98,6 +105,7 @@ class TestSectorsFallback(unittest.TestCase):
         for sector in known:
             if sector in SECTOR_STOCKS_FALLBACK:
                 self.assertIn(sector, SECTOR_STOCKS_FALLBACK)
+
 
 if __name__ == "__main__":
     unittest.main()

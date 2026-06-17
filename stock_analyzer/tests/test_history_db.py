@@ -1,12 +1,15 @@
 """测试 history_db.py — SQLite 历史评分数据库操作"""
+
 import os
 import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+
 import pandas as pd
 
 from stock_analyzer import history_db
+
 
 class TestInitHistoryDB(unittest.TestCase):
     """初始化历史数据库"""
@@ -18,13 +21,12 @@ class TestInitHistoryDB(unittest.TestCase):
         history_db.init_history_db()
 
         conn = history_db._get_conn()
-        tables = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()
+        tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
         conn.close()
         os.unlink(mock_path)
 
         self.assertIn(("daily_scores",), tables)
+
 
 class TestAppendResults(unittest.TestCase):
     """追加当日结果"""
@@ -46,21 +48,35 @@ class TestAppendResults(unittest.TestCase):
 
     def test_append_single_row(self):
         """写入一条记录，返回行数"""
-        df = pd.DataFrame([
-            {"代码": "000001", "名称": "平安银行", "综合评分": 85, "评级": "A",
-             "动量分": 80, "技术分": 70, "基本面分": 90, "量能分": 75, "风险分": 20,
-             "最新价": 12.5, "涨跌幅": 1.2}
-        ])
+        df = pd.DataFrame(
+            [
+                {
+                    "代码": "000001",
+                    "名称": "平安银行",
+                    "综合评分": 85,
+                    "评级": "A",
+                    "动量分": 80,
+                    "技术分": 70,
+                    "基本面分": 90,
+                    "量能分": 75,
+                    "风险分": 20,
+                    "最新价": 12.5,
+                    "涨跌幅": 1.2,
+                }
+            ]
+        )
         with self._patch_path():
             n = history_db.append_daily_results(df, scan_date="2025-06-01")
             self.assertEqual(n, 1)
 
     def test_append_multiple_rows(self):
         """写入多条记录"""
-        df = pd.DataFrame([
-            {"代码": "000001", "名称": "平安银行", "综合评分": 85},
-            {"代码": "000002", "名称": "万科A", "综合评分": 72},
-        ])
+        df = pd.DataFrame(
+            [
+                {"代码": "000001", "名称": "平安银行", "综合评分": 85},
+                {"代码": "000002", "名称": "万科A", "综合评分": 72},
+            ]
+        )
         # 补齐缺失字段测试默认值
         with self._patch_path():
             n = history_db.append_daily_results(df, scan_date="2025-06-01")
@@ -68,46 +84,60 @@ class TestAppendResults(unittest.TestCase):
 
     def test_overwrite_on_same_date_code(self):
         """同一日期+代码 → INSERT OR REPLACE 覆盖"""
-        df1 = pd.DataFrame([
-            {"代码": "000001", "名称": "平安银行", "综合评分": 85, "评级": "A"},
-        ])
-        df2 = pd.DataFrame([
-            {"代码": "000001", "名称": "平安银行", "综合评分": 90, "评级": "A+"},
-        ])
+        df1 = pd.DataFrame(
+            [
+                {"代码": "000001", "名称": "平安银行", "综合评分": 85, "评级": "A"},
+            ]
+        )
+        df2 = pd.DataFrame(
+            [
+                {"代码": "000001", "名称": "平安银行", "综合评分": 90, "评级": "A+"},
+            ]
+        )
         with self._patch_path():
             history_db.append_daily_results(df1, scan_date="2025-06-01")
             history_db.append_daily_results(df2, scan_date="2025-06-01")
-            rows = history_db._get_conn().execute(
-                "SELECT composite_score FROM daily_scores WHERE date='2025-06-01' AND code='000001'"
-            ).fetchall()
+            rows = (
+                history_db._get_conn()
+                .execute(
+                    "SELECT composite_score FROM daily_scores WHERE date='2025-06-01' AND code='000001'"
+                )
+                .fetchall()
+            )
             self.assertEqual(len(rows), 1)
             self.assertEqual(rows[0][0], 90)
 
     def test_default_scan_date_is_today(self):
         """scan_date 默认今天"""
         from datetime import datetime
-        df = pd.DataFrame([
-            {"代码": "000001", "名称": "平安银行", "综合评分": 85},
-        ])
+
+        df = pd.DataFrame(
+            [
+                {"代码": "000001", "名称": "平安银行", "综合评分": 85},
+            ]
+        )
         with self._patch_path():
             history_db.append_daily_results(df)
             today = datetime.now().strftime("%Y-%m-%d")
-            rows = history_db._get_conn().execute(
-                "SELECT COUNT(*) FROM daily_scores WHERE date=?", (today,)
-            ).fetchone()
+            rows = (
+                history_db._get_conn()
+                .execute("SELECT COUNT(*) FROM daily_scores WHERE date=?", (today,))
+                .fetchone()
+            )
             self.assertGreater(rows[0], 0)
 
     def test_code_zero_filled(self):
         """代码自动补零到6位"""
-        df = pd.DataFrame([
-            {"代码": "1", "名称": "测试", "综合评分": 80},
-        ])
+        df = pd.DataFrame(
+            [
+                {"代码": "1", "名称": "测试", "综合评分": 80},
+            ]
+        )
         with self._patch_path():
             history_db.append_daily_results(df, scan_date="2025-06-01")
-            rows = history_db._get_conn().execute(
-                "SELECT code FROM daily_scores"
-            ).fetchall()
+            rows = history_db._get_conn().execute("SELECT code FROM daily_scores").fetchall()
             self.assertEqual(rows[0][0], "000001")
+
 
 class TestGetStockHistory(unittest.TestCase):
     """查询单只股票历史"""
@@ -123,9 +153,11 @@ class TestGetStockHistory(unittest.TestCase):
         with patch("stock_analyzer.history_db.DB_PATH", self.db):
             history_db.init_history_db()
             for d in ["2025-06-01", "2025-06-02", "2025-06-03"]:
-                df = pd.DataFrame([
-                    {"代码": "000001", "名称": "平安银行", "综合评分": 80},
-                ])
+                df = pd.DataFrame(
+                    [
+                        {"代码": "000001", "名称": "平安银行", "综合评分": 80},
+                    ]
+                )
                 history_db.append_daily_results(df, scan_date=d)
 
     def test_returns_dataframe(self):
@@ -151,6 +183,7 @@ class TestGetStockHistory(unittest.TestCase):
             df2 = history_db.get_stock_history("000001")
             self.assertEqual(len(df1), len(df2))
 
+
 class TestGetTopStocks(unittest.TestCase):
     """查询高评分股票"""
 
@@ -164,11 +197,13 @@ class TestGetTopStocks(unittest.TestCase):
     def _seed(self):
         with patch("stock_analyzer.history_db.DB_PATH", self.db):
             history_db.init_history_db()
-            df = pd.DataFrame([
-                {"代码": "000001", "名称": "A", "综合评分": 90, "动量分": 85},
-                {"代码": "000002", "名称": "B", "综合评分": 70, "动量分": 65},
-                {"代码": "000003", "名称": "C", "综合评分": 50, "动量分": 45},
-            ])
+            df = pd.DataFrame(
+                [
+                    {"代码": "000001", "名称": "A", "综合评分": 90, "动量分": 85},
+                    {"代码": "000002", "名称": "B", "综合评分": 70, "动量分": 65},
+                    {"代码": "000003", "名称": "C", "综合评分": 50, "动量分": 45},
+                ]
+            )
             history_db.append_daily_results(df, scan_date="2025-06-01")
 
     def test_returns_top_n(self):
@@ -200,6 +235,7 @@ class TestGetTopStocks(unittest.TestCase):
             df = history_db.get_top_stocks()
             self.assertTrue(df.empty)
 
+
 class TestGetMarketSummary(unittest.TestCase):
     """全市场评分分布统计"""
 
@@ -213,12 +249,14 @@ class TestGetMarketSummary(unittest.TestCase):
     def _seed(self):
         with patch("stock_analyzer.history_db.DB_PATH", self.db):
             history_db.init_history_db()
-            df = pd.DataFrame([
-                {"代码": "000001", "名称": "A", "综合评分": 90},
-                {"代码": "000002", "名称": "B", "综合评分": 70},
-                {"代码": "000003", "名称": "C", "综合评分": 50},
-                {"代码": "000004", "名称": "D", "综合评分": 30},
-            ])
+            df = pd.DataFrame(
+                [
+                    {"代码": "000001", "名称": "A", "综合评分": 90},
+                    {"代码": "000002", "名称": "B", "综合评分": 70},
+                    {"代码": "000003", "名称": "C", "综合评分": 50},
+                    {"代码": "000004", "名称": "D", "综合评分": 30},
+                ]
+            )
             history_db.append_daily_results(df, scan_date="2025-06-01")
 
     def test_summary_structure(self):
@@ -254,6 +292,7 @@ class TestGetMarketSummary(unittest.TestCase):
             sm = history_db.get_market_summary()
             self.assertEqual(sm["total"], 4)
 
+
 class TestGetAvailableDates(unittest.TestCase):
     """可用日期查询"""
 
@@ -277,6 +316,7 @@ class TestGetAvailableDates(unittest.TestCase):
             history_db.init_history_db()
             dates = history_db.get_available_dates()
             self.assertEqual(dates, [])
+
 
 if __name__ == "__main__":
     unittest.main()

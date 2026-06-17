@@ -492,7 +492,7 @@ def audit_storage_benchmark(report):
                 times = []
                 for _ in range(50):
                     t0 = time.perf_counter()
-                    _ = pickle.loads(blob)
+                    _ = pickle.loads(blob)  # nosec - benchmark code, reading from local DB only
                     times.append(time.perf_counter() - t0)
                 avg_ms = sum(times) / len(times) * 1000
                 max_ms = max(times) * 1000

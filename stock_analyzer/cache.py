@@ -95,7 +95,7 @@ def cache_get(key, max_age=None):
                 conn.commit()
             return None
 
-        return pickle.loads(value_blob)
+        return pickle.loads(value_blob)  # nosec — 从本地 SQLite 缓存读取，非不可信数据
     except Exception:
         return None
 
@@ -144,10 +144,10 @@ def _perm_load(table, key_col, key_val):
     """从永久存储表加载数据"""
     try:
         conn = _get_conn()
-        cur = conn.execute(f"SELECT data FROM {table} WHERE {key_col}=?", (key_val,))
+        cur = conn.execute(f"SELECT data FROM {table} WHERE {key_col}=?", (key_val,))  # nosec — table/key_col 均为内部常量
         row = cur.fetchone()
         if row:
-            return pickle.loads(row[0])
+            return pickle.loads(row[0])  # nosec — 从本地 SQLite 读取，非不可信数据
     except Exception:
         pass
     return None

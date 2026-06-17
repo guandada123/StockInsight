@@ -278,7 +278,7 @@ class FileRateLimiter:
 # ============================================
 
 
-class DataSource(ABC):
+class DataSource:
     """数据源抽象基类
 
     所有外部数据源（新浪/腾讯/Baostock/Tushare 等）必须实现此接口。
@@ -318,7 +318,9 @@ class DataSource(ABC):
 def _parse_kline_df(rows: list[dict], days: int) -> pd.DataFrame:
     """将 K 线 dict 列表转为标准 DataFrame（含技术指标列）"""
     if not rows:
-        return pd.DataFrame(columns=["日期", "开盘", "收盘", "最高", "最低", "成交量", "涨跌幅", "涨跌额"])
+        return pd.DataFrame(
+            columns=["日期", "开盘", "收盘", "最高", "最低", "成交量", "涨跌幅", "涨跌额"]
+        )
     df = pd.DataFrame(rows)
     df["日期"] = pd.to_datetime(df["日期"])
     df = df.sort_values("日期").reset_index(drop=True)
@@ -520,6 +522,7 @@ class TushareKlineSource(DataSource):
     def _get_token() -> str:
         """获取 Tushare token（使用统一 env 模块）"""
         return get_env("TUSHARE_TOKEN", "")
+
 
 # ============================================
 # 实时行情数据源

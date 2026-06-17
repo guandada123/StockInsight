@@ -1,17 +1,20 @@
 """测试 network_health.py — 网络数据源健康监测"""
+
 import os
 import sys
 import time
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from stock_analyzer.network_health import (
-    SourceStatus,
     NetworkHealth,
+    SourceStatus,
     _quick_get,
     check_all,
     get_health,
     print_health,
 )
+
 
 class TestSourceStatus(unittest.TestCase):
     """SourceStatus dataclass 基础行为"""
@@ -29,6 +32,7 @@ class TestSourceStatus(unittest.TestCase):
         s = SourceStatus("tencent", True, 123, "ok")
         self.assertTrue(s.available)
         self.assertEqual(s.latency_ms, 123)
+
 
 class TestNetworkHealth(unittest.TestCase):
     """NetworkHealth dataclass 属性"""
@@ -80,6 +84,7 @@ class TestNetworkHealth(unittest.TestCase):
         self.h.checked_at = t
         self.assertAlmostEqual(self.h.checked_at, t, delta=1)
 
+
 class TestQuickGet(unittest.TestCase):
     """_quick_get 网络请求"""
 
@@ -115,6 +120,7 @@ class TestQuickGet(unittest.TestCase):
         ms, ok = _quick_get("http://example.com")
         self.assertFalse(ok)
 
+
 class TestCheckAll(unittest.TestCase):
     """check_all 集成检查"""
 
@@ -149,11 +155,13 @@ class TestCheckAll(unittest.TestCase):
         h = check_all()
         self.assertGreater(h.checked_at, 0)
 
+
 class TestGetHealth(unittest.TestCase):
     """get_health 缓存行为"""
 
     def setUp(self):
         import stock_analyzer.network_health as nh
+
         nh._health_cache = None
         nh._health_cache_time = 0
         self.patcher = patch("stock_analyzer.network_health.check_all")
@@ -181,6 +189,7 @@ class TestGetHealth(unittest.TestCase):
         get_health(force=True)
         self.assertEqual(self.mock_check.call_count, 1)
 
+
 class TestPrintHealth(unittest.TestCase):
     """print_health 输出"""
 
@@ -196,6 +205,7 @@ class TestPrintHealth(unittest.TestCase):
         # 确保不会抛出异常
         result = print_health()
         self.assertIs(result, h)
+
 
 if __name__ == "__main__":
     unittest.main()
