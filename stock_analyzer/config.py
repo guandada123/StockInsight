@@ -84,6 +84,8 @@ API_HOSTS = [
 ]
 
 UT = get_env("EASTMONEY_UT", "bd1d9ddb04089700cf9c27f6f7426281")
+# ⚠️ 以上默认值为已知公开占位 token，在生产环境请在 .env 中设置 EASTMONEY_UT 覆盖
+# 查看当前值: grep EASTMONEY_UT .env 2>/dev/null || echo "未设置，使用默认值"
 KLINE_PERIODS = {"daily": 101, "weekly": 102, "monthly": 103}
 ADJUST = {"qfq": 1, "hfq": 2, "none": 0}
 

@@ -13,7 +13,7 @@ WORKDIR /build
 
 # 先复制 manifest 文件，利用 Docker 层缓存
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci && npm cache clean --force
 
 # 复制前端源码与构建配置
 COPY vite.config.ts tsconfig.json tsconfig.node.json index.html ./

@@ -17,6 +17,8 @@ import sys
 import time
 from contextlib import asynccontextmanager
 
+import asyncio
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -36,6 +38,7 @@ START_TIME = time.time()
 import json as _json
 
 _RATE_LIMITS: dict[str, list[float]] = {}  # ip -> list of request timestamps
+_RATE_LIMITS_LOCK = asyncio.Lock()
 _RATE_MAX = 60  # max requests
 _RATE_WINDOW = 60.0  # per window (seconds)
 _RATE_DUMP_INTERVAL = 10.0  # flush to disk every N seconds
@@ -134,7 +137,7 @@ async def add_timing_header(request: Request, call_next):
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
-    """添加安全响应头：CSP、X-Content-Type-Options、X-Frame-Options"""
+    """添加安全响应头：CSP、HSTS、X-Content-Type-Options、X-Frame-Options"""
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
@@ -143,34 +146,42 @@ async def add_security_headers(request: Request, call_next):
         "script-src 'self'; "
         "style-src 'self' 'unsafe-inline'; "  # React 内联样式必需
         "img-src 'self' data: https:; "
-        "connect-src 'self'"
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "form-action 'self'"
     )
+    # HSTS — 仅在生产环境启用（开发环境无 HTTPS）
+    if _IS_PRODUCTION:
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=63072000; includeSubDomains; preload"
+        )
     return response
 
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     """Simple sliding-window rate limiter: 60 req/min per IP."""
-    ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    if ip not in _RATE_LIMITS:
-        _RATE_LIMITS[ip] = []
-    timestamps = _RATE_LIMITS[ip]
-    # Purge old entries
-    timestamps[:] = [t for t in timestamps if now - t < _RATE_WINDOW]
-    if len(timestamps) >= _RATE_MAX:
-        return JSONResponse(
-            status_code=429, content={"detail": "Too many requests. Try again later."}
-        )
-    timestamps.append(now)
-    # Prevent unbounded growth — evict stale IPs
-    if len(_RATE_LIMITS) > 10000:
-        stale = [ip for ip, ts in _RATE_LIMITS.items() if not ts or now - ts[-1] > _RATE_WINDOW]
-        for ip in stale:
-            del _RATE_LIMITS[ip]
-    # Periodically persist to disk for restart recovery
-    if now - _last_rate_dump > _RATE_DUMP_INTERVAL:
-        _dump_rate_limits()
+    async with _RATE_LIMITS_LOCK:
+        ip = request.client.host if request.client else "unknown"
+        now = time.time()
+        if ip not in _RATE_LIMITS:
+            _RATE_LIMITS[ip] = []
+        timestamps = _RATE_LIMITS[ip]
+        # Purge old entries
+        timestamps[:] = [t for t in timestamps if now - t < _RATE_WINDOW]
+        if len(timestamps) >= _RATE_MAX:
+            return JSONResponse(
+                status_code=429, content={"detail": "Too many requests. Try again later."}
+            )
+        timestamps.append(now)
+        # Prevent unbounded growth — evict stale IPs
+        if len(_RATE_LIMITS) > 10000:
+            stale = [ip for ip, ts in _RATE_LIMITS.items() if not ts or now - ts[-1] > _RATE_WINDOW]
+            for ip in stale:
+                del _RATE_LIMITS[ip]
+        # Periodically persist to disk for restart recovery
+        if now - _last_rate_dump > _RATE_DUMP_INTERVAL:
+            _dump_rate_limits()
     return await call_next(request)
 
 

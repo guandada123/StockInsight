@@ -33,7 +33,8 @@ async def data_stats():
         result = await get_data_stats()
         return _ok(result, timing=(time.time() - t0) * 1000)
     except FileNotFoundError as e:
-        return _err(str(e))
+        logger.warning("data_stats_file_not_found: %s", e)
+        return _err("文件不存在")
     except Exception:
         logger.exception("data_error")
         return _err(_SAFE_ERROR_MSG)
@@ -47,7 +48,8 @@ async def clear_cache_route():
         result = await clear_cache()
         return _ok(result, timing=(time.time() - t0) * 1000)
     except FileNotFoundError as e:
-        return _err(str(e))
+        logger.warning("clear_cache_file_not_found: %s", e)
+        return _err("文件不存在")
     except Exception:
         logger.exception("data_error")
         return _err(_SAFE_ERROR_MSG)
@@ -91,7 +93,8 @@ async def import_data_route(
         result = await import_data(file, data_type, filename)
         return _ok(result, timing=(time.time() - t0) * 1000)
     except ValueError as ve:
-        return _err(str(ve))
+        logger.warning("import_data_validation: %s", ve)
+        return _err("导入数据格式有误，请检查 CSV/JSON 格式")
     except Exception:
         logger.exception("data_error")
         return _err(_SAFE_ERROR_MSG)

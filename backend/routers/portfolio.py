@@ -47,7 +47,8 @@ async def get_portfolio_route(name: str):
         result = get_portfolio(name)
         return _ok(result, timing=(time.time() - t0) * 1000)
     except FileNotFoundError as e:
-        return _err(str(e))
+        logger.warning("get_portfolio_not_found: name=%s error=%s", name, e)
+        return _err("组合不存在")
     except Exception:
         logger.exception("get_portfolio_failed: name=%s", name)
         return _err(_SAFE_ERROR_MSG)
@@ -63,7 +64,8 @@ async def create_portfolio_route(
         result = create_portfolio(params.name, codes=params.codes)
         return _ok(result, timing=(time.time() - t0) * 1000)
     except FileExistsError as e:
-        return _err(str(e))
+        logger.warning("create_portfolio_exists: name=%s error=%s", params.name, e)
+        return _err("组合已存在")
     except Exception:
         logger.exception("create_portfolio_failed: name=%s", params.name)
         return _err(_SAFE_ERROR_MSG)
@@ -82,7 +84,8 @@ async def update_portfolio_holding_route(
         )
         return _ok(result, timing=(time.time() - t0) * 1000)
     except FileNotFoundError as e:
-        return _err(str(e))
+        logger.warning("get_portfolio_not_found: name=%s error=%s", name, e)
+        return _err("组合不存在")
     except Exception:
         logger.exception("update_portfolio_failed: name=%s code=%s", name, params.code)
         return _err(_SAFE_ERROR_MSG)
@@ -97,7 +100,8 @@ async def delete_portfolio_route(name: str):
         result = delete_portfolio(name)
         return _ok(result, timing=(time.time() - t0) * 1000)
     except FileNotFoundError as e:
-        return _err(str(e))
+        logger.warning("get_portfolio_not_found: name=%s error=%s", name, e)
+        return _err("组合不存在")
     except Exception:
         logger.exception("delete_portfolio_failed: name=%s", name)
         return _err(_SAFE_ERROR_MSG)
@@ -112,7 +116,8 @@ async def analyze_portfolio_route(name: str):
         result = analyze_portfolio(name)
         return _ok(result, timing=(time.time() - t0) * 1000)
     except FileNotFoundError as e:
-        return _err(str(e))
+        logger.warning("get_portfolio_not_found: name=%s error=%s", name, e)
+        return _err("组合不存在")
     except Exception:
-        logger.exception("get_portfolio_failed: name=%s", name)
+        logger.exception("analyze_portfolio_failed: name=%s", name)
         return _err(_SAFE_ERROR_MSG)

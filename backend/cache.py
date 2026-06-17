@@ -12,6 +12,7 @@ Usage:
 
 import asyncio
 import logging
+import threading
 import time
 from collections.abc import Callable
 from functools import wraps
@@ -21,9 +22,11 @@ logger = logging.getLogger(__name__)
 
 # 全局缓存存储
 _cache: dict[str, tuple[float, Any]] = {}
+_cache_lock = threading.Lock()
 
 # 缓存统计
 _stats = {"hits": 0, "misses": 0}
+_stats_lock = threading.Lock()
 
 
 def ttl_cache(ttl: int = 30):
@@ -47,20 +50,25 @@ def ttl_cache(ttl: int = 30):
             now = time.time()
 
             # 检查缓存
-            if key in _cache:
-                expire_at, value = _cache[key]
-                if now < expire_at:
-                    _stats["hits"] += 1
-                    return value
+            with _cache_lock:
+                if key in _cache:
+                    expire_at, value = _cache[key]
+                    if now < expire_at:
+                        with _stats_lock:
+                            _stats["hits"] += 1
+                        return value
 
-            # 缓存未命中 — 执行原函数
-            _stats["misses"] += 1
+                # 缓存未命中 — 执行原函数
+                with _stats_lock:
+                    _stats["misses"] += 1
+
             if asyncio.iscoroutinefunction(func):
                 result = await func(*args, **kwargs)
             else:
                 result = func(*args, **kwargs)
 
-            _cache[key] = (now + ttl, result)
+            with _cache_lock:
+                _cache[key] = (now + ttl, result)
             return result
 
         @wraps(func)

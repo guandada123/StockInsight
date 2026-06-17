@@ -8,6 +8,7 @@
 """
 
 import logging
+import threading
 import time
 from typing import Any
 
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 # Analysis result cache (in-memory, 5-minute TTL)
 _ANALYSIS_CACHE: dict[str, dict[str, Any]] = {}
+_ANALYSIS_CACHE_LOCK = threading.Lock()
 _CACHE_TTL = 300  # seconds
 
 
@@ -28,12 +30,14 @@ def cached_analysis(code: str, full: bool = True) -> dict[str, Any]:
     """Cache-aware analysis wrapper"""
     key = f"{code}:{'full' if full else 'std'}"
     now = time.time()
-    if key in _ANALYSIS_CACHE:
-        entry = _ANALYSIS_CACHE[key]
-        if now - entry["time"] < _CACHE_TTL:
-            return entry["result"]  # type: ignore[no-any-return]
+    with _ANALYSIS_CACHE_LOCK:
+        if key in _ANALYSIS_CACHE:
+            entry = _ANALYSIS_CACHE[key]
+            if now - entry["time"] < _CACHE_TTL:
+                return entry["result"]  # type: ignore[no-any-return]
     result = _run_analysis(code, full=full)
-    _ANALYSIS_CACHE[key] = {"result": result, "time": now}
+    with _ANALYSIS_CACHE_LOCK:
+        _ANALYSIS_CACHE[key] = {"result": result, "time": now}
     return result
 
 

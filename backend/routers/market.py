@@ -59,7 +59,8 @@ async def batch_quotes(params: BatchCodesParam = Depends()):
         result = build_batch_quotes(params.code_list)
         return _ok(result, timing=(time.time() - t0) * 1000)
     except ValueError as ve:
-        return _err(str(ve))
+        logger.warning("batch_quotes_validation: %s", ve)
+        return _err("参数不合法，请检查股票代码格式")
     except Exception:
         logger.exception("batch_quotes_failed")
         return _err(_SAFE_ERROR_MSG)

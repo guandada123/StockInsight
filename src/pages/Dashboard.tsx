@@ -148,7 +148,7 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
               <div className="flex-col gap-6">
                 {[
                   { label: "持仓管理", path: "/portfolio" },
-                  { label: "自选股", codes: "600519,300750,002594,600036,300308" },
+                  { label: "自选股", path: "/stock/600519" },
                 ].map((item) => (
                   <div
                     key={item.path}

@@ -16,7 +16,7 @@ baostock>=0.8
 tushare>=1.4
 
 # 可选数据源（增强容灾）
-yquoter>=1.0
+yquoter>=0.1
 adata>=0.1
 
 # 自然语言选股

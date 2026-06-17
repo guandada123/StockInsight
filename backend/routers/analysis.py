@@ -153,7 +153,8 @@ async def get_kline_data(
         result = build_kline_data(code, ktype=params.ktype, days=params.days)
         return _ok(result, freshness="cached", timing=(time.time() - t0) * 1000)
     except ValueError as ve:
-        return _err(str(ve))
+        logger.warning("kline_data_validation: code=%s error=%s", code, ve)
+        return _err("K线数据暂不可用")
     except Exception:
         logger.exception("api_error")
         return _err(_SAFE_ERROR_MSG)
@@ -170,9 +171,10 @@ async def get_indicator_data(
         result = build_indicator_data(code, indicator=params.indicator)
         return _ok(result, freshness="cached", timing=(time.time() - t0) * 1000)
     except ValueError as ve:
-        return _err(str(ve))
+        logger.warning("indicator_data_validation: code=%s error=%s", code, ve)
+        return _err("技术指标数据暂不可用")
     except Exception:
-        logger.exception("api_error")
+        logger.exception("indicator_data_failed: code=%s", code)
         return _err(_SAFE_ERROR_MSG)
 
 
@@ -184,7 +186,8 @@ async def get_fund_flow_data(code: str, days: int = Query(20)):
         result = build_fund_flow_data(code, days=days)
         return _ok(result, freshness="cached", timing=(time.time() - t0) * 1000)
     except ValueError as ve:
-        return _err(str(ve))
+        logger.warning("fund_flow_validation: code=%s error=%s", code, ve)
+        return _err("资金流向数据暂不可用")
     except Exception:
         logger.exception("get_fund_flow_failed: code=%s", code)
         return _err(_SAFE_ERROR_MSG)

@@ -122,7 +122,7 @@ python ml_scan.py --top-n 20         # 主板 top20
 - 完整技能文档：`C:\Users\47535\.claude\skills\stock-quant-analysis\SKILL.md`
 - 最近重构：fetcher.py → fetcher/ 包、前端组件化、ML缓存、analyzer.py 解耦
 
-## 当前状态 (2026-06-09)
+## 当前状态 (2026-06-18)
 
 - 仓库已公开: https://github.com/nguyenchunghieu799-blip/stock-insight
 - MIT LICENSE 开源

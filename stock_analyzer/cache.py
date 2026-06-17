@@ -26,14 +26,16 @@ _local = threading.local()
 
 # 进程内内存缓存（避免重复 pickle 反序列化同一 DataFrame）
 _MEM_CACHE: dict[str, Any] = {}
+_MEM_CACHE_LOCK = threading.Lock()
 
 
 def _mem_cache_set(key, value):
     """写入进程内内存缓存，超过上限时淘汰最旧的条目"""
-    if len(_MEM_CACHE) >= _MEM_CACHE_MAX:
-        oldest = min(_MEM_CACHE, key=lambda k: _MEM_CACHE[k][0])
-        del _MEM_CACHE[oldest]
-    _MEM_CACHE[key] = (time.time(), value)
+    with _MEM_CACHE_LOCK:
+        if len(_MEM_CACHE) >= _MEM_CACHE_MAX:
+            oldest = min(_MEM_CACHE, key=lambda k: _MEM_CACHE[k][0])
+            del _MEM_CACHE[oldest]
+        _MEM_CACHE[key] = (time.time(), value)
 
 
 def _get_conn():
