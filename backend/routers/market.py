@@ -7,9 +7,10 @@
 import logging
 import time
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
 from backend.common import _err, _ok
+from backend.schemas.requests import BatchCodesParam
 from backend.services.market_service import (
     build_batch_quotes,
     build_hot_sectors,
@@ -51,12 +52,11 @@ async def indices_detail():
 
 
 @router.get("/quotes")
-async def batch_quotes(codes: str = Query(..., description="逗号分隔的股票代码")):
+async def batch_quotes(params: BatchCodesParam = Depends()):
     """批量实时行情"""
     t0 = time.time()
     try:
-        code_list = [c.strip() for c in codes.split(",") if c.strip()]
-        result = build_batch_quotes(code_list)
+        result = build_batch_quotes(params.code_list)
         return _ok(result, timing=(time.time() - t0) * 1000)
     except ValueError as ve:
         return _err(str(ve))

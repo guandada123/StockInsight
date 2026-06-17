@@ -58,9 +58,7 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
         <div className="card-body">
           <div className="market-grid">
             {Object.entries(indices).length === 0 ? (
-              <div
-                style={{ gridColumn: "1/-1", textAlign: "center", padding: 20, color: "var(--dm)" }}
-              >
+              <div className="text-center p-20 c-dm" style={{ gridColumn: "1/-1" }}>
                 {error ? error : marketApi.loading ? "加载中..." : "暂无数据"}
               </div>
             ) : (
@@ -84,9 +82,9 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
         {/* 板块热点 */}
         <div className="card">
           <div className="card-header">板块热点 TOP12</div>
-          <div className="card-body" style={{ padding: 8 }}>
+          <div className="card-body p-8">
             {sectors.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 20, color: "var(--dm)" }}>
+              <div className="text-center p-20 c-dm">
                 {sectorsApi.loading ? "加载中..." : "暂无数据"}
               </div>
             ) : (
@@ -102,7 +100,9 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
                 <tbody>
                   {sectors.map((s) => (
                     <tr key={s.code}>
-                      <td style={{ color: "var(--dm)", width: 40 }}>{s.ranking}</td>
+                      <td className="c-dm" style={{ width: 40 }}>
+                        {s.ranking}
+                      </td>
                       <td>{s.name}</td>
                       <td className={s.change_pct >= 0 ? "up" : "down"}>
                         {s.change_pct >= 0 ? "+" : ""}
@@ -123,14 +123,11 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
         <div>
           <div className="card">
             <div className="card-header">快速分析</div>
-            <div className="card-body" style={{ textAlign: "center", padding: 24 }}>
-              <div style={{ fontSize: 14, color: "var(--dm)", marginBottom: 12 }}>
-                输入六位股票代码，获取七层全维度分析
-              </div>
+            <div className="card-body text-center p-24">
+              <div className="fs-14 c-dm mb-12">输入六位股票代码，获取七层全维度分析</div>
               <input
                 ref={inputRef}
-                className="nav-search"
-                style={{ width: "100%", marginBottom: 10 }}
+                className="nav-search w-full mb-10"
                 placeholder="例如 600519 贵州茅台"
                 value={quickCode}
                 onChange={(e) => setQuickCode(e.target.value)}
@@ -138,11 +135,7 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
                   if (e.key === "Enter") handleQuickAnalysis();
                 }}
               />
-              <button
-                className="nav-btn primary"
-                style={{ width: "100%" }}
-                onClick={handleQuickAnalysis}
-              >
+              <button className="nav-btn primary w-full" onClick={handleQuickAnalysis}>
                 开始分析
               </button>
             </div>
@@ -152,7 +145,7 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
           <div className="card">
             <div className="card-header">常用功能</div>
             <div className="card-body">
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div className="flex-col gap-6">
                 {[
                   { label: "持仓管理", path: "/portfolio" },
                   { label: "自选股", codes: "600519,300750,002594,600036,300308" },

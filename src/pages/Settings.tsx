@@ -24,8 +24,8 @@ export default function Settings() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 14 }}>系统设置</h2>
-      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+      <h2 className="fs-18 fw-700 c-white mb-14">系统设置</h2>
+      <div className="flex gap-8 mb-14">
         {(["data", "factors", "about"] as const).map((t) => (
           <button
             key={t}
@@ -80,16 +80,15 @@ function DataManagement() {
       <div className="card">
         <div className="card-header">日频数据中心</div>
         <div className="card-body">
-          <div className="grid2" style={{ marginBottom: 12 }}>
+          <div className="grid2 mb-12">
             {jobTypes.map((jt) => (
               <div
                 key={jt.id}
-                style={{ background: "#070d18", borderRadius: 8, padding: 16, textAlign: "center" }}
+                className="text-center p-16"
+                style={{ background: "var(--alt-bg)", borderRadius: 8 }}
               >
-                <div style={{ fontSize: 24, marginBottom: 8 }}>{jt.icon}</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 4 }}>
-                  {jt.name}
-                </div>
+                <div className="fs-24 mb-8">{jt.icon}</div>
+                <div className="fs-14 fw-600 c-white mb-4">{jt.name}</div>
                 <button
                   className="nav-btn primary"
                   disabled={loading}
@@ -100,7 +99,7 @@ function DataManagement() {
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 11, color: "var(--dm)" }}>
+          <div className="fs-11 c-dm">
             需要配置 TUSHARE_TOKEN 环境变量。数据存储在 stock_cache.db。
           </div>
         </div>
@@ -113,7 +112,7 @@ function DataManagement() {
             {jobsApi.loading ? "加载中..." : "刷新"}
           </button>
         </div>
-        <div className="card-body" style={{ padding: 0 }}>
+        <div className="card-body p-0">
           <table className="data-table">
             <thead>
               <tr>
@@ -128,14 +127,14 @@ function DataManagement() {
             <tbody>
               {jobs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: 20, color: "var(--dm)" }}>
+                  <td colSpan={6} className="text-center p-20 c-dm">
                     暂无任务
                   </td>
                 </tr>
               ) : (
                 jobs.map((j) => (
                   <tr key={j.id}>
-                    <td style={{ fontSize: 10, color: "var(--dm)" }}>{j.id}</td>
+                    <td className="fs-10 c-dm">{j.id}</td>
                     <td>{j.name}</td>
                     <td>
                       <span
@@ -151,8 +150,8 @@ function DataManagement() {
                       </span>
                     </td>
                     <td>{j.total > 0 ? `${Math.round((j.progress / j.total) * 100)}%` : "-"}</td>
-                    <td style={{ fontSize: 10 }}>{j.started}</td>
-                    <td style={{ fontSize: 10 }}>{j.done || "-"}</td>
+                    <td className="fs-10">{j.started}</td>
+                    <td className="fs-10">{j.done || "-"}</td>
                   </tr>
                 ))
               )}
@@ -235,23 +234,24 @@ function FactorManagement() {
         </div>
         <div className="card-body">
           {showCreate && (
-            <div style={{ background: "#070d18", borderRadius: 8, padding: 14, marginBottom: 12 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div
+              className="mb-12"
+              style={{ background: "var(--alt-bg)", borderRadius: 8, padding: 14 }}
+            >
+              <div className="flex-col gap-8">
                 <input
-                  className="nav-search"
-                  style={{ width: "100%" }}
+                  className="nav-search w-full"
                   placeholder="因子ID (英文, 如 my_momentum_10)"
                   value={form.id}
                   onChange={(e) => setForm({ ...form, id: e.target.value })}
                 />
                 <input
-                  className="nav-search"
-                  style={{ width: "100%" }}
+                  className="nav-search w-full"
                   placeholder="因子名称 (如 10日动量)"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
-                <div style={{ display: "flex", gap: 8 }}>
+                <div className="flex gap-8">
                   <input
                     className="nav-search"
                     style={{ flex: 1 }}
@@ -273,21 +273,18 @@ function FactorManagement() {
                     {validateMsg}
                   </div>
                 )}
-                <div style={{ fontSize: 10, color: "var(--dm)" }}>
-                  可用列: open, high, low, close, vol, amount | 方法: pct_change, rolling, shift, diff
+                <div className="fs-10 c-dm">
+                  可用列: open, high, low, close, vol, amount | 方法: pct_change, rolling, shift,
+                  diff
                 </div>
-                <button
-                  className="nav-btn primary"
-                  onClick={createFactor}
-                  style={{ width: "100%" }}
-                >
+                <button className="nav-btn primary w-full" onClick={createFactor}>
                   创建因子
                 </button>
               </div>
             </div>
           )}
 
-          <div style={{ fontSize: 11, color: "var(--dm)", marginBottom: 8 }}>表达式示例:</div>
+          <div className="fs-11 c-dm mb-8">表达式示例:</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
             {examples.map((e, i) => (
               <code
@@ -319,26 +316,24 @@ function FactorManagement() {
             <tbody>
               {factors.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: 20, color: "var(--dm)" }}>
+                  <td colSpan={6} className="text-center p-20 c-dm">
                     暂无自定义因子
                   </td>
                 </tr>
               ) : (
                 factors.map((f) => (
                   <tr key={f.id}>
-                    <td style={{ fontSize: 10, color: "var(--cy)" }}>{f.id}</td>
-                    <td style={{ fontWeight: 600 }}>{f.name}</td>
-                    <td style={{ fontSize: 10, fontFamily: "monospace" }}>{f.expression}</td>
+                    <td className="fs-10 c-cy">{f.id}</td>
+                    <td className="fw-600">{f.name}</td>
+                    <td className="fs-10" style={{ fontFamily: "monospace" }}>
+                      {f.expression}
+                    </td>
                     <td>
                       <span className="tag tag-purple">{f.type}</span>
                     </td>
-                    <td style={{ fontSize: 10 }}>{f.created}</td>
+                    <td className="fs-10">{f.created}</td>
                     <td>
-                      <button
-                        className="nav-btn"
-                        style={{ fontSize: 10, color: "var(--rd)" }}
-                        onClick={() => deleteFactor(f.id)}
-                      >
+                      <button className="nav-btn fs-10 c-rd" onClick={() => deleteFactor(f.id)}>
                         删除
                       </button>
                     </td>
@@ -369,25 +364,21 @@ function AboutTab() {
           </div>
           <div className="kpi">
             <div className="kpi-lbl">数据源</div>
-            <div className="kpi-val" style={{ fontSize: 11 }}>
-              新浪/东方财富/akshare/Tushare
-            </div>
+            <div className="kpi-val fs-11">新浪/东方财富/akshare/Tushare</div>
           </div>
           <div className="kpi">
             <div className="kpi-lbl">数据库</div>
             <div className="kpi-val">SQLite 152MB</div>
           </div>
         </div>
-        <div style={{ fontSize: 12, color: "var(--dm)", lineHeight: 1.8, marginTop: 8 }}>
+        <div className="fs-12 c-dm mt-8" style={{ lineHeight: 1.8 }}>
           集成了 henrylin99/quantitative_analysis 项目的:
           <br />· 日频数据中心 — Tushare 数据下载管线
           <br />· 自定义因子表达式引擎 — AST 白名单安全校验
           <br />· Docker 容器化部署支持
           <br />· 组合优化 (均值方差/风险平价/因子中性/Black-Litterman)
         </div>
-        <div style={{ fontSize: 10, color: "var(--dm)", marginTop: 12 }}>
-          免责声明: 本系统仅供学习研究，不构成投资建议。
-        </div>
+        <div className="fs-10 c-dm mt-12">免责声明: 本系统仅供学习研究，不构成投资建议。</div>
       </div>
     </div>
   );

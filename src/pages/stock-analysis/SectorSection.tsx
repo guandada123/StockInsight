@@ -24,16 +24,16 @@ export default function SectorSection({ sa }: { sa: SectorAnalysis }) {
         )}
       </div>
       {sa.concepts && sa.concepts.length > 0 && (
-        <div style={{ marginTop: 8 }}>
+        <div className="mt-8">
           {sa.concepts.map((c: string, i: number) => (
-            <span key={i} className="tag tag-purple" style={{ marginRight: 4 }}>
+            <span key={i} className="tag tag-purple mr-4">
               {c}
             </span>
           ))}
         </div>
       )}
       {sa.assessment && (
-        <div style={{ marginTop: 8, fontSize: 11, color: "var(--tx)", lineHeight: 1.5 }}>
+        <div className="mt-8 fs-11 c-tx" style={{ lineHeight: 1.5 }}>
           {sa.assessment}
         </div>
       )}

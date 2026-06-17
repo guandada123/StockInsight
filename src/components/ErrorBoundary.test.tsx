@@ -26,21 +26,12 @@ describe("ErrorBoundary", () => {
   });
 
   it("捕获子组件抛出的错误并显示降级 UI", () => {
-    // 使用包裹容器触发错误
-    function TestCase() {
-      return (
-        <ErrorBoundary>
-          <BuggyComponent shouldThrow />
-        </ErrorBoundary>
-      );
-    }
-
     // 类组件错误边界需要用特殊方式测试
     // 简单验证：挂载一个会抛出错误的子组件
     const origError = console.error;
     console.error = vi.fn();
 
-    const { container } = render(
+    render(
       <ErrorBoundary>
         <BuggyComponent shouldThrow />
       </ErrorBoundary>

@@ -7,38 +7,41 @@ export function useApi<T>() {
   const [error, setError] = useState<string | null>(null);
 
   /** 通用请求方法，支持 GET / POST / DELETE / PUT */
-  const request = useCallback(async (
-    path: string,
-    options?: { method?: string; body?: unknown }
-  ): Promise<ApiResponse<T>> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const init: RequestInit = { method: options?.method || "GET" };
-      if (options?.body !== undefined) {
-        init.headers = { "Content-Type": "application/json" };
-        init.body = JSON.stringify(options.body);
+  const request = useCallback(
+    async (
+      path: string,
+      options?: { method?: string; body?: unknown }
+    ): Promise<ApiResponse<T>> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const init: RequestInit = { method: options?.method || "GET" };
+        if (options?.body !== undefined) {
+          init.headers = { "Content-Type": "application/json" };
+          init.body = JSON.stringify(options.body);
+        }
+        const res = await fetch(`${API_BASE}${path}`, init);
+        const json: ApiResponse<T> = await res.json();
+        if (!json.success) {
+          setError(json.error || "Unknown error");
+        }
+        return json;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(msg);
+        return {
+          success: false,
+          data: null as unknown as T,
+          error: msg,
+          freshness: "stale",
+          timing_ms: 0,
+        };
+      } finally {
+        setLoading(false);
       }
-      const res = await fetch(`${API_BASE}${path}`, init);
-      const json: ApiResponse<T> = await res.json();
-      if (!json.success) {
-        setError(json.error || "Unknown error");
-      }
-      return json;
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(msg);
-      return {
-        success: false,
-        data: null as unknown as T,
-        error: msg,
-        freshness: "stale",
-        timing_ms: 0,
-      };
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   /** GET 请求 */
   const fetchApi = useCallback(

@@ -57,10 +57,10 @@ export default function App() {
           gap: 16,
         }}
       >
-        <div style={{ fontSize: 24, fontWeight: 800, color: "#fff" }}>
+        <div className="fs-24 fw-800 c-white">
           Stock<span style={{ color: "#3b82f6" }}>Insight</span> Pro
         </div>
-        <div style={{ color: "#5a6e8a" }}>正在启动 Python 分析引擎...</div>
+        <div className="c-dm">正在启动 Python 分析引擎...</div>
         <div
           style={{
             width: 200,
@@ -114,7 +114,7 @@ export default function App() {
           分析
         </button>
         <div className="nav-spacer" />
-        <span style={{ fontSize: 10, color: "var(--dm)" }}>v1.0 MVP</span>
+        <span className="fs-10 c-dm">v1.0 MVP</span>
       </nav>
 
       {/* 主体内容 */}
@@ -151,7 +151,8 @@ function Sidebar() {
       if (saved) return JSON.parse(saved);
     } catch {
       console.warn("[Sidebar] 读取自选股缓存失败，使用默认值");
-    }return [
+    }
+    return [
       { code: "600519", name: "茅台", tag: "白酒" },
       { code: "300750", name: "宁德时代", tag: "电池" },
       { code: "002594", name: "比亚迪", tag: "新能源车" },
@@ -173,10 +174,10 @@ function Sidebar() {
     <div className="sidebar">
       <div className="card">
         <div className="card-header">自选股</div>
-        <div className="card-body" style={{ padding: 8 }}>
+        <div className="card-body p-8">
           {watchlist.map((s: WatchlistItem) => (
             <div key={s.code} className="wl-item" onClick={() => navigate("/stock/" + s.code)}>
-              <div style={{ flex: 1 }}>
+              <div className="flex-1">
                 <div className="wl-name">{s.name}</div>
                 <div className="wl-code">
                   {s.code} &middot; {s.tag}

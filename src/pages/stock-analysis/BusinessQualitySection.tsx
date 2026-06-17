@@ -14,7 +14,7 @@ export default function BusinessQualitySection({ bq }: { bq: BusinessQuality }) 
   return (
     <div>
       {/* Overall */}
-      <div className="verdict-box" style={{ marginBottom: 12 }}>
+      <div className="verdict-box mb-12">
         <div
           className="va-action"
           style={{
@@ -35,13 +35,11 @@ export default function BusinessQualitySection({ bq }: { bq: BusinessQuality }) 
       <div className="grid2">
         {/* Q1+Q4 */}
         <div>
-          <div style={{ fontSize: 11, color: "var(--dm)", marginBottom: 4 }}>
-            Q1 靠什么赚钱 · Q4 什么阶段
-          </div>
-          <div style={{ fontSize: 12, color: "var(--tx)", lineHeight: 1.6 }}>
+          <div className="fs-11 c-dm mb-4">Q1 靠什么赚钱 · Q4 什么阶段</div>
+          <div className="fs-12 c-tx" style={{ lineHeight: 1.6 }}>
             {bq.company_profile?.main_business || "数据暂不可用"}
           </div>
-          <div style={{ fontSize: 11, color: "var(--tx)", marginTop: 4 }}>
+          <div className="fs-11 c-tx mt-4">
             行业: {bq.company_profile?.industry} | {bq.lifecycle?.stage_cn} (置信
             {bq.lifecycle?.confidence}%)
           </div>
@@ -49,7 +47,7 @@ export default function BusinessQualitySection({ bq }: { bq: BusinessQuality }) 
 
         {/* Q2 护城河 */}
         <div>
-          <div style={{ fontSize: 11, color: "var(--dm)", marginBottom: 4 }}>
+          <div className="fs-11 c-dm mb-4">
             Q2 护城河{" "}
             <span
               style={{
@@ -65,7 +63,7 @@ export default function BusinessQualitySection({ bq }: { bq: BusinessQuality }) 
             </span>
           </div>
           {Object.entries(dims).map(([k, v]) => (
-            <div key={k} className="bar-row" style={{ marginBottom: 3 }}>
+            <div key={k} className="bar-row mb-3">
               <div className="br-lbl" style={{ width: 50 }}>
                 {DIM_LABELS[k] || k}
               </div>
@@ -85,7 +83,7 @@ export default function BusinessQualitySection({ bq }: { bq: BusinessQuality }) 
 
         {/* Q3 现金流 */}
         <div>
-          <div style={{ fontSize: 11, color: "var(--dm)", marginBottom: 4 }}>
+          <div className="fs-11 c-dm mb-4">
             Q3 现金流{" "}
             <span
               style={{
@@ -105,9 +103,7 @@ export default function BusinessQualitySection({ bq }: { bq: BusinessQuality }) 
           <div className="kpi-row">
             <div className="kpi">
               <div className="kpi-lbl">经营CF</div>
-              <div className="kpi-val" style={{ fontSize: 12 }}>
-                {bq.cash_flow?.operating_cf_yi || "--"}亿
-              </div>
+              <div className="kpi-val fs-12">{bq.cash_flow?.operating_cf_yi || "--"}亿</div>
             </div>
             <div className="kpi">
               <div className="kpi-lbl">自由CF</div>
@@ -126,7 +122,7 @@ export default function BusinessQualitySection({ bq }: { bq: BusinessQuality }) 
 
         {/* Q5 估值 */}
         <div>
-          <div style={{ fontSize: 11, color: "var(--dm)", marginBottom: 4 }}>
+          <div className="fs-11 c-dm mb-4">
             Q5 估值{" "}
             <span
               style={{
@@ -144,21 +140,15 @@ export default function BusinessQualitySection({ bq }: { bq: BusinessQuality }) 
           <div className="kpi-row">
             <div className="kpi">
               <div className="kpi-lbl">PE</div>
-              <div className="kpi-val" style={{ fontSize: 12 }}>
-                {bq.valuation?.pe || "--"}
-              </div>
+              <div className="kpi-val fs-12">{bq.valuation?.pe || "--"}</div>
             </div>
             <div className="kpi">
               <div className="kpi-lbl">PB</div>
-              <div className="kpi-val" style={{ fontSize: 12 }}>
-                {bq.valuation?.pb || "--"}
-              </div>
+              <div className="kpi-val fs-12">{bq.valuation?.pb || "--"}</div>
             </div>
             <div className="kpi">
               <div className="kpi-lbl">PEG</div>
-              <div className="kpi-val" style={{ fontSize: 12 }}>
-                {bq.valuation?.peg || "--"}
-              </div>
+              <div className="kpi-val fs-12">{bq.valuation?.peg || "--"}</div>
             </div>
           </div>
         </div>
@@ -166,10 +156,10 @@ export default function BusinessQualitySection({ bq }: { bq: BusinessQuality }) 
 
       {/* Q7 事件 */}
       {bq.events?.events && bq.events.events.length > 0 && (
-        <div style={{ marginTop: 10, fontSize: 11, color: "var(--tx)" }}>
-          <span style={{ color: "var(--dm)" }}>Q7 近期大事: </span>
+        <div className="mt-10 fs-11 c-tx">
+          <span className="c-dm">Q7 近期大事: </span>
           {bq.events.events.slice(0, 3).map((e, i) => (
-            <span key={i} className="tag tag-purple" style={{ marginRight: 4 }}>
+            <span key={i} className="tag tag-purple mr-4">
               [{e.type}] {e.date} {e.title?.slice(0, 20)}
             </span>
           ))}

@@ -3,9 +3,10 @@
 import logging
 import time
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
 from backend.common import _err, _ok
+from backend.schemas.requests import DataJobParams
 
 logger = logging.getLogger(__name__)
 _SAFE_ERROR_MSG = "服务暂不可用，请稍后重试"
@@ -15,26 +16,22 @@ router = APIRouter(prefix="/api/data-jobs", tags=["数据下载"])
 
 @router.post("/submit")
 async def submit_job(
-    job_type: str = Query(
-        ..., description="任务类型: trade_calendar|stock_basic|daily_history|daily_basic"
-    ),
-    start_date: str | None = Query(None, description="起始日期 20250101"),
-    end_date: str | None = Query(None, description="结束日期 20251231"),
+    params: DataJobParams = Depends(),
 ):
     """提交数据下载任务"""
     t0 = time.time()
     try:
         from stock_analyzer.tushare_loader import submit_job as _submit
 
-        params = {}
-        if start_date:
-            params["start_date"] = start_date
-        if end_date:
-            params["end_date"] = end_date
-        job_id = _submit(job_type, params)
+        job_params = {}
+        if params.start_date:
+            job_params["start_date"] = params.start_date
+        if params.end_date:
+            job_params["end_date"] = params.end_date
+        job_id = _submit(params.job_type, job_params)
         return _ok({"job_id": job_id}, timing=(time.time() - t0) * 1000)
     except Exception:
-        logger.exception("submit_job_failed: job_type=%s", job_type)
+        logger.exception("submit_job_failed: job_type=%s", params.job_type)
         return _err(_SAFE_ERROR_MSG)
 
 

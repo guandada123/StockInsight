@@ -11,18 +11,18 @@ export default function OperationSection({ op }: { op: OperationAdvice }) {
         <tbody>
           <tr>
             <td>买入区间</td>
-            <td style={{ color: "var(--gn)" }}>
+            <td className="c-gn">
               {op.entry_range?.low} ~ {op.entry_range?.high}
             </td>
           </tr>
           <tr>
             <td>止损价</td>
-            <td style={{ color: "var(--rd)" }}>{op.stop_loss}</td>
+            <td className="c-rd">{op.stop_loss}</td>
           </tr>
           {op.take_profit?.map((tp, i) => (
             <tr key={i}>
               <td>止盈目标{i + 1}</td>
-              <td style={{ color: "var(--gn)" }}>{tp}</td>
+              <td className="c-gn">{tp}</td>
             </tr>
           ))}
           <tr>

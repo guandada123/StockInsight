@@ -16,13 +16,11 @@ export default function PsychologySection({ rp }: { rp: RetailPsychology }) {
     <div>
       <div className="emotion-display">
         <div className={`emotion-label ${emotionClass}`}>{rp.emotion}</div>
-        <div style={{ fontSize: 10, color: "var(--dm)", marginTop: 4 }}>
-          情绪强度: {rp.emotion_score}/100
-        </div>
+        <div className="fs-10 c-dm mt-4">情绪强度: {rp.emotion_score}/100</div>
         <div className="emotion-desc">{rp.behavior_pattern}</div>
       </div>
       {rp.sentiment_indicators && rp.sentiment_indicators.length > 0 && (
-        <div style={{ marginTop: 8 }}>
+        <div className="mt-8">
           {rp.sentiment_indicators.map((s, i) => (
             <div
               key={i}

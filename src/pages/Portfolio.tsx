@@ -87,14 +87,10 @@ export default function Portfolio() {
         }}
       >
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>
-            {data?.name || "持仓管理"}
-          </h2>
-          {data?.update_time && (
-            <span style={{ fontSize: 11, color: "var(--dm)" }}>更新时间: {data.update_time}</span>
-          )}
+          <h2 className="fs-18 fw-700 c-white">{data?.name || "持仓管理"}</h2>
+          {data?.update_time && <span className="fs-11 c-dm">更新时间: {data.update_time}</span>}
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="flex gap-8">
           <button className="nav-btn" onClick={loadFromOwned} disabled={ownedApi.loading}>
             {ownedApi.loading ? "加载中..." : "从持仓文件加载"}
           </button>
@@ -106,8 +102,8 @@ export default function Portfolio() {
 
       {error && !data && (
         <div className="card">
-          <div className="card-body" style={{ textAlign: "center", padding: 40 }}>
-            <div style={{ fontSize: 16, color: "var(--dm)", marginBottom: 8 }}>{error}</div>
+          <div className="card-body text-center p-40">
+            <div className="fs-16 c-dm mb-8">{error}</div>
             <button className="nav-btn primary" onClick={loadFromOwned}>
               从持仓文件加载
             </button>
@@ -118,7 +114,7 @@ export default function Portfolio() {
       {data && (
         <>
           {/* 总览 */}
-          <div className="grid2" style={{ marginBottom: 10 }}>
+          <div className="grid2 mb-10">
             <div className="card">
               <div className="card-body">
                 <div className="kpi-row">
@@ -159,9 +155,7 @@ export default function Portfolio() {
                 <div className="card-header">调仓建议</div>
                 <div className="card-body">
                   <div className="verdict-box">
-                    <div className="va-reason" style={{ fontSize: 13 }}>
-                      {data.suggestion}
-                    </div>
+                    <div className="va-reason fs-13">{data.suggestion}</div>
                   </div>
                 </div>
               </div>
@@ -171,7 +165,7 @@ export default function Portfolio() {
           {/* 持仓明细 */}
           <div className="card">
             <div className="card-header">持仓明细</div>
-            <div className="card-body" style={{ padding: 0 }}>
+            <div className="card-body p-0">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -189,30 +183,31 @@ export default function Portfolio() {
                 <tbody>
                   {data.holdings.map((h: PortfolioHolding) => (
                     <tr key={h.code}>
-                      <td style={{ color: "var(--dm)", fontSize: 11 }}>{h.code}</td>
+                      <td className="c-dm fs-11">{h.code}</td>
                       <td
-                        style={{ fontWeight: 600, color: "#fff", cursor: "pointer" }}
+                        className="fw-600 c-white"
+                        style={{ cursor: "pointer" }}
                         onClick={() => navigate(`/stock/${h.code}`)}
                       >
                         {h.name}
                       </td>
                       <td>{h.shares}股</td>
                       <td>{h.cost.toFixed(2)}</td>
-                      <td style={{ fontWeight: 600 }}>{h.current_price.toFixed(2)}</td>
+                      <td className="fw-600">{h.current_price.toFixed(2)}</td>
                       <td>{h.market_value.toLocaleString()}</td>
                       <td>{h.weight_pct.toFixed(1)}%</td>
                       <td className={h.profit_pct >= 0 ? "positive" : "text-red"}>
                         {h.profit_pct >= 0 ? "+" : ""}
                         {h.profit_pct.toFixed(2)}%
-                        <div style={{ fontSize: 10, color: "var(--dm)" }}>
+                        <div className="fs-10 c-dm">
                           {h.profit_amount >= 0 ? "+" : ""}
                           {h.profit_amount.toFixed(0)}
                         </div>
                       </td>
                       <td>
                         <button
-                          className="nav-btn"
-                          style={{ fontSize: 10, padding: "2px 8px" }}
+                          className="nav-btn fs-10"
+                          style={{ padding: "2px 8px" }}
                           onClick={() => navigate(`/stock/${h.code}`)}
                         >
                           分析

@@ -21,9 +21,7 @@ export default function DataSourcesSection({ ds }: { ds: DataSourceInfo }) {
           {ds.fundamental_source}
         </div>
       </div>
-      <div style={{ fontSize: 10, color: "var(--dm)", marginTop: 6 }}>
-        数据更新: {ds.update_time}
-      </div>
+      <div className="fs-10 c-dm mt-6">数据更新: {ds.update_time}</div>
       <div className="disclaimer-text">{ds.disclaimer}</div>
     </div>
   );

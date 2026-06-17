@@ -7,9 +7,10 @@
 import logging
 import time
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
 from backend.common import _err, _ok
+from backend.schemas.requests import IndicatorParams, KlineParams
 from backend.services.analysis_service import (
     build_fund_flow_data,
     build_indicator_data,
@@ -144,13 +145,12 @@ async def analyze_owned():
 @router.get("/{code}/kline")
 async def get_kline_data(
     code: str,
-    ktype: str = Query("day", description="K线类型: day|week|month"),
-    days: int = Query(120, description="获取天数"),
+    params: KlineParams = Depends(),
 ):
     """获取K线JSON数据（供前端 ECharts 渲染）"""
     t0 = time.time()
     try:
-        result = build_kline_data(code, ktype=ktype, days=days)
+        result = build_kline_data(code, ktype=params.ktype, days=params.days)
         return _ok(result, freshness="cached", timing=(time.time() - t0) * 1000)
     except ValueError as ve:
         return _err(str(ve))
@@ -162,12 +162,12 @@ async def get_kline_data(
 @router.get("/{code}/indicators")
 async def get_indicator_data(
     code: str,
-    indicator: str = Query("macd", description="指标类型: macd|rsi|kdj"),
+    params: IndicatorParams = Depends(),
 ):
     """获取技术指标JSON数据（供前端 ECharts 渲染）"""
     t0 = time.time()
     try:
-        result = build_indicator_data(code, indicator=indicator)
+        result = build_indicator_data(code, indicator=params.indicator)
         return _ok(result, freshness="cached", timing=(time.time() - t0) * 1000)
     except ValueError as ve:
         return _err(str(ve))

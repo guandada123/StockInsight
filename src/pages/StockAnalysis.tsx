@@ -13,14 +13,9 @@ import RiskSection from "./stock-analysis/RiskSection";
 import DataSourcesSection from "./stock-analysis/DataSourcesSection";
 import ScoreCircle from "./stock-analysis/ScoreCircle";
 import BusinessQualitySection from "./stock-analysis/BusinessQualitySection";
+import MarketIndicesSection from "./stock-analysis/MarketIndicesSection";
+import CoreDataSection from "./stock-analysis/CoreDataSection";
 import type { StockAnalysisResult, KlineData, IndicatorData, MarketIndex } from "../types/api";
-
-const IDX_NAMES: Record<string, string> = {
-  "000001": "上证指数",
-  "399001": "深证成指",
-  "399006": "创业板指",
-  "000688": "科创50",
-};
 
 export default function StockAnalysis() {
   const { code } = useParams<{ code: string }>();
@@ -80,83 +75,22 @@ export default function StockAnalysis() {
     );
   if (!result) return <div className="loading">无数据</div>;
 
-  const {
-    quote,
-    technical,
-    quant,
-    financial,
-    fund_flow,
-    debate,
-    ml,
-    signal,
-    near_5d,
-    near_20d,
-    short_score,
-    long_score,
-    style,
-    business_quality,
-  } = result;
+  const { technical, quant, financial, fund_flow, debate, ml, signal, business_quality } = result;
 
   return (
     <div>
-      {/* ══════════════════════════════════════
-          一、大盘环境
-          ══════════════════════════════════════ */}
-      <div className="card">
-        <div className="card-header">
-          <div className="section-header">
-            <div className="section-num">1</div>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>大盘环境</span>
-            <span style={{ fontSize: 10, color: "var(--dm)" }}>市场情绪决定仓位</span>
-          </div>
-        </div>
-        <div className="card-body">
-          <div className="idx-row">
-            {["000001", "399001", "399006", "000688"].map((idxCode) => {
-              const idx = marketIndices[idxCode];
-              if (!idx)
-                return (
-                  <div
-                    key={idxCode}
-                    className="market-card"
-                    style={{ flex: 1, minWidth: 180, opacity: 0.4 }}
-                  >
-                    <div className="mc-name">{IDX_NAMES[idxCode]}</div>
-                    <div className="mc-price">--</div>
-                  </div>
-                );
-              const isUp = idx.change_pct >= 0;
-              return (
-                <div key={idxCode} className="market-card" style={{ flex: 1, minWidth: 180 }}>
-                  <div className="mc-name">{idx.name}</div>
-                  <div className="mc-price">{idx.price.toFixed(2)}</div>
-                  <div className={`mc-chg ${isUp ? "up" : "down"}`}>
-                    {isUp ? "+" : ""}
-                    {idx.change_pct.toFixed(2)}%
-                  </div>
-                  <div
-                    className="mc-vol"
-                    style={{ fontSize: 10, color: "var(--dm)", marginTop: 4 }}
-                  >
-                    成交 {idx.volume?.toFixed(0) ?? "--"} 亿
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      <MarketIndicesSection indices={marketIndices} />
 
       {/* ══════════════════════════════════════
           二、板块分析
           ══════════════════════════════════════ */}
       {result.sector_analysis && (
-        <div className="card" style={{ marginTop: 10 }}>
+        <div className="card mt-10">
           <div className="card-header">
             <div className="section-header">
               <div className="section-num">2</div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>板块分析</span>
-              <span style={{ fontSize: 10, color: "var(--dm)" }}>板块定胜率，个股定赔率</span>
+              <span className="fs-14 fw-700 c-white">板块分析</span>
+              <span className="fs-10 c-dm">板块定胜率，个股定赔率</span>
             </div>
           </div>
           <div className="card-body">
@@ -165,188 +99,14 @@ export default function StockAnalysis() {
         </div>
       )}
 
-      {/* ══════════════════════════════════════
-          三、个股核心数据
-          ══════════════════════════════════════ */}
-      <div className="card" style={{ marginTop: 10 }}>
-        <div className="card-header">
-          <div className="section-header">
-            <div className="section-num">3</div>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>个股核心数据</span>
-            <span style={{ fontSize: 10, color: "var(--dm)" }}>
-              {result.name} · {result.time}
-            </span>
-          </div>
-        </div>
-        <div className="card-body">
-          {/* Quote header */}
-          <div className="quote-header">
-            <div>
-              <div className="qh-name">
-                {result.name} <span className="qh-code">{code}</span>
-              </div>
-            </div>
-            <div className="qh-price">{quote.price.toFixed(2)}</div>
-            <div className={`qh-chg ${quote.change_pct >= 0 ? "up" : "down"}`}>
-              {quote.change_pct >= 0 ? "+" : ""}
-              {quote.change_pct.toFixed(2)}%
-            </div>
-            <span
-              className={`tag ${quant.composite >= 65 ? "tag-buy" : quant.composite >= 45 ? "tag-warn" : "tag-sell"}`}
-            >
-              {quant.rating} {quant.composite}分
-            </span>
-          </div>
-          {/* KPI row */}
-          <div className="kpi-row" style={{ marginTop: 12 }}>
-            <div className="kpi">
-              <div className="kpi-lbl">今开</div>
-              <div className="kpi-val">{quote.open.toFixed(2)}</div>
-            </div>
-            <div className="kpi">
-              <div className="kpi-lbl">最高</div>
-              <div className="kpi-val">{quote.high.toFixed(2)}</div>
-            </div>
-            <div className="kpi">
-              <div className="kpi-lbl">最低</div>
-              <div className="kpi-val">{quote.low.toFixed(2)}</div>
-            </div>
-            <div className="kpi">
-              <div className="kpi-lbl">振幅</div>
-              <div className="kpi-val">{quote.amplitude.toFixed(1)}%</div>
-            </div>
-            <div className="kpi">
-              <div className="kpi-lbl">5日</div>
-              <div className={`kpi-val ${near_5d >= 0 ? "up" : "down"}`}>
-                {near_5d >= 0 ? "+" : ""}
-                {near_5d}%
-              </div>
-            </div>
-            <div className="kpi">
-              <div className="kpi-lbl">20日</div>
-              <div className={`kpi-val ${near_20d >= 0 ? "up" : "down"}`}>
-                {near_20d >= 0 ? "+" : ""}
-                {near_20d}%
-              </div>
-            </div>
-            <div className="kpi">
-              <div className="kpi-lbl">短线</div>
-              <div
-                className="kpi-val"
-                style={{ color: short_score >= 60 ? "var(--gn)" : "var(--gd)" }}
-              >
-                {short_score}
-              </div>
-            </div>
-            <div className="kpi">
-              <div className="kpi-lbl">长线</div>
-              <div
-                className="kpi-val"
-                style={{ color: long_score >= 60 ? "var(--gn)" : "var(--gd)" }}
-              >
-                {long_score}
-              </div>
-            </div>
-          </div>
-          {/* Key indicators row */}
-          <div className="kpi-row" style={{ marginTop: 8 }}>
-            <div className="kpi">
-              <div className="kpi-lbl">MACD</div>
-              <div
-                className="kpi-val"
-                style={{
-                  fontSize: 12,
-                  color:
-                    technical.macd_signal.includes("金叉") || technical.macd_signal.includes("多头")
-                      ? "var(--gn)"
-                      : technical.macd_signal.includes("死叉") ||
-                          technical.macd_signal.includes("空头")
-                        ? "var(--rd)"
-                        : "var(--gd)",
-                }}
-              >
-                {technical.macd_signal}
-              </div>
-            </div>
-            <div className="kpi">
-              <div className="kpi-lbl">KDJ</div>
-              <div
-                className="kpi-val"
-                style={{
-                  fontSize: 12,
-                  color:
-                    technical.kdj_signal.includes("金叉") || technical.kdj_signal.includes("多头")
-                      ? "var(--gn)"
-                      : technical.kdj_signal.includes("死叉") ||
-                          technical.kdj_signal.includes("空头")
-                        ? "var(--rd)"
-                        : "var(--gd)",
-                }}
-              >
-                {technical.kdj_signal}
-              </div>
-            </div>
-            <div className="kpi">
-              <div className="kpi-lbl">RSI</div>
-              <div
-                className="kpi-val"
-                style={{
-                  fontSize: 12,
-                  color:
-                    technical.rsi_value > 70
-                      ? "var(--rd)"
-                      : technical.rsi_value < 30
-                        ? "var(--gn)"
-                        : "#fff",
-                }}
-              >
-                {technical.rsi_value.toFixed(0)}
-              </div>
-            </div>
-            <div className="kpi">
-              <div className="kpi-lbl">均线</div>
-              <div
-                className="kpi-val"
-                style={{
-                  fontSize: 11,
-                  color: technical.ma_status.includes("多头")
-                    ? "var(--gn)"
-                    : technical.ma_status.includes("空头")
-                      ? "var(--rd)"
-                      : "var(--gd)",
-                }}
-              >
-                {technical.ma_status}
-              </div>
-            </div>
-            <div className="kpi">
-              <div className="kpi-lbl">PE</div>
-              <div className="kpi-val" style={{ fontSize: 12 }}>
-                {financial.pe ?? "--"}
-              </div>
-            </div>
-            <div className="kpi">
-              <div className="kpi-lbl">ROE</div>
-              <div className="kpi-val" style={{ fontSize: 12 }}>
-                {financial.roe !== undefined ? `${financial.roe}%` : "--"}
-              </div>
-            </div>
-            <div className="kpi">
-              <div className="kpi-lbl">风格</div>
-              <div className="kpi-val" style={{ fontSize: 11 }}>
-                {style}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <CoreDataSection result={result} code={code} />
 
       {/* K线图 + 量化评分 */}
-      <div className="grid23" style={{ marginTop: 10 }}>
+      <div className="grid23 mt-10">
         <div className="card">
           <div className="card-header">
             <span>K线图 — {result.name}</span>
-            <div style={{ display: "flex", gap: 4 }}>
+            <div className="flex gap-4">
               {["macd", "rsi", "kdj"].map((t) => (
                 <button
                   key={t}
@@ -367,9 +127,9 @@ export default function StockAnalysis() {
         <div>
           <div className="card">
             <div className="card-header">量化评分</div>
-            <div className="card-body" style={{ textAlign: "center" }}>
+            <div className="card-body text-center">
               <ScoreCircle score={quant.composite} />
-              <div style={{ marginTop: 8 }}>
+              <div className="mt-8">
                 {Object.entries(quant.factor_scores).map(([k, v]) => (
                   <div key={k} className="bar-row">
                     <div className="br-lbl">
@@ -406,25 +166,21 @@ export default function StockAnalysis() {
 
           <div className="card">
             <div className="card-header">交易信号</div>
-            <div className="card-body" style={{ textAlign: "center" }}>
+            <div className="card-body text-center">
               <div className="verdict-box">
                 <div className="va-action">
                   {signal.bias === "bullish" ? "偏多" : signal.bias === "bearish" ? "偏空" : "中性"}
                 </div>
                 <div className="va-reason">组合信号强度: {signal.combo_strength}</div>
               </div>
-              <div className="kpi-row" style={{ marginTop: 8 }}>
+              <div className="kpi-row mt-8">
                 <div className="kpi">
                   <div className="kpi-lbl">止损</div>
-                  <div className="kpi-val" style={{ color: "var(--rd)" }}>
-                    {technical.stop_loss}
-                  </div>
+                  <div className="kpi-val c-rd">{technical.stop_loss}</div>
                 </div>
                 <div className="kpi">
                   <div className="kpi-lbl">止盈</div>
-                  <div className="kpi-val" style={{ color: "var(--gn)" }}>
-                    {technical.stop_profit}
-                  </div>
+                  <div className="kpi-val c-gn">{technical.stop_profit}</div>
                 </div>
                 <div className="kpi">
                   <div className="kpi-lbl">支撑</div>
@@ -456,28 +212,20 @@ export default function StockAnalysis() {
                 </div>
                 <div className="kpi">
                   <div className="kpi-lbl">筹码</div>
-                  <div className="kpi-val" style={{ fontSize: 13 }}>
-                    {fund_flow.chip_score}
-                  </div>
+                  <div className="kpi-val fs-13">{fund_flow.chip_score}</div>
                 </div>
                 <div className="kpi">
                   <div className="kpi-lbl">国家队</div>
-                  <div className="kpi-val" style={{ fontSize: 11 }}>
-                    {fund_flow.national_team}
-                  </div>
+                  <div className="kpi-val fs-11">{fund_flow.national_team}</div>
                 </div>
                 <div className="kpi">
                   <div className="kpi-lbl">PB</div>
-                  <div className="kpi-val" style={{ fontSize: 13 }}>
-                    {financial.pb ?? "--"}
-                  </div>
+                  <div className="kpi-val fs-13">{financial.pb ?? "--"}</div>
                 </div>
               </div>
               {ml && (
-                <div className="verdict-box" style={{ marginTop: 8 }}>
-                  <div className="va-action" style={{ fontSize: 14 }}>
-                    AI预测: {ml.direction}
-                  </div>
+                <div className="verdict-box mt-8">
+                  <div className="va-action fs-14">AI预测: {ml.direction}</div>
                   <div className="va-reason">
                     置信度 {ml.confidence}% · {ml.votes}
                   </div>
@@ -492,12 +240,12 @@ export default function StockAnalysis() {
           四、K线形态解读
           ══════════════════════════════════════ */}
       {result.pattern_analysis && (
-        <div className="card" style={{ marginTop: 10 }}>
+        <div className="card mt-10">
           <div className="card-header">
             <div className="section-header">
               <div className="section-num">4</div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>K线形态解读</span>
-              <span style={{ fontSize: 10, color: "var(--dm)" }}>图形会说话</span>
+              <span className="fs-14 fw-700 c-white">K线形态解读</span>
+              <span className="fs-10 c-dm">图形会说话</span>
             </div>
           </div>
           <div className="card-body">
@@ -510,12 +258,12 @@ export default function StockAnalysis() {
           五、庄家意图分析
           ══════════════════════════════════════ */}
       {result.manipulator_intention && (
-        <div className="card" style={{ marginTop: 10 }}>
+        <div className="card mt-10">
           <div className="card-header">
             <div className="section-header">
               <div className="section-num">5</div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>庄家意图分析</span>
-              <span style={{ fontSize: 10, color: "var(--dm)" }}>跟庄不跟散</span>
+              <span className="fs-14 fw-700 c-white">庄家意图分析</span>
+              <span className="fs-10 c-dm">跟庄不跟散</span>
             </div>
           </div>
           <div className="card-body">
@@ -525,13 +273,13 @@ export default function StockAnalysis() {
       )}
 
       {/* 六、散户心态画像 + 七、明日预测 并排 */}
-      <div className="grid2" style={{ marginTop: 10 }}>
+      <div className="grid2 mt-10">
         {result.retail_psychology && (
           <div className="card">
             <div className="card-header">
               <div className="section-header">
                 <div className="section-num">6</div>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>散户心态画像</span>
+                <span className="fs-14 fw-700 c-white">散户心态画像</span>
               </div>
             </div>
             <div className="card-body">
@@ -545,7 +293,7 @@ export default function StockAnalysis() {
             <div className="card-header">
               <div className="section-header">
                 <div className="section-num">7</div>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>明日预测</span>
+                <span className="fs-14 fw-700 c-white">明日预测</span>
               </div>
             </div>
             <div className="card-body">
@@ -559,7 +307,7 @@ export default function StockAnalysis() {
           八、操作建议
           ══════════════════════════════════════ */}
       {result.operation_advice && (
-        <div className="card" style={{ marginTop: 10 }}>
+        <div className="card mt-10">
           <div className="card-header">
             <div className="section-header">
               <div
@@ -567,8 +315,8 @@ export default function StockAnalysis() {
               >
                 8
               </div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>操作建议</span>
-              <span style={{ fontSize: 10, color: "var(--dm)" }}>结论必须明确</span>
+              <span className="fs-14 fw-700 c-white">操作建议</span>
+              <span className="fs-10 c-dm">结论必须明确</span>
             </div>
           </div>
           <div className="card-body">
@@ -581,11 +329,11 @@ export default function StockAnalysis() {
           九、K线+庄家联动总结
           ══════════════════════════════════════ */}
       {result.combined_summary && (
-        <div className="card" style={{ marginTop: 10 }}>
+        <div className="card mt-10">
           <div className="card-header">
             <div className="section-header">
               <div className="section-num">9</div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>K线+庄家联动总结</span>
+              <span className="fs-14 fw-700 c-white">K线+庄家联动总结</span>
             </div>
           </div>
           <div className="card-body">
@@ -596,14 +344,12 @@ export default function StockAnalysis() {
 
       {/* 多空辩论 */}
       {debate && (
-        <div className="card" style={{ marginTop: 10 }}>
+        <div className="card mt-10">
           <div className="card-header">多空辩论</div>
           <div className="card-body">
             <div className="debate-cols">
               <div>
-                <div className="dc-ttl" style={{ color: "var(--gn)" }}>
-                  多头 ({debate.bull_score}分)
-                </div>
+                <div className="dc-ttl c-gn">多头 ({debate.bull_score}分)</div>
                 {debate.bull_points.map((p, i) => (
                   <div key={i} className="dc-pt">
                     {p}
@@ -611,9 +357,7 @@ export default function StockAnalysis() {
                 ))}
               </div>
               <div>
-                <div className="dc-ttl" style={{ color: "var(--rd)" }}>
-                  空头 ({debate.bear_score}分)
-                </div>
+                <div className="dc-ttl c-rd">空头 ({debate.bear_score}分)</div>
                 {debate.bear_points.map((p, i) => (
                   <div key={i} className="dc-pt">
                     {p}
@@ -633,12 +377,12 @@ export default function StockAnalysis() {
           十、风险提示
           ══════════════════════════════════════ */}
       {result.risk_warnings && result.risk_warnings.length > 0 && (
-        <div className="card" style={{ marginTop: 10 }}>
+        <div className="card mt-10">
           <div className="card-header">
             <div className="section-header">
               <div className="section-num danger">10</div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>风险提示</span>
-              <span style={{ fontSize: 10, color: "var(--dm)" }}>每一条都可能是亏损的来源</span>
+              <span className="fs-14 fw-700 c-white">风险提示</span>
+              <span className="fs-10 c-dm">每一条都可能是亏损的来源</span>
             </div>
           </div>
           <div className="card-body">
@@ -651,13 +395,11 @@ export default function StockAnalysis() {
           十一、数据来源 & 时效性
           ══════════════════════════════════════ */}
       {result.data_sources && (
-        <div className="card" style={{ marginTop: 10 }}>
+        <div className="card mt-10">
           <div className="card-header">
             <div className="section-header">
               <div className="section-num">11</div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>
-                数据来源 & 时效性
-              </span>
+              <span className="fs-14 fw-700 c-white">数据来源 & 时效性</span>
             </div>
           </div>
           <div className="card-body">
@@ -670,12 +412,12 @@ export default function StockAnalysis() {
           十二、公司质地七问
           ══════════════════════════════════════ */}
       {business_quality && (
-        <div className="card" style={{ marginTop: 10 }}>
+        <div className="card mt-10">
           <div className="card-header">
             <div className="section-header">
               <div className="section-num">12</div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>公司质地七问</span>
-              <span style={{ fontSize: 10, color: "var(--dm)" }}>价值投资基本面</span>
+              <span className="fs-14 fw-700 c-white">公司质地七问</span>
+              <span className="fs-10 c-dm">价值投资基本面</span>
             </div>
           </div>
           <div className="card-body">
@@ -692,4 +434,3 @@ export default function StockAnalysis() {
 // PsychologySection, PredictionSection, OperationSection, CombinedSection,
 // RiskSection, DataSourcesSection, ScoreCircle, BusinessQualitySection)
 // are imported from ./stock-analysis/ at the top of this file.
-

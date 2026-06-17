@@ -7,9 +7,10 @@
 import logging
 import time
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
 from backend.common import _err, _ok, validate_portfolio_name
+from backend.schemas.requests import PortfolioCreateParams, PortfolioUpdateParams
 from backend.services.portfolio_service import (
     analyze_portfolio,
     create_portfolio,
@@ -54,39 +55,36 @@ async def get_portfolio_route(name: str):
 
 @router.post("/create")
 async def create_portfolio_route(
-    name: str = Query(...), codes: str = Query("", description="逗号分隔的股票代码")
+    params: PortfolioCreateParams = Depends(),
 ):
     """创建新持仓组合"""
     t0 = time.time()
     try:
-        validate_portfolio_name(name)
-        result = create_portfolio(name, codes=codes)
+        result = create_portfolio(params.name, codes=params.codes)
         return _ok(result, timing=(time.time() - t0) * 1000)
     except FileExistsError as e:
         return _err(str(e))
     except Exception:
-        logger.exception("create_portfolio_failed: name=%s", name)
+        logger.exception("create_portfolio_failed: name=%s", params.name)
         return _err(_SAFE_ERROR_MSG)
 
 
 @router.put("/{name}")
 async def update_portfolio_holding_route(
     name: str,
-    code: str = Query(...),
-    shares: int = Query(0),
-    cost: float = Query(0.0),
-    action: str = Query("add", description="add|remove|update"),
+    params: PortfolioUpdateParams = Depends(),
 ):
     """更新持仓组合中的股票"""
     t0 = time.time()
     try:
-        validate_portfolio_name(name)
-        result = update_portfolio_holding(name, code, shares, cost, action)
+        result = update_portfolio_holding(
+            name, params.code, params.shares, params.cost, params.action
+        )
         return _ok(result, timing=(time.time() - t0) * 1000)
     except FileNotFoundError as e:
         return _err(str(e))
     except Exception:
-        logger.exception("update_portfolio_failed: name=%s code=%s", name, code)
+        logger.exception("update_portfolio_failed: name=%s code=%s", name, params.code)
         return _err(_SAFE_ERROR_MSG)
 
 

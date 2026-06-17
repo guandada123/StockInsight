@@ -3,8 +3,8 @@ import type { PatternAnalysis } from "../../types/api";
 export default function PatternSection({ pa }: { pa: PatternAnalysis }) {
   return (
     <div>
-      <div style={{ fontSize: 11, color: "var(--dm)", marginBottom: 8 }}>
-        趋势阶段: <span style={{ color: "#fff", fontWeight: 600 }}>{pa.trend_phase}</span>
+      <div className="fs-11 c-dm mb-8">
+        趋势阶段: <span className="c-white fw-600">{pa.trend_phase}</span>
       </div>
       {pa.recent_patterns && pa.recent_patterns.length > 0 ? (
         <div className="pattern-list">
@@ -16,7 +16,7 @@ export default function PatternSection({ pa }: { pa: PatternAnalysis }) {
               <div className="pattern-body">
                 <div className="pattern-name">
                   {p.name}{" "}
-                  <span style={{ fontSize: 10, color: "var(--dm)", fontWeight: 400 }}>
+                  <span className="fs-10 c-dm" style={{ fontWeight: 400 }}>
                     {p.date}
                   </span>
                 </div>
@@ -27,17 +27,13 @@ export default function PatternSection({ pa }: { pa: PatternAnalysis }) {
           ))}
         </div>
       ) : (
-        <div style={{ fontSize: 12, color: "var(--dm)", textAlign: "center", padding: 16 }}>
-          近期没有检测到明显K线形态
-        </div>
+        <div className="fs-12 c-dm text-center p-16">近期没有检测到明显K线形态</div>
       )}
-      <div className="verdict-box" style={{ marginTop: 10 }}>
-        <div className="va-reason" style={{ color: "var(--tx)", fontSize: 12 }}>
-          {pa.summary}
-        </div>
+      <div className="verdict-box mt-10">
+        <div className="va-reason c-tx fs-12">{pa.summary}</div>
       </div>
       {pa.key_observation && (
-        <div style={{ fontSize: 12, color: "var(--tx)", marginTop: 8, lineHeight: 1.5 }}>
+        <div className="fs-12 c-tx mt-8" style={{ lineHeight: 1.5 }}>
           {pa.key_observation}
         </div>
       )}

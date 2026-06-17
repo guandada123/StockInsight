@@ -30,12 +30,12 @@ export default function ManipulatorSection({ mi }: { mi: ManipulatorIntention })
       )}
 
       {mi.volume_analysis && (
-        <div style={{ fontSize: 11, color: "var(--tx)", marginTop: 8, lineHeight: 1.5 }}>
+        <div className="fs-11 c-tx mt-8" style={{ lineHeight: 1.5 }}>
           {mi.volume_analysis}
         </div>
       )}
       {mi.chip_analysis && (
-        <div style={{ fontSize: 11, color: "var(--tx)", marginTop: 4, lineHeight: 1.5 }}>
+        <div className="fs-11 c-tx mt-4" style={{ lineHeight: 1.5 }}>
           {mi.chip_analysis}
         </div>
       )}
@@ -55,7 +55,7 @@ export default function ManipulatorSection({ mi }: { mi: ManipulatorIntention })
       </div>
 
       {mi.risk_note && (
-        <div style={{ fontSize: 11, color: "var(--gd)", marginTop: 8, lineHeight: 1.5 }}>
+        <div className="fs-11 c-gd mt-8" style={{ lineHeight: 1.5 }}>
           ⚠ {mi.risk_note}
         </div>
       )}

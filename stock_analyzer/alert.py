@@ -328,7 +328,7 @@ def check_alerts(alert_list):
                 logger.warning("[警告] %s", msg)
 
         except Exception as e:
-            logger.error("检查预警 %s 时异常: %s", config.get('id', '?'), e)
+            logger.error("检查预警 %s 时异常: %s", config.get("id", "?"), e)
 
     return triggered
 
@@ -391,7 +391,7 @@ def run_all_alerts():
     # 终端输出
     logger.info("触发预警汇总 (%d 条):", len(triggered))
     for t in triggered:
-        logger.info("[%s] [%s] %s", t['time'], t['type'], t['message'])
+        logger.info("[%s] [%s] %s", t["time"], t["type"], t["message"])
 
     # 写入日志
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")

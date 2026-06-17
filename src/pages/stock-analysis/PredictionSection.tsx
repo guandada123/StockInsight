@@ -10,9 +10,7 @@ export default function PredictionSection({ pred }: { pred: PredictionData }) {
   return (
     <div className="prediction-card">
       <div className={`pred-direction ${dirClass}`}>{pred.direction}</div>
-      <div style={{ fontSize: 10, color: "var(--dm)", marginTop: 4 }}>
-        置信度 {pred.confidence}%
-      </div>
+      <div className="fs-10 c-dm mt-4">置信度 {pred.confidence}%</div>
       {pred.price_range && (
         <div className="pred-range">
           预测区间: {pred.price_range.low} ~ {pred.price_range.high}
