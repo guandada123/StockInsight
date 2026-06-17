@@ -1,3 +1,9 @@
+# ═══════════════════════════════════════════════════════════
+# requirements.txt — 顶层依赖声明（手动维护源文件）
+# 全量锁定版本见 requirements.lock（自动生成，勿编辑）
+# 更新 lock: pip freeze > requirements.lock
+# ═══════════════════════════════════════════════════════════
+
 # 核心依赖
 pandas>=2.0
 numpy>=1.24
@@ -28,6 +34,9 @@ lightgbm>=4.0
 
 # 工具
 python-dotenv>=1.0
+
+# 数据库异步化
+aiosqlite>=0.20
 
 # Web API (Tauri 桌面端后端)
 fastapi>=0.115

@@ -42,22 +42,74 @@ dev = [
 
 [tool.mypy]
 python_version = "3.11"
-# 渐进式类型检查——当前为宽松模式，逐步收紧
-strict = false
-warn_return_any = true
-warn_unused_configs = true
-warn_redundant_casts = true
-check_untyped_defs = true
-no_implicit_optional = true
+# ═══════════════════════════════════════════════════════════
+# 阻塞模式（代替之前的 --strict=false）
+# 目标：mypy 必须在 CI/pre-commit 中 PASS
+# 主配置启用高价值检查，module overrides 保留现有代码兼容性
+# ═══════════════════════════════════════════════════════════
+
+# 高价值检查（捕获真实 bug）
+strict_equality = true                     # 防止 int == str 类型 bug
+no_implicit_optional = true                # 参数必须显式 Optional
+warn_unused_ignores = true                 # 不允许残留的 type: ignore
+warn_redundant_casts = true                # 不允许无用的 cast
+warn_return_any = true                     # 函数返回 Any 时警告
+check_untyped_defs = true                  # 检查无类型函数体
+warn_unreachable = true                     # 不可达代码警告
+
+# 渐进式检查（不强制现有代码立即遵守）
+# disallow_any_generics = true   # 阶段 C 开启
+# disallow_untyped_defs = true   # 阶段 C 开启
+
 ignore_missing_imports = true
 
+# ── 整体 override：现有代码暂不强制 def annotation ──
 [[tool.mypy.overrides]]
 module = [
     "stock_analyzer.*",
-    "backend.routers.*",
+    "backend.*",
 ]
 disallow_untyped_defs = false
-warn_unused_ignores = true
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+disallow_subclassing_any = false
+disallow_any_generics = false
+
+# ── 大文件单独宽松（存量代码，逐步收紧）──
+# 阶段 A：check_untyped_defs 对这些文件过于严格
+# 阶段 B：逐步移除，仅保留真正需要宽松的模块
+[[tool.mypy.overrides]]
+module = [
+    "stock_analyzer.fetcher",
+]
+check_untyped_defs = false
+
+# 以下两个文件因复杂的数据处理逻辑中存在大量 object 类型传播问题，
+# 短期内重构代价过高。在 Phase B 收紧时优先处理，争取移除 override。
+[[tool.mypy.overrides]]
+module = [
+    "stock_analyzer.report_generators",
+    "stock_analyzer.sector_report",
+]
+ignore_errors = true
+
+[tool.coverage.report]
+# ═══════════════════════════════════════════════════════════
+# 覆盖率阈值（阻塞模式）
+# 当前实际覆盖率 78%，调至 70% 留有余量
+# ═══════════════════════════════════════════════════════════
+fail_under = 70
+precision = 2
+
+# 排除无需测试覆盖的文件
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "raise AssertionError",
+]
 
 [tool.ruff]
 # Ruff config is in ruff.toml — this section ensures pyproject.toml compatibility

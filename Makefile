@@ -30,18 +30,16 @@ test: test-be test-fe ## 运行所有测试
 test-be: ## 后端测试（含 stock_analyzer 和 backend）
 	$(PYTEST) stock_analyzer/tests/ backend/tests/ -v --tb=short
 
-test-be-cov: ## 后端测试 + 覆盖率
+test-be-cov: ## 后端测试 + 覆盖率（fail_under 由 pyproject.toml 控制）
 	$(PYTEST) stock_analyzer/tests/ backend/tests/ -v --tb=short \
 		--cov=stock_analyzer --cov=backend \
-		--cov-report=term-missing --cov-fail-under=40
+		--cov-report=term-missing
 
 test-fe: ## 前端测试
 	npx vitest run
 
-type-check: ## 运行 mypy 类型检查
-	mypy stock_analyzer/ backend/ \
-		--ignore-missing-imports --check-untyped-defs \
-		--warn-return-any --warn-redundant-casts
+type-check: ## 运行 mypy 类型检查（配置见 pyproject.toml）
+	mypy stock_analyzer/ backend/
 
 ci: ## 模拟完整 CI 流水线
 	$(MAKE) lint
