@@ -404,7 +404,7 @@ class TestGenerateBullBearDebate:
         assert any("净流入" in p for p in result["bull"]["points"])
         assert result["bear"]["score"] == 0
 
-        data["fund_flow"]["direction"] = "净流出"
+        data["fund_flow"]["direction"] = "净流出"  # type: ignore[index]
         result2 = generate_bull_bear_debate(data)
         assert any("净流出" in p for p in result2["bear"]["points"])
         assert result2["bull"]["score"] == 0

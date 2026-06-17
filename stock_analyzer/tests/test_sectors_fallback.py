@@ -41,11 +41,11 @@ class TestSectorsFallback(unittest.TestCase):
         for name, data in SECTOR_STOCKS_FALLBACK.items():
             # 检查代表股
             rep = data["代表"]
-            self.assertRegex(rep, CODE_PATTERN,
+            self.assertRegex(rep, CODE_PATTERN.pattern,  # type: ignore[type-var]
                              f"'{name}' 代表股 '{rep}' 应为 6 位数字")
             # 检查成分股
             for code in data["成分股"]:
-                self.assertRegex(code, CODE_PATTERN,
+                self.assertRegex(code, CODE_PATTERN.pattern,
                                  f"'{name}' 成分股 '{code}' 应为 6 位数字")
 
     def test_representative_in_constituents(self):

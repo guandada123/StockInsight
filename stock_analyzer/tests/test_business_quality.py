@@ -3,6 +3,7 @@ import sys
 import unittest
 
 import pandas as pd
+from typing import Any
 
 from stock_analyzer import business_quality as bq
 
@@ -558,7 +559,7 @@ class TestGenerateSummaryExtended(unittest.TestCase):
 
     def test_mature_not_undervalued(self):
         """成熟期但估值不低 → 走 else 分支"""
-        profile = {}
+        profile: dict[str, Any] = {}
         moat = {"score": 50, "level": "狭窄的护城河"}
         cf = {"quality": "良好"}
         lifecycle = {"stage": "mature", "stage_cn": "成熟期"}
@@ -569,7 +570,7 @@ class TestGenerateSummaryExtended(unittest.TestCase):
 
     def test_unknown_stage(self):
         """未知阶段 → 走 else 分支"""
-        profile = {}
+        profile: dict[str, Any] = {}
         moat = {"score": 30, "level": "无明显护城河"}
         cf = {"quality": "一般"}
         lifecycle = {"stage": "unknown", "stage_cn": "无法判断"}

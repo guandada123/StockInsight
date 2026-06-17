@@ -51,8 +51,8 @@ def ultimate_analysis(code: str):
 
     sector_full = "未知"
     sector_rank = 0
-    sector_score = 0
-    sector_flow = 0
+    sector_score = 0.0
+    sector_flow = 0.0
     ranked = []
     try:
         from .sector_info import get_stock_sector_full

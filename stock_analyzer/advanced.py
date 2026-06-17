@@ -461,7 +461,7 @@ def get_macro_indicators():
 
 def _fetch_macro_indicators():
     """主要宏观指标汇总"""
-    result = {}
+    result: dict[str, float | str | None] = {}
     try:
         import akshare as ak
 

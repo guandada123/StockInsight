@@ -25,7 +25,7 @@ class Freshness(Enum):
 
 
 # 熔断器：连续失败 N 次后，M 秒内跳过该 API
-_CIRCUIT_STATE = {}  # {api_name: {"failures": N, "last_fail": timestamp, "open_until": timestamp}}
+_CIRCUIT_STATE: dict[str, dict[str, float | int]] = {}  # {api_name: {"failures": N, "last_fail": timestamp, "open_until": timestamp}}
 
 
 def _circuit_breaker(api_name, max_failures=3, cooldown=300):
@@ -210,7 +210,7 @@ def _retry_request(method, url, max_retries=1, base_delay=0.5, timeout=5, sessio
 #   export RATE_LIMITER_MODE=file     # 文件锁（新，推荐）
 #   export RATE_LIMITER_MODE=memory   # 内存列表（旧，兼容）
 
-_SINA_REQUEST_TIMES = []  # 降级模式：记录最近120秒内请求的时间戳
+_SINA_REQUEST_TIMES: list[float] = []  # 降级模式：记录最近120秒内请求的时间戳
 _SINA_RATE_LIMIT = 130  # 安全阈值（实际约150次/120s）
 _SINA_COOLDOWN = 120  # 冷却时间（秒）
 

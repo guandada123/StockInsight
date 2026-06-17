@@ -238,7 +238,7 @@ def push_daily_picks(webhook_url=None):
 
     # 3. 增强选股
     print("正在执行增强选股...")
-    codes = []
+    codes: list[str] = []
     try:
         from stock_analyzer.enhanced_screener import enhanced_scan
 

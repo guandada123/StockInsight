@@ -6,6 +6,8 @@
 import numpy as np
 import pandas as pd
 
+from typing import Any
+
 from .analysis import score_fundamental
 from .config import (
     QUANT_FACTOR_WEIGHTS,
@@ -446,7 +448,7 @@ def score_sentiment_factor(code, news_df, sentiment_df):
         if sentiment_df is None or sentiment_df.empty:
             return None  # 完全无数据，重新分配权重
 
-    news_score = 50  # 中性基准
+    news_score: float = 50  # 中性基准
 
     # 1. 新闻关键词情感分析
     if news_df is not None and not news_df.empty:
@@ -506,7 +508,7 @@ def score_sentiment_factor(code, news_df, sentiment_df):
                 news_score = 55  # 有新闻但无明显倾向，略偏中性偏正
 
     # 2. 微博舆情分（-1到+1）
-    weibo_score = 50
+    weibo_score: float = 50
     if sentiment_df is not None and not sentiment_df.empty and "rate" in sentiment_df.columns:
         # 通过股票名称匹配
         from .screener import get_stock_name
@@ -624,7 +626,7 @@ def _make_signal(signal_type, name, direction, strength, description, price=None
 
 def detect_ma_crossover(df):
     """MA金叉/死叉信号"""
-    signals = []
+    signals: list[dict[str, Any]] = []
     if df.empty or len(df) < 3:
         return signals
 
@@ -666,7 +668,7 @@ def detect_ma_crossover(df):
 
 def detect_macd_crossover(df):
     """MACD金叉/死叉信号"""
-    signals = []
+    signals: list[dict[str, Any]] = []
     if df.empty or len(df) < 3:
         return signals
     last, prev = df.iloc[-1], df.iloc[-2]
@@ -693,7 +695,7 @@ def detect_macd_crossover(df):
 
 def detect_adx_trend(df):
     """ADX趋势强度信号"""
-    signals = []
+    signals: list[dict[str, Any]] = []
     if df.empty or len(df) < 20:
         return signals
     last = df.iloc[-1]
@@ -734,7 +736,7 @@ def detect_adx_trend(df):
 
 def detect_channel_breakout(df, lookback=20):
     """通道突破信号"""
-    signals = []
+    signals: list[dict[str, Any]] = []
     if df.empty or len(df) < lookback + 1:
         return signals
 
@@ -782,7 +784,7 @@ def detect_channel_breakout(df, lookback=20):
 
 def detect_rsi_reversal(df):
     """RSI超买超卖反转信号"""
-    signals = []
+    signals: list[dict[str, Any]] = []
     if df.empty or len(df) < 3:
         return signals
 
@@ -846,7 +848,7 @@ def detect_rsi_reversal(df):
 
 def detect_bollinger_reversion(df):
     """布林带触边回归信号"""
-    signals = []
+    signals: list[dict[str, Any]] = []
     if df.empty or len(df) < 20:
         return signals
 

@@ -3,6 +3,7 @@
 import os
 import sys
 from datetime import datetime, time
+from typing import Any
 from unittest.mock import MagicMock, call, patch, PropertyMock
 
 import pandas as pd
@@ -610,7 +611,7 @@ class TestGenerateReport:
                 "量比": [1.0],
             }
         )
-        details = {
+        details: dict[str, dict[str, Any]] = {
             "600001": {
                 "kline_chart": "",
                 "indicator_chart": "",

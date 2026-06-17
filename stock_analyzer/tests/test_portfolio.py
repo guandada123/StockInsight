@@ -190,7 +190,7 @@ class TestAddStock:
     def test_no_stocks_key_creates_list(self):
         pf = {"name": "p", "created_at": "2026-06-14"}
         portfolio.add_stock(pf, "000001", 100, 10.0)
-        assert pf["stocks"] == [{"code": "000001", "weight": 100, "cost": 10.0}]
+        assert pf["stocks"] == [{"code": "000001", "weight": 100, "cost": 10.0}]  # type: ignore[comparison-overlap]
 
 # ── remove_stock ──────────────────────────────
 

@@ -17,7 +17,7 @@ _ORIG_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "stock_
 def _setup_test_cache():
     """重置内存缓存和 DB 路径"""
     cache._MEM_CACHE.clear()
-    cache._DB_CONN = None
+    cache._DB_CONN = None  # type: ignore[attr-defined]
     # 用 :memory: 替代真实 DB
     return
 

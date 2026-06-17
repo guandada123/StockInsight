@@ -11,6 +11,7 @@ import threading
 import time
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from typing import Any
 
 import pandas as pd
 
@@ -561,7 +562,7 @@ def list_jobs(limit: int = 20, status_filter: str | None = None) -> list:
 # 作业类型注册（所有函数定义之后）
 # ═══════════════════════════════════════════
 
-JOB_TYPES = {
+JOB_TYPES: dict[str, tuple[str, Callable[..., Any]]] = {
     "trade_calendar": ("交易日历", download_trade_calendar),
     "stock_basic": ("股票列表", download_stock_basic),
     "industry": ("行业分类", download_industry),

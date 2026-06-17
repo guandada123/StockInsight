@@ -11,6 +11,7 @@
 
 import hashlib
 import warnings
+from typing import Any
 
 import numpy as np
 
@@ -328,7 +329,7 @@ def _predict_lgb(df, fundamentals=None):
 
 
 # In-memory result cache (per process)
-_RESULT_CACHE = {}
+_RESULT_CACHE: dict[str, dict[str, Any]] = {}
 
 
 def _cached_predict_ensemble(df, fundamentals=None):

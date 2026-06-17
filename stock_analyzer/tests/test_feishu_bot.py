@@ -69,7 +69,7 @@ class TestPost(unittest.TestCase):
         """HTTPError 处理"""
         import urllib.error
         mock_urlopen.side_effect = urllib.error.HTTPError(
-            "https://example.com", 403, "Forbidden", {}, None
+            "https://example.com", 403, "Forbidden", {}, None  # type: ignore[arg-type]
         )
         result = _post("https://example.com", {})
         self.assertFalse(result["ok"])

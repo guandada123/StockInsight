@@ -98,15 +98,15 @@ def check_all():
 
 # 全局缓存（10分钟有效）
 _health_cache = None
-_health_cache_time = 0
+_health_cache_time = 0.0
 _HEALTH_TTL = 600  # 10分钟
 
 
 def get_health(force=False):
     """获取网络健康状态（缓存10分钟）"""
     global _health_cache, _health_cache_time
-    if not force and _health_cache and time.time() - _health_cache_time < _HEALTH_TTL:
-        return _health_cache
+    if not force and _health_cache and time.time() - _health_cache_time < _HEALTH_TTL:  # type: ignore[unreachable]
+        return _health_cache  # type: ignore[unreachable]
     _health_cache = check_all()
     _health_cache_time = time.time()
     return _health_cache

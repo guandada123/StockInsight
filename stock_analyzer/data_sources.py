@@ -204,7 +204,7 @@ class FileRateLimiter:
         try:
             if os.path.exists(self._state_file) and os.path.getsize(self._state_file) > 0:
                 with open(self._state_file, encoding="utf-8") as f:
-                    return json.load(f)
+                    return json.load(f)  # type: ignore[no-any-return]
         except (json.JSONDecodeError, OSError):
             pass
         return []
@@ -584,7 +584,7 @@ class AKShareFundamentalsSource(DataSource):
     """AKShare 同花顺财务摘要（主源）"""
 
     def fetch_fundamentals(self, code: str) -> dict:
-        result = {
+        result: dict[str, float | None] = {
             "市盈率": None,
             "市净率": None,
             "ROE": None,

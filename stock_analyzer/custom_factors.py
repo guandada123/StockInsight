@@ -82,7 +82,7 @@ class FactorExpressionEngine:
         value = self._eval_node(parsed.body, df)
 
         if np.isscalar(value):
-            value = pd.Series([float(value)] * len(df), index=df.index)
+            value = pd.Series([float(value)] * len(df), index=df.index)  # type: ignore[arg-type]
         if not isinstance(value, pd.Series):
             raise ValueError("表达式结果必须是 pandas Series")
 
@@ -99,10 +99,10 @@ class FactorExpressionEngine:
                 raise ValueError(f"不支持的运算符: {type(node.op).__name__}")
             return op(left, right)
         if isinstance(node, ast.UnaryOp):
-            op = self.unary_ops.get(type(node.op))
+            op = self.unary_ops.get(type(node.op))  # type: ignore[assignment]
             if op is None:
                 raise ValueError(f"不支持的一元运算符: {type(node.op).__name__}")
-            return op(self._eval_node(node.operand, df))
+            return op(self._eval_node(node.operand, df))  # type: ignore[call-arg]
         if isinstance(node, ast.Name):
             if node.id.startswith("__"):
                 raise ValueError("不安全的表达式")

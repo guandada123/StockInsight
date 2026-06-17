@@ -2,14 +2,15 @@
 
 import os
 import sqlite3
+from typing import Any
 
 _DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "stock_cache.db"
 )
-_CACHE = {}
+_CACHE: dict[str, tuple | None] = {}
 
 
-def _query(code: str) -> tuple:
+def _query(code: str) -> tuple[Any, ...] | None:
     if code in _CACHE:
         return _CACHE[code]
     try:

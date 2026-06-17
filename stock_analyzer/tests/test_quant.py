@@ -2,6 +2,7 @@
 import os
 import sys
 import unittest
+from typing import Any
 from unittest.mock import patch
 import pandas as pd
 import numpy as np
@@ -1032,7 +1033,7 @@ class TestScoreFundFlowFactorBranches(unittest.TestCase):
 
     def _make_ff_df(self, main_ratio, super_ratio):
         df = _make_df(30)
-        flows = [{}] * 29 + [{
+        flows: list[dict[str, Any]] = [{}] * 29 + [{
             "主力净流入-净占比": main_ratio,
             "超大单净流入-净占比": super_ratio,
             "主力净流入-净额": 100_000_000,

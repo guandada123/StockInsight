@@ -9,6 +9,7 @@ import pickle
 import sqlite3
 import threading
 import time
+from typing import Any
 
 from .config import (
     DB_PATH,
@@ -24,7 +25,7 @@ _MEM_CACHE_MAX = MEM_CACHE_MAX  # 5000
 _local = threading.local()
 
 # 进程内内存缓存（避免重复 pickle 反序列化同一 DataFrame）
-_MEM_CACHE = {}
+_MEM_CACHE: dict[str, Any] = {}
 
 
 def _mem_cache_set(key, value):
