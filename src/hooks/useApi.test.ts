@@ -67,7 +67,7 @@ describe("useApi", () => {
 
     const { result } = renderHook(() => useApi());
 
-    let res: ApiResponse<null> | undefined;
+    let res: ApiResponse<unknown> | undefined;
     await act(async () => {
       res = await result.current.fetchApi("/bad-request");
     });

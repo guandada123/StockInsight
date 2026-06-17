@@ -7,7 +7,7 @@
 import logging
 import time
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 
 from backend.common import _err, _ok, validate_portfolio_name
 from backend.schemas.requests import PortfolioCreateParams, PortfolioUpdateParams

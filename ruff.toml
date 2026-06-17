@@ -71,7 +71,7 @@ ignore = [
 [lint.per-file-ignores]
 "stock_analyzer/**/*.py" = ["T201", "S310", "S108", "S112", "S324", "E402", "F401"]
 "stock_analyzer/tests/**/*.py" = ["S101", "S306", "SIM117", "ARG005", "N802", "PLC2401", "T201"]
-"backend/routers/*.py" = ["S310"]
+"backend/routers/*.py" = ["S310", "B008"]
 "backend/tests/**" = ["S101", "S306", "SIM117", "ARG005", "N802", "PLC2401"]
 "scripts/*.py" = ["T201"]
 "cli.py" = ["T201"]
