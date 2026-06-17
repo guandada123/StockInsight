@@ -12,6 +12,7 @@ Tauri 集成:
 
 import logging
 import os
+import signal
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -200,7 +201,7 @@ async def _delayed_shutdown():
 
 # ── 注册子路由 ──────────────────────────────────────
 
-from backend.routers import analysis, data_jobs, data_management, factors, market, portfolio
+from backend.routers import analysis, data_jobs, data_management, factors, market, portfolio, scan
 
 app.include_router(market.router)
 app.include_router(analysis.router)
@@ -208,6 +209,7 @@ app.include_router(portfolio.router)
 app.include_router(data_management.router)
 app.include_router(data_jobs.router)
 app.include_router(factors.router)
+app.include_router(scan.router)
 
 import asyncio  # noqa: E402
 

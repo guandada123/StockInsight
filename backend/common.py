@@ -41,6 +41,18 @@ def validate_portfolio_name(name: str) -> str:
     return name
 
 
+# 项目根目录
+PROJECT_ROOT: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _get_db_path() -> str:
+    """获取 SQLite 数据库路径（兼容 stock_analyzer/ 子目录路径）"""
+    db_path = os.path.join(PROJECT_ROOT, "stock_cache.db")
+    if not os.path.exists(db_path):
+        db_path = os.path.join(PROJECT_ROOT, "stock_analyzer", "stock_cache.db")
+    return db_path
+
+
 # SQLite 白名单表名
 _ALLOWED_TABLES: frozenset[str] = frozenset({
     "kline_store",
@@ -53,9 +65,19 @@ _ALLOWED_TABLES: frozenset[str] = frozenset({
 
 
 def safe_table_count(cur, table: str) -> int:
-    """带白名单校验的 COUNT 查询，防止 SQL 注入"""
+    """带白名单校验的 COUNT 查询（同步版），防止 SQL 注入"""
     if table not in _ALLOWED_TABLES:
         logger.warning("attempted COUNT on forbidden table: %s", table)
         return 0
     cur.execute(f"SELECT COUNT(*) FROM {table}")
-    return cur.fetchone()[0]
+    return int(cur.fetchone()[0])
+
+
+async def async_safe_table_count(cur, table: str) -> int:
+    """带白名单校验的 COUNT 查询（异步版，适用于 aiosqlite cursor）"""
+    if table not in _ALLOWED_TABLES:
+        logger.warning("attempted COUNT on forbidden table: %s", table)
+        return 0
+    await cur.execute(f"SELECT COUNT(*) FROM {table}")
+    row = await cur.fetchone()
+    return int(row[0]) if row else 0
