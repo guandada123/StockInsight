@@ -82,7 +82,8 @@ class _AsyncDbConnection:
     async def __aenter__(self) -> aiosqlite.Connection:
         await _init_db()
 
-        assert _pool is not None  # _init_db 保证非 None
+        if _pool is None:
+            raise RuntimeError("数据库连接池未初始化")
         try:
             self.conn = _pool.get_nowait()
         except asyncio.QueueEmpty:
@@ -99,7 +100,8 @@ class _AsyncDbConnection:
                     pass
                 self.conn = None
             else:
-                assert _pool is not None
+                if _pool is None:
+                    raise RuntimeError("数据库连接池未初始化")
                 try:
                     _pool.put_nowait(self.conn)
                 except asyncio.QueueFull:
@@ -160,7 +162,6 @@ async def vacuum():
 
 def pool_stats() -> dict:
     """返回连接池统计（同步函数，仅读取计数器）。"""
-    global _pool
     return {
         "pool_size": _POOL_SIZE,
         "available": _pool.qsize() if _pool is not None else 0,

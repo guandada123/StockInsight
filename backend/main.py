@@ -138,7 +138,13 @@ async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "  # React 内联样式必需
+        "img-src 'self' data: https:; "
+        "connect-src 'self'"
+    )
     return response
 
 
@@ -163,7 +169,6 @@ async def rate_limit_middleware(request: Request, call_next):
         for ip in stale:
             del _RATE_LIMITS[ip]
     # Periodically persist to disk for restart recovery
-    global _last_rate_dump
     if now - _last_rate_dump > _RATE_DUMP_INTERVAL:
         _dump_rate_limits()
     return await call_next(request)

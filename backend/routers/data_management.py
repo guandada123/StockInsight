@@ -98,7 +98,9 @@ async def import_data_route(
 
 
 @router.get("/export/{code}")
-async def export_data_route(code: str, format: str = Query("json", description="导出格式: json|csv")):
+async def export_data_route(
+    code: str, format: str = Query("json", description="导出格式: json|csv")
+):
     """导出个股数据"""
     t0 = time.time()
     try:

@@ -17,6 +17,7 @@ from typing import Any
 @dataclass
 class ProgressEvent:
     """单个进度事件"""
+
     progress: float  # 0-100
     message: str
     status: str = "running"  # running | completed | failed
@@ -27,6 +28,7 @@ class ProgressEvent:
 @dataclass
 class ProgressTask:
     """进度任务"""
+
     id: str
     name: str
     total_items: int = 0
@@ -85,12 +87,14 @@ class ProgressTracker:
 
             task.updated_at = time.time()
             # 推送到队列供 SSE 消费者读取
-            await task.queue.put(ProgressEvent(
-                progress=task.event.progress,
-                message=task.event.message,
-                status=task.event.status,
-                result=task.event.result,
-            ))
+            await task.queue.put(
+                ProgressEvent(
+                    progress=task.event.progress,
+                    message=task.event.message,
+                    status=task.event.status,
+                    result=task.event.result,
+                )
+            )
 
             # 终端状态清理队列
             if task.event.status in ("completed", "failed"):
@@ -109,16 +113,18 @@ class ProgressTracker:
             active = []
             for tid, task in self._tasks.items():
                 if task.event.status in ("running", "pending"):
-                    active.append({
-                        "id": tid,
-                        "name": task.name,
-                        "status": task.event.status,
-                        "progress": task.event.progress,
-                        "message": task.event.message,
-                        "total_items": task.total_items,
-                        "completed_items": task.completed_items,
-                        "elapsed_seconds": round(now - task.created_at, 1),
-                    })
+                    active.append(
+                        {
+                            "id": tid,
+                            "name": task.name,
+                            "status": task.event.status,
+                            "progress": task.event.progress,
+                            "message": task.event.message,
+                            "total_items": task.total_items,
+                            "completed_items": task.completed_items,
+                            "elapsed_seconds": round(now - task.created_at, 1),
+                        }
+                    )
             return active
 
     async def cleanup(self):
@@ -126,7 +132,8 @@ class ProgressTracker:
         async with self._lock:
             now = time.time()
             stale = [
-                tid for tid, task in self._tasks.items()
+                tid
+                for tid, task in self._tasks.items()
                 if task.event.status in ("completed", "failed")
                 and now - task.updated_at > self._cleanup_interval
             ]

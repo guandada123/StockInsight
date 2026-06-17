@@ -50,11 +50,7 @@ async def run_batch_scan(task_id: str, codes: list[str]):
     for i, code in enumerate(codes, 1):
         try:
             quote = await asyncio.to_thread(sina_real_time, code)
-            name = (
-                quote.get("name", code)
-                if isinstance(quote, dict) and quote
-                else code
-            )
+            name = quote.get("name", code) if isinstance(quote, dict) and quote else code
 
             kline = await asyncio.to_thread(cached_kline, code, 120)
 
@@ -76,9 +72,7 @@ async def run_batch_scan(task_id: str, codes: list[str]):
                 if _is_kline_valid(kline)
                 else {}
             )
-            score = (
-                qscore.get("总分", "—") if isinstance(qscore, dict) and qscore else "—"
-            )
+            score = qscore.get("总分", "—") if isinstance(qscore, dict) and qscore else "—"
 
             results.append(
                 {

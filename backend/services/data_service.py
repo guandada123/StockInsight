@@ -30,7 +30,14 @@ async def get_data_stats() -> dict[str, Any]:
     db_size = os.path.getsize(db_path) / (1024 * 1024)
 
     async with get_connection() as conn:
-        tables = {"kline_store": 0, "fund_store": 0, "nt_store": 0, "sector_store": 0, "cache": 0, "daily_scores": 0}
+        tables = {
+            "kline_store": 0,
+            "fund_store": 0,
+            "nt_store": 0,
+            "sector_store": 0,
+            "cache": 0,
+            "daily_scores": 0,
+        }
         for table in tables:
             try:
                 tables[table] = await async_safe_table_count(conn, table)

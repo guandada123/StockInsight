@@ -31,6 +31,7 @@ _mock_sa.fetcher = mock_fetcher
 sys.modules["stock_analyzer.fetcher"] = mock_fetcher
 
 from fastapi.testclient import TestClient
+
 from backend.main import app
 
 client = TestClient(app)

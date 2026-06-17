@@ -143,7 +143,7 @@ def build_sector_rotation(top_n: int = 30) -> dict[str, Any]:
 
 def build_hot_sectors(top_n: int = 10) -> dict[str, Any]:
     """热门板块（涨跌幅 + 资金流向综合排名）"""
-    from stock_analyzer.fetcher import get_sector_fund_flow_rank, get_sectors
+    from stock_analyzer.fetcher import get_sectors
 
     sectors = get_sectors()
     sector_list = list(sectors.items()) if isinstance(sectors, dict) else []

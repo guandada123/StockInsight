@@ -66,7 +66,7 @@ async def _sse_generator(task_id: str):
             if event.status in ("completed", "failed"):
                 yield f"event: done\ndata: {json.dumps({'task_id': task_id, 'status': event.status})}\n\n"
                 break
-    except asyncio.TimeoutError:
+    except TimeoutError:
         yield f"event: timeout\ndata: {json.dumps({'task_id': task_id, 'message': '连接超时'})}\n\n"
     except Exception as e:
         logger.exception("SSE generator error: task=%s", task_id)

@@ -121,11 +121,7 @@ def run_fast_analysis(code: str) -> dict[str, Any]:
     tech = get_technical_summary(kline)
     sr = calc_support_resistance(kline)
     price = float(kline["收盘"].iloc[-1])
-    atr = (
-        float(kline.iloc[-1].get("ATR", price * 0.03))
-        if "ATR" in kline.columns
-        else price * 0.03
-    )
+    atr = float(kline.iloc[-1].get("ATR", price * 0.03)) if "ATR" in kline.columns else price * 0.03
     stop = calc_stop_levels(
         price,
         atr,
@@ -181,9 +177,7 @@ def run_fast_analysis(code: str) -> dict[str, Any]:
             "annual_volatility_pct": 0,
             "var_95_pct": 0,
         },
-        "financial": {
-            "roe": round(funds.get("ROE", 0), 2) if isinstance(funds, dict) else None
-        },
+        "financial": {"roe": round(funds.get("ROE", 0), 2) if isinstance(funds, dict) else None},
         "near_5d": n5,
         "near_20d": n20,
     }
@@ -795,7 +789,9 @@ def _build_risk_warnings(r, sector_result=None):
     rsi = r.get("rsi", 50)
 
     if n5 > 12:
-        risks.append({"level": "high", "message": f"近5日涨{n5:.1f}%，短线追高风险极大，不建议追入"})
+        risks.append(
+            {"level": "high", "message": f"近5日涨{n5:.1f}%，短线追高风险极大，不建议追入"}
+        )
     elif n5 > 8:
         risks.append({"level": "medium", "message": f"近5日涨{n5:.1f}%，短线涨幅偏大，注意回调"})
     if n20 > 30:

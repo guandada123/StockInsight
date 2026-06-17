@@ -54,14 +54,16 @@ def _get_db_path() -> str:
 
 
 # SQLite 白名单表名
-_ALLOWED_TABLES: frozenset[str] = frozenset({
-    "kline_store",
-    "fund_store",
-    "nt_store",
-    "sector_store",
-    "cache",
-    "daily_scores",
-})
+_ALLOWED_TABLES: frozenset[str] = frozenset(
+    {
+        "kline_store",
+        "fund_store",
+        "nt_store",
+        "sector_store",
+        "cache",
+        "daily_scores",
+    }
+)
 
 
 def safe_table_count(cur, table: str) -> int:
@@ -69,7 +71,7 @@ def safe_table_count(cur, table: str) -> int:
     if table not in _ALLOWED_TABLES:
         logger.warning("attempted COUNT on forbidden table: %s", table)
         return 0
-    cur.execute(f"SELECT COUNT(*) FROM {table}")
+    cur.execute(f"SELECT COUNT(*) FROM {table}")  # nosec — table 已通过白名单校验
     return int(cur.fetchone()[0])
 
 
@@ -78,6 +80,6 @@ async def async_safe_table_count(cur, table: str) -> int:
     if table not in _ALLOWED_TABLES:
         logger.warning("attempted COUNT on forbidden table: %s", table)
         return 0
-    await cur.execute(f"SELECT COUNT(*) FROM {table}")
+    await cur.execute(f"SELECT COUNT(*) FROM {table}")  # nosec — table 已通过白名单校验
     row = await cur.fetchone()
     return int(row[0]) if row else 0
