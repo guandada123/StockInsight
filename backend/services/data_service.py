@@ -42,7 +42,7 @@ async def get_data_stats() -> dict[str, Any]:
             try:
                 tables[table] = await async_safe_table_count(conn, table)
             except Exception:
-                pass
+                logger.warning("[data_stats] table_count failed: %s", table, exc_info=True)
 
         last_update = "未知"
         try:
@@ -51,7 +51,7 @@ async def get_data_stats() -> dict[str, Any]:
             if row and row[0]:
                 last_update = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(row[0]))
         except Exception:
-            pass
+            logger.warning("[data_stats] last_update query failed", exc_info=True)
 
         score_dates = 0
         try:
@@ -59,7 +59,7 @@ async def get_data_stats() -> dict[str, Any]:
             row = await cursor.fetchone()
             score_dates = int(row[0]) if row else 0
         except Exception:
-            pass
+            logger.warning("[data_stats] score_dates query failed", exc_info=True)
 
         total_stocks = tables["kline_store"]
 

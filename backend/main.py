@@ -10,14 +10,13 @@ Tauri 集成:
     3. 关闭时发送 POST /api/shutdown
 """
 
+import asyncio
 import logging
 import os
 import signal
 import sys
 import time
 from contextlib import asynccontextmanager
-
-import asyncio
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -55,7 +54,7 @@ def _load_rate_limits() -> dict[str, list[float]]:
             now = time.time()
             return {ip: [t for t in ts if now - t < _RATE_WINDOW] for ip, ts in data.items()}
     except Exception:
-        pass
+        logger.warning("[rate_limit] failed to load rate limits from disk", exc_info=True)
     return {}
 
 
@@ -67,7 +66,7 @@ def _dump_rate_limits():
         with open(_RATE_DUMP_PATH, "w") as f:
             _json.dump(_RATE_LIMITS, f)
     except Exception:
-        pass
+        logger.warning("[rate_limit] failed to dump rate limits to disk", exc_info=True)
 
 
 # 启动时恢复限流状态

@@ -9,6 +9,7 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
   const { indices, setIndices } = useMarketStore();
   const [sectors, setSectors] = useState<SectorInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [sectorError, setSectorError] = useState<string | null>(null);
   const [quickCode, setQuickCode] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -22,8 +23,10 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
   }, [setIndices, marketApi]);
 
   const loadSectors = useCallback(async () => {
+    setSectorError(null);
     const res = await sectorsApi.fetchApi("/api/market/hot-sectors?top_n=12");
     if (res.success) setSectors(res.data.sectors || []);
+    else setSectorError(res.error || "获取板块数据失败");
   }, [sectorsApi]);
 
   useEffect(() => {
@@ -85,7 +88,11 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
           <div className="card-body p-8">
             {sectors.length === 0 ? (
               <div className="text-center p-20 c-dm">
-                {sectorsApi.loading ? "加载中..." : "暂无数据"}
+                {sectorsApi.loading
+                  ? "加载中..."
+                  : sectorError
+                    ? `加载失败: ${sectorError}`
+                    : "暂无数据"}
               </div>
             ) : (
               <table className="data-table">

@@ -11,6 +11,7 @@ vi.mock("echarts-for-react", () => ({
 }));
 
 const mockData: IndicatorData = {
+  type: "macd",
   dates: ["2026-06-01", "2026-06-02", "2026-06-03"],
   values: {
     dif: [0.5, 0.6, 0.7],
@@ -22,9 +23,7 @@ const mockData: IndicatorData = {
 const onTypeChange = vi.fn();
 
 function renderChart(type = "macd") {
-  return render(
-    <IndicatorChart data={mockData} type={type} onTypeChange={onTypeChange} />
-  );
+  return render(<IndicatorChart data={mockData} type={type} onTypeChange={onTypeChange} />);
 }
 
 describe("IndicatorChart", () => {

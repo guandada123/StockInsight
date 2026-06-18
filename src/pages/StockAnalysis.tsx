@@ -26,6 +26,9 @@ export default function StockAnalysis() {
   const [indicator, setIndicator] = useState<IndicatorData | null>(null);
   const [indType, setIndType] = useState("macd");
   const [marketIndices, setMarketIndices] = useState<Record<string, MarketIndex>>({});
+  const [klineError, setKlineError] = useState<string | null>(null);
+  const [indicatorError, setIndicatorError] = useState<string | null>(null);
+  const [marketError, setMarketError] = useState<string | null>(null);
 
   const analysisApi = useApi<StockAnalysisResult>();
   const klineApi = useApi<KlineData>();
@@ -50,19 +53,25 @@ export default function StockAnalysis() {
   }
 
   async function loadKline(c: string) {
+    setKlineError(null);
     const res = await klineApi.fetchApi(`/api/analysis/${c}/kline?days=120`);
     if (res.success) setKline(res.data);
+    else setKlineError(res.error || "K线数据加载失败");
   }
 
   async function loadIndicatorData(c: string, type: string) {
     setIndType(type);
+    setIndicatorError(null);
     const res = await indicatorApi.fetchApi(`/api/analysis/${c}/indicators?indicator=${type}`);
     if (res.success) setIndicator(res.data);
+    else setIndicatorError(res.error || "指标数据加载失败");
   }
 
   async function loadMarketOverview() {
+    setMarketError(null);
     const res = await marketApi.fetchApi("/api/market/overview");
-    if (res.success) setMarketIndices(res.data.indices || {});
+    if (res.success && res.data) setMarketIndices(res.data.indices || {});
+    else setMarketError(res.error || "市场概况加载失败");
   }
 
   // ── Loading / Error / Empty states ──
@@ -80,6 +89,13 @@ export default function StockAnalysis() {
   return (
     <div>
       <MarketIndicesSection indices={marketIndices} />
+      {marketError && (
+        <div className="card mt-10">
+          <div className="card-body text-center p-12">
+            <span className="c-dm fs-12">市场概况加载失败: {marketError}</span>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════
           二、板块分析
@@ -119,7 +135,14 @@ export default function StockAnalysis() {
             </div>
           </div>
           <div className="card-body">
-            {kline && <KlineChart data={kline} indicator={indicator} />}
+            {klineError ? (
+              <div className="text-center p-20 c-dm fs-12">K线数据加载失败: {klineError}</div>
+            ) : kline ? (
+              <KlineChart data={kline} indicator={indicator} />
+            ) : null}
+            {indicatorError && !klineError && (
+              <div className="text-center p-8 c-dm fs-11">指标数据加载失败: {indicatorError}</div>
+            )}
           </div>
         </div>
 

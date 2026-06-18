@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import Portfolio from "./Portfolio";
@@ -56,21 +56,6 @@ const mockPortfolioDetail = {
     total_profit_pct: 2.21,
     count: 2,
     update_time: "2026-06-18 15:00",
-  },
-};
-
-const mockOwnedData = {
-  success: true,
-  data: {
-    holdings: [
-      { code: "000001", name: "平安银行", shares: 500, cost: 12, current_price: 13, market_value: 6500, profit_amount: 500, profit_pct: 4.17, weight_pct: 100 },
-    ],
-    total_value: 6500,
-    total_cost: 6000,
-    total_profit: 500,
-    total_profit_pct: 8.33,
-    count: 1,
-    update_time: "2026-06-18 14:00",
   },
 };
 
@@ -220,9 +205,7 @@ describe("Portfolio", () => {
         suggestion: "建议分散持仓，降低集中度风险",
       },
     };
-    mockFetchApi
-      .mockResolvedValueOnce(mockPortfolioList)
-      .mockResolvedValueOnce(dataWithSuggestion);
+    mockFetchApi.mockResolvedValueOnce(mockPortfolioList).mockResolvedValueOnce(dataWithSuggestion);
     renderPortfolio();
 
     await waitFor(() => {
