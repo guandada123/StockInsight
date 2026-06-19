@@ -15,9 +15,10 @@ r"""飞书每日推送调度脚本
                  */30 9-15 * * 1-5 cd /path/to/stock-insight && python feishu_push.py --mode alert
   Windows:     schtasks（见下方注释）
 """
-import sys
-import os
+
 import argparse
+import os
+import sys
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(PROJECT_DIR)
@@ -33,6 +34,7 @@ def push_daily(dry_run=False):
         return
 
     from stock_analyzer.feishu_bot import push_daily_picks
+
     result = push_daily_picks()
     if result.get("ok"):
         print("推送成功")
@@ -44,8 +46,8 @@ def push_morning(dry_run=False):
     """盘前大盘简报"""
     print(f"盘前大盘简报 [{_now()}]")
 
-    from stock_analyzer.fetcher import get_market_overview
     from stock_analyzer.feishu_bot import send_market_brief
+    from stock_analyzer.fetcher import get_market_overview
 
     market = get_market_overview()
     idx_map = {"000001": "上证", "399001": "深证", "399006": "创业板", "000688": "科创50"}
@@ -76,18 +78,20 @@ def push_alert(dry_run=False):
     # 读取持仓
     import glob
     import json
+
     files = sorted(glob.glob("mainboard_owned_*.json"), reverse=True)
     if not files:
         print("未找到持仓文件")
         return
 
-    with open(files[0], "r", encoding="utf-8") as f:
+    with open(files[0], encoding="utf-8") as f:
         owned = json.load(f)
     if not owned:
         print("持仓为空")
         return
 
     from stock_analyzer.fetcher import sina_real_time
+
     codes = list(owned.keys())
     rt = sina_real_time(codes)
 
@@ -103,7 +107,9 @@ def push_alert(dry_run=False):
 
         # 预警条件
         if profit_pct <= -5:
-            alerts.append(f"🔴 {name}({code}) 浮亏{profit_pct:.1f}% 现价{price:.2f} 成本{cost:.2f} 注意止损!")
+            alerts.append(
+                f"🔴 {name}({code}) 浮亏{profit_pct:.1f}% 现价{price:.2f} 成本{cost:.2f} 注意止损!"
+            )
         elif profit_pct >= 8:
             alerts.append(f"🟢 {name}({code}) 浮盈{profit_pct:+.1f}% 现价{price:.2f} 可考虑止盈")
 
@@ -121,6 +127,7 @@ def push_alert(dry_run=False):
         return
 
     from stock_analyzer.feishu_bot import send_text
+
     content = "【持仓异动预警】\n" + "\n".join(alerts)
     result = send_text(content)
     if result.get("ok"):
@@ -146,24 +153,30 @@ def _print_market():
     print("\n═══ 板块 TOP5 ═══")
     sectors = get_sectors()
     if isinstance(sectors, dict) and sectors:
-        ranked = sorted(sectors.items(), key=lambda x: float(x[1].get("涨跌幅", 0) or 0), reverse=True)
+        ranked = sorted(
+            sectors.items(), key=lambda x: float(x[1].get("涨跌幅", 0) or 0), reverse=True
+        )
         for i, (nm, info) in enumerate(ranked[:5]):
             chg = float(info.get("涨跌幅", 0) or 0)
             ff = float(info.get("资金净流入", 0) or 0) / 1e8
-            print(f"  {i+1}. {nm} {chg:+.2f}% 资金{ff:+.1f}亿")
+            print(f"  {i + 1}. {nm} {chg:+.2f}% 资金{ff:+.1f}亿")
 
 
 def _now():
     from datetime import datetime
+
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="飞书每日推送调度")
-    parser.add_argument("--mode", choices=["daily", "morning", "alert"], default="daily",
-                        help="推送模式: daily(尾盘选股) morning(盘前简报) alert(异动预警)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="仅输出不推送（测试用）")
+    parser.add_argument(
+        "--mode",
+        choices=["daily", "morning", "alert"],
+        default="daily",
+        help="推送模式: daily(尾盘选股) morning(盘前简报) alert(异动预警)",
+    )
+    parser.add_argument("--dry-run", action="store_true", help="仅输出不推送（测试用）")
     args = parser.parse_args()
 
     if args.mode == "daily":

@@ -8,6 +8,10 @@ Tauri 集成:
     1. Rust sidecar 启动 Python 子进程运行此文件
     2. 轮询 GET /api/health 直到就绪
     3. 关闭时发送 POST /api/shutdown
+
+更新（2026-06-19）:
+    - 统一异常处理 + trace_id 注入
+    - 结构化日志（JSON）+ 每日轮转
 """
 
 import asyncio
@@ -22,12 +26,18 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+# ── 异常与日志增强 ──
+from backend.exceptions import register_exception_handlers, trace_id_middleware
+
 # 确保项目根目录在 sys.path 中（sidecar 启动时可能需要）
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+# ── 结构化日志初始化（替换 logging.basicConfig）──
+from backend.logging_config import setup_logging
+
+setup_logging()
 logger = logging.getLogger("stockinsight-api")
 
 START_TIME = time.time()
@@ -109,6 +119,12 @@ app = FastAPI(
         {"name": "健康检查", "description": "服务状态探针"},
     ],
 )
+
+# ── trace_id 注入（最先注册，确保后续中间件和路由均可读取 state.trace_id）──
+app.middleware("http")(trace_id_middleware)
+
+# ── 统一异常处理注册（必须早于路由注册）──
+register_exception_handlers(app)
 
 # CORS: 仅允许白名单来源和方法
 app.add_middleware(

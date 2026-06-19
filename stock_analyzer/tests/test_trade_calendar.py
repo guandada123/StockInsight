@@ -70,9 +70,7 @@ class TestTradeCalendarETL(unittest.TestCase):
 
     def test_table_created(self):
         """建表语句已执行"""
-        create_call = [
-            c for c in _mock_cursor.execute.call_args_list if "CREATE TABLE" in str(c)
-        ]
+        create_call = [c for c in _mock_cursor.execute.call_args_list if "CREATE TABLE" in str(c)]
         self.assertGreater(len(create_call), 0)
 
     def test_data_inserted(self):

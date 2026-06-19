@@ -1,0 +1,100 @@
+# ============================================================
+# StockInsight — Security Scan (Unified Standard)
+# Runs: weekly schedule + on dep/code change + manual
+# ============================================================
+name: Security Scan
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"  # 每周一 8:00 UTC
+  push:
+    branches: [main]
+    paths:
+      - "**/requirements*.txt"
+      - "**/*.py"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "20"
+
+jobs:
+  safety-check:
+    name: Dependency Scan (safety)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: "requirements*.txt"
+      - name: Install deps + safety
+        run: |
+          pip install safety
+          pip install -r <(grep -v '^yquoter' requirements.txt) || true
+      - name: Safety check
+        run: safety check --full-report --output json > safety-report.json || true
+        continue-on-error: true
+      - name: Upload safety report
+        uses: actions/upload-artifact@v4
+        with:
+          name: stockinsight-safety-report
+          path: safety-report.json
+      - name: Summary
+        run: |
+          VULN_COUNT=$(python3 -c "
+          import json
+          with open('safety-report.json') as f:
+              data = json.load(f)
+          vulns = data.get('vulnerabilities', [])
+          print(len(vulns))
+          ") || echo "0"
+          echo "## Safety Check" >> $GITHUB_STEP_SUMMARY
+          echo "Vulnerabilities found: **${VULN_COUNT:-0}**" >> $GITHUB_STEP_SUMMARY
+
+  bandit:
+    name: Code Scan (bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: "requirements*.txt"
+      - name: Install bandit
+        run: pip install bandit[toml]
+      - name: Bandit scan
+        run: |
+          bandit -r backend/ backend/services/ stock_analyzer/ -f json -o bandit-report.json \
+            -ll --skip B101 --exclude '*/tests/*' || true
+        continue-on-error: true
+      - name: Upload bandit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: stockinsight-bandit-report
+          path: bandit-report.json
+      - name: Summary
+        run: |
+          COUNT=$(python3 -c "
+          import json
+          with open('bandit-report.json') as f:
+              data = json.load(f)
+          print(len(data.get('results', [])))
+          ") || echo "0"
+          echo "## Bandit Code Scan" >> $GITHUB_STEP_SUMMARY
+          echo "Issues found: **${COUNT:-0}**" >> $GITHUB_STEP_SUMMARY
+
+  secret-scan:
+    name: Secret Detection (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -264,7 +264,7 @@ class TestGenerateSectorReport:
         """市场判断分支：avg < 45（偏弱）"""
         df = _make_screener_df()
         # 降低所有评分使 avg < 45
-        df["综合评分"] = df["综合评分"].apply(lambda x: 40 if isinstance(x, (int, float)) else x)
+        df["综合评分"] = df["综合评分"].apply(lambda x: 40 if isinstance(x, int | float) else x)
         with (
             patch("stock_analyzer.sector_report.run_screener") as mock_run,
             patch("stock_analyzer.sector_report.get_sector_for_code") as mock_sector,

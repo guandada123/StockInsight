@@ -36,33 +36,25 @@ describe("ManipulatorSection", () => {
   });
 
   it("uses washout class for 洗盘", () => {
-    const { container } = render(
-      <ManipulatorSection mi={makeMI({ phase: "洗盘" })} />
-    );
+    const { container } = render(<ManipulatorSection mi={makeMI({ phase: "洗盘" })} />);
     const label = container.querySelector(".phase-label");
     expect(label?.className).toContain("washout");
   });
 
   it("uses uptrend class for 拉升", () => {
-    const { container } = render(
-      <ManipulatorSection mi={makeMI({ phase: "拉升" })} />
-    );
+    const { container } = render(<ManipulatorSection mi={makeMI({ phase: "拉升" })} />);
     const label = container.querySelector(".phase-label");
     expect(label?.className).toContain("uptrend");
   });
 
   it("uses distribution class for 出货", () => {
-    const { container } = render(
-      <ManipulatorSection mi={makeMI({ phase: "出货" })} />
-    );
+    const { container } = render(<ManipulatorSection mi={makeMI({ phase: "出货" })} />);
     const label = container.querySelector(".phase-label");
     expect(label?.className).toContain("distribution");
   });
 
   it("uses unknown class for unexpected phase", () => {
-    const { container } = render(
-      <ManipulatorSection mi={makeMI({ phase: "震荡" })} />
-    );
+    const { container } = render(<ManipulatorSection mi={makeMI({ phase: "震荡" })} />);
     const label = container.querySelector(".phase-label");
     expect(label?.className).toContain("unknown");
   });
@@ -77,9 +69,7 @@ describe("ManipulatorSection", () => {
   });
 
   it("does not render signals when signals array is empty", () => {
-    const { container } = render(
-      <ManipulatorSection mi={makeMI({ signals: [] })} />
-    );
+    const { container } = render(<ManipulatorSection mi={makeMI({ signals: [] })} />);
     expect(container.querySelector(".phase-signals")).not.toBeInTheDocument();
   });
 
@@ -98,9 +88,7 @@ describe("ManipulatorSection", () => {
   });
 
   it("does not render volume analysis when empty", () => {
-    const { container } = render(
-      <ManipulatorSection mi={makeMI({ volume_analysis: "" })} />
-    );
+    render(<ManipulatorSection mi={makeMI({ volume_analysis: "" })} />);
     expect(screen.queryByText("近期成交量明显放大")).not.toBeInTheDocument();
   });
 
@@ -110,9 +98,7 @@ describe("ManipulatorSection", () => {
   });
 
   it("does not render chip analysis when empty", () => {
-    const { container } = render(
-      <ManipulatorSection mi={makeMI({ chip_analysis: "" })} />
-    );
+    render(<ManipulatorSection mi={makeMI({ chip_analysis: "" })} />);
     expect(screen.queryByText("低位筹码集中")).not.toBeInTheDocument();
   });
 
@@ -131,9 +117,7 @@ describe("ManipulatorSection", () => {
   });
 
   it("does not render risk note when empty", () => {
-    const { container } = render(
-      <ManipulatorSection mi={makeMI({ risk_note: "" })} />
-    );
+    const { container } = render(<ManipulatorSection mi={makeMI({ risk_note: "" })} />);
     expect(container.querySelector(".c-gd")).not.toBeInTheDocument();
   });
 

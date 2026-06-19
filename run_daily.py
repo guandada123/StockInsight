@@ -9,13 +9,14 @@
 手动设置定时任务（如自动安装失败）：
   1. 按 Win+R, 输入 taskschd.msc
   2. 创建基本任务 -> 触发器: 每日 16:00（A股15:00收盘，等数据同步）
-  3. 操作: 启动程序 -> python D:\CC\股票分析\run_daily.py
+  3. 操作: 启动程序 -> python D:\\CC\\股票分析\run_daily.py
 """
-import sys
-import os
-import json
-import subprocess
+
 import argparse
+import json
+import os
+import subprocess
+import sys
 from datetime import datetime
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -36,10 +37,14 @@ def run_now():
 
     # 调用 run_full_scan，输出重定向到日志文件
     import subprocess as sp
+
     with open(log_file, "w", encoding="utf-8") as f:
         proc = sp.run(
             [sys.executable, os.path.join(PROJECT_DIR, "run_full_scan.py")],
-            stdout=f, stderr=sp.STDOUT, text=True, cwd=PROJECT_DIR,
+            stdout=f,
+            stderr=sp.STDOUT,
+            text=True,
+            cwd=PROJECT_DIR,
         )
 
     if proc.returncode == 0:
@@ -51,15 +56,21 @@ def run_now():
     print(f"\n自审计启动 [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]")
     try:
         from stock_analyzer.self_audit import run_audit
+
         report = run_audit(auto_fix=True, verbose=True)
         audit_log = os.path.join(PROJECT_DIR, "logs", f"audit_{date_str}.json")
         with open(audit_log, "w", encoding="utf-8") as f:
-            json.dump({
-                "date": date_str,
-                "issues": report.issues,
-                "fixes": report.fixes,
-                "warnings": report.warnings,
-            }, f, ensure_ascii=False, indent=2)
+            json.dump(
+                {
+                    "date": date_str,
+                    "issues": report.issues,
+                    "fixes": report.fixes,
+                    "warnings": report.warnings,
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
     except Exception as e:
         print(f"  审计异常: {e}")
     return proc.returncode
@@ -72,13 +83,23 @@ def install_scheduler():
     task_name = "StockFullScanDaily"
 
     cmd = [
-        "schtasks", "/Create", "/SC", "DAILY", "/TN", task_name,
-        "/TR", f"{python_exe} {script}", "/ST", "16:00",
-        "/F", "/RL", "HIGHEST"
+        "schtasks",
+        "/Create",
+        "/SC",
+        "DAILY",
+        "/TN",
+        task_name,
+        "/TR",
+        f"{python_exe} {script}",
+        "/ST",
+        "16:00",
+        "/F",
+        "/RL",
+        "HIGHEST",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
-        print(f"计划任务已注册：每日 16:00 运行全市场扫描")
+        print("计划任务已注册：每日 16:00 运行全市场扫描")
         print(f"任务名称: {task_name}")
         return True
     else:

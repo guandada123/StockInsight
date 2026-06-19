@@ -177,7 +177,7 @@ def generate_sector_report(output_path: str = None) -> str:
                     price = info.get("最新价", "-")
                     change = info.get("涨跌幅", 0)
                     name = info.get("名称", code)
-                    if isinstance(change, (int, float)):
+                    if isinstance(change, int | float):
                         change_str = f"{change:+.2f}%"
                         color = "#c62828" if change > 0 else "#2e7d32" if change < 0 else "#333"
                     else:

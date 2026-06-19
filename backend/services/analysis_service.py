@@ -487,15 +487,15 @@ def safe_convert(v):
     """递归转换 numpy 类型为 Python 原生类型，避免 JSON 序列化崩溃"""
     import numpy as np
 
-    if isinstance(v, (np.integer,)):
+    if isinstance(v, np.integer):
         return int(v)
-    if isinstance(v, (np.floating,)):
+    if isinstance(v, np.floating):
         return float(v)
     if isinstance(v, np.ndarray):
         return v.tolist()
     if isinstance(v, dict):
         return {k: safe_convert(vv) for k, vv in v.items()}
-    if isinstance(v, (list, tuple)):
+    if isinstance(v, list | tuple):
         return [safe_convert(x) for x in v]
     return v
 

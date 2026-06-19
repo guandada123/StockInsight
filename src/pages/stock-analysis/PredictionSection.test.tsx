@@ -48,25 +48,19 @@ describe("PredictionSection", () => {
   });
 
   it("uses down class when direction includes 跌", () => {
-    const { container } = render(
-      <PredictionSection pred={makePred({ direction: "持续下跌" })} />
-    );
+    const { container } = render(<PredictionSection pred={makePred({ direction: "持续下跌" })} />);
     const dir = container.querySelector(".pred-direction");
     expect(dir?.className).toContain("down");
   });
 
   it("uses sideways class when direction is neutral", () => {
-    const { container } = render(
-      <PredictionSection pred={makePred({ direction: "横盘震荡" })} />
-    );
+    const { container } = render(<PredictionSection pred={makePred({ direction: "横盘震荡" })} />);
     const dir = container.querySelector(".pred-direction");
     expect(dir?.className).toContain("sideways");
   });
 
   it("uses sideways class for empty direction", () => {
-    const { container } = render(
-      <PredictionSection pred={makePred({ direction: "" })} />
-    );
+    const { container } = render(<PredictionSection pred={makePred({ direction: "" })} />);
     const dir = container.querySelector(".pred-direction");
     expect(dir?.className).toContain("sideways");
   });

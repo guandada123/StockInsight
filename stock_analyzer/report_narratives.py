@@ -19,7 +19,7 @@ def _build_fundamental_narrative(detail: dict) -> str:
 
     if isinstance(funda, dict) and funda.get("ROE") is not None:
         roe = funda.get("ROE", 0)
-        if isinstance(roe, (int, float)):
+        if isinstance(roe, int | float):
             rev_growth = funda.get("营收增长", 0)
             net_growth = funda.get("净利润增长", 0)
             gross_margin = funda.get("毛利率", 0)
@@ -44,7 +44,7 @@ def _build_fundamental_narrative(detail: dict) -> str:
                 f"（A股参考：ROE>15%优秀，8-15%良好，5-8%一般，<5%偏低）"
             ]
 
-            if isinstance(rev_growth, (int, float)):
+            if isinstance(rev_growth, int | float):
                 rev_pct = rev_growth * 100 if rev_growth < 1 else rev_growth
                 if rev_pct > 30:
                     sentences.append(
@@ -59,7 +59,7 @@ def _build_fundamental_narrative(detail: dict) -> str:
                 else:
                     sentences.append(f"营收同比下降{abs(rev_pct):.1f}%，需关注业务下滑风险。")
 
-            if isinstance(gross_margin, (int, float)):
+            if isinstance(gross_margin, int | float):
                 gm_pct = gross_margin * 100 if gross_margin < 1 else gross_margin
                 if gm_pct > 70:
                     sentences.append(
@@ -74,7 +74,7 @@ def _build_fundamental_narrative(detail: dict) -> str:
                 else:
                     sentences.append(f"毛利率{gm_pct:.1f}%，相对偏低，产品或服务竞争较为激烈。")
 
-            if isinstance(net_margin, (int, float)):
+            if isinstance(net_margin, int | float):
                 nm_pct = net_margin * 100 if net_margin < 1 else net_margin
                 if nm_pct > 20:
                     sentences.append(f"净利率{nm_pct:.1f}%，盈利质量很高，成本控制能力优秀。")
@@ -83,7 +83,7 @@ def _build_fundamental_narrative(detail: dict) -> str:
                 elif nm_pct > 5:
                     sentences.append(f"净利率{nm_pct:.1f}%，盈利质量处于中等水平。")
 
-            if isinstance(net_growth, (int, float)):
+            if isinstance(net_growth, int | float):
                 ng_pct = net_growth * 100 if net_growth < 1 else net_growth
                 if ng_pct > 50:
                     sentences.append(f"净利润增长{ng_pct:.1f}%，爆发式增长，盈利能力大幅提升。")
@@ -363,7 +363,7 @@ def _build_risk_narrative(detail: dict) -> str:
         # 止损止盈参考
         sl = stop.get("止损参考价") if stop else None
         tp = stop.get("止盈参考价") if stop else None
-        if sl and tp and isinstance(sl, (int, float)):
+        if sl and tp and isinstance(sl, int | float):
             sl_pct = stop.get("止损幅度%", "")
             tp_pct = stop.get("止盈幅度%", "")
             parts.append(
@@ -452,7 +452,7 @@ def _build_trading_suggestion(detail: dict) -> str:
     # 止损止盈操作建议
     sl = stop.get("止损参考价") if stop else None
     tp = stop.get("止盈参考价") if stop else None
-    if sl and tp and isinstance(sl, (int, float)):
+    if sl and tp and isinstance(sl, int | float):
         sl_pct = stop.get("止损幅度%", "")
         tp_pct = stop.get("止盈幅度%", "")
         parts.append(

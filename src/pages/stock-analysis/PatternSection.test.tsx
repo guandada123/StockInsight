@@ -18,8 +18,20 @@ function makePA(overrides: Partial<PatternAnalysis> = {}): PatternAnalysis {
   return {
     recent_patterns: [
       makePI({ date: "2026-06-15" }),
-      makePI({ name: "上升三法", date: "2026-06-14", type: "bullish", description: "三法形态，中继看涨", reliability: "中" }),
-      makePI({ name: "黄昏之星", date: "2026-06-13", type: "bearish", description: "高位出现黄昏之星", reliability: "低" }),
+      makePI({
+        name: "上升三法",
+        date: "2026-06-14",
+        type: "bullish",
+        description: "三法形态，中继看涨",
+        reliability: "中",
+      }),
+      makePI({
+        name: "黄昏之星",
+        date: "2026-06-13",
+        type: "bearish",
+        description: "高位出现黄昏之星",
+        reliability: "低",
+      }),
     ],
     summary: "近期看涨形态占优，中期看多",
     trend_phase: "上升趋势",
