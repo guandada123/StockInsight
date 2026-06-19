@@ -2,16 +2,20 @@
 
 import os
 import sqlite3
+import threading
+from typing import Any
 
 _DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "stock_cache.db"
 )
-_CACHE = {}
+_CACHE: dict[str, tuple | None] = {}
+_CACHE_LOCK = threading.Lock()
 
 
-def _query(code: str) -> tuple:
-    if code in _CACHE:
-        return _CACHE[code]
+def _query(code: str) -> tuple[Any, ...] | None:
+    with _CACHE_LOCK:
+        if code in _CACHE:
+            return _CACHE[code]
     try:
         conn = sqlite3.connect(_DB_PATH)
         cur = conn.execute(
@@ -20,12 +24,14 @@ def _query(code: str) -> tuple:
         )
         row = cur.fetchone()
         conn.close()
-        if row:
-            _CACHE[code] = (row[0], row[1])
-            return _CACHE[code]
+        with _CACHE_LOCK:
+            if row:
+                _CACHE[code] = (row[0], row[1])
+                return _CACHE[code]
     except Exception:
         pass
-    _CACHE[code] = None
+    with _CACHE_LOCK:
+        _CACHE[code] = None
     return None
 
 

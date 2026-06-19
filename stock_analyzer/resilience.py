@@ -58,7 +58,7 @@ def retry(
     def decorator(func: F) -> F:
         @wraps(func)
         def wrapper(*args, **kwargs):
-            last_exc: Exception | None = None
+            last_exc: BaseException | None = None
             for attempt in range(max_retries + 1):
                 try:
                     return func(*args, **kwargs)
@@ -82,7 +82,7 @@ def retry(
                         str(e)[:100],
                     )
                     if on_retry:
-                        on_retry(attempt + 1, e)
+                        on_retry(attempt + 1, e)  # type: ignore[arg-type]
                     time.sleep(delay)
             raise last_exc  # type: ignore
 

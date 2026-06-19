@@ -125,7 +125,7 @@ def _kline_fallback_batch(codes, sina_data):
     """
     results = {}
     # 用于缓存floatShare避免重复baostock查询
-    _float_share_cache = {}
+    _float_share_cache: dict[str, float] = {}
 
     for code in codes:
         try:
@@ -209,7 +209,7 @@ def _get_float_share_from_baostock(code):
         # 使用全局单例baostock连接
         if not hasattr(_get_float_share_from_baostock, "_logged_in"):
             bs.login()
-            _get_float_share_from_baostock._logged_in = True
+            _get_float_share_from_baostock._logged_in = True  # type: ignore[attr-defined]
 
         from datetime import datetime
 
@@ -411,7 +411,7 @@ def _validate_discipline(code, data, verbose=False):
     try:
         from .short_term import calc_fund_flow_summary
 
-        ff = calc_fund_flow_summary(code, days=5)
+        ff = calc_fund_flow_summary(code, days=5)  # type: ignore[call-arg]
         result["主力"] = ff
     except Exception:
         pass

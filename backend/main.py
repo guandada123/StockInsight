@@ -8,10 +8,16 @@ Tauri 集成:
     1. Rust sidecar 启动 Python 子进程运行此文件
     2. 轮询 GET /api/health 直到就绪
     3. 关闭时发送 POST /api/shutdown
+
+更新（2026-06-19）:
+    - 统一异常处理 + trace_id 注入
+    - 结构化日志（JSON）+ 每日轮转
 """
 
+import asyncio
 import logging
 import os
+import signal
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -20,21 +26,61 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+# ── 异常与日志增强 ──
+from backend.exceptions import register_exception_handlers, trace_id_middleware
+
 # 确保项目根目录在 sys.path 中（sidecar 启动时可能需要）
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+# ── 结构化日志初始化（替换 logging.basicConfig）──
+from backend.logging_config import setup_logging
+
+setup_logging()
 logger = logging.getLogger("stockinsight-api")
 
 START_TIME = time.time()
 
 
-# --- Simple in-memory rate limiter (token bucket) ---
+# --- Sliding-window rate limiter with file persistence ---
+import json as _json
+
 _RATE_LIMITS: dict[str, list[float]] = {}  # ip -> list of request timestamps
+_RATE_LIMITS_LOCK = asyncio.Lock()
 _RATE_MAX = 60  # max requests
 _RATE_WINDOW = 60.0  # per window (seconds)
+_RATE_DUMP_INTERVAL = 10.0  # flush to disk every N seconds
+_RATE_DUMP_PATH = os.path.join(os.path.dirname(__file__), ".rate_limits.json")
+_last_rate_dump = 0.0
+
+
+def _load_rate_limits() -> dict[str, list[float]]:
+    """启动时从磁盘恢复限流状态，防止重启后限流失效"""
+    try:
+        if os.path.exists(_RATE_DUMP_PATH):
+            with open(_RATE_DUMP_PATH) as f:
+                data = _json.load(f) if _json else {}
+            now = time.time()
+            return {ip: [t for t in ts if now - t < _RATE_WINDOW] for ip, ts in data.items()}
+    except Exception:
+        logger.warning("[rate_limit] failed to load rate limits from disk", exc_info=True)
+    return {}
+
+
+def _dump_rate_limits():
+    """定期将限流状态写入磁盘，用于重启恢复"""
+    global _last_rate_dump
+    _last_rate_dump = time.time()
+    try:
+        with open(_RATE_DUMP_PATH, "w") as f:
+            _json.dump(_RATE_LIMITS, f)
+    except Exception:
+        logger.warning("[rate_limit] failed to dump rate limits to disk", exc_info=True)
+
+
+# 启动时恢复限流状态
+_RATE_LIMITS = _load_rate_limits()
 
 
 @asynccontextmanager
@@ -43,6 +89,14 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("StockInsight API server shutting down...")
 
+
+# 生产环境关闭文档路由（安全加固）
+_IS_PRODUCTION = os.environ.get("PYWORKSPACE_ENV", "").lower() in ("production", "prod")
+_docs_kwargs = (
+    {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    if _IS_PRODUCTION
+    else {"docs_url": "/docs", "redoc_url": "/redoc"}
+)
 
 app = FastAPI(
     title="StockInsight Pro API",
@@ -54,8 +108,7 @@ app = FastAPI(
     ),
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    **_docs_kwargs,
     openapi_tags=[
         {"name": "市场行情", "description": "大盘指数、涨跌停、板块轮动"},
         {"name": "个股分析", "description": "七层全维度分析、K线、技术指标、资金流向"},
@@ -67,7 +120,13 @@ app = FastAPI(
     ],
 )
 
-# CORS: 允许 Tauri WebView (tauri://localhost) 和 Vite dev server (localhost:1420)
+# ── trace_id 注入（最先注册，确保后续中间件和路由均可读取 state.trace_id）──
+app.middleware("http")(trace_id_middleware)
+
+# ── 统一异常处理注册（必须早于路由注册）──
+register_exception_handlers(app)
+
+# CORS: 仅允许白名单来源和方法
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -77,8 +136,8 @@ app.add_middleware(
         "https://tauri.localhost",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -92,25 +151,52 @@ async def add_timing_header(request: Request, call_next):
 
 
 @app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """添加安全响应头：CSP、HSTS、X-Content-Type-Options、X-Frame-Options"""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "  # React 内联样式必需
+        "img-src 'self' data: https:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "form-action 'self'"
+    )
+    # HSTS — 仅在生产环境启用（开发环境无 HTTPS）
+    if _IS_PRODUCTION:
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=63072000; includeSubDomains; preload"
+        )
+    return response
+
+
+@app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     """Simple sliding-window rate limiter: 60 req/min per IP."""
-    ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    if ip not in _RATE_LIMITS:
-        _RATE_LIMITS[ip] = []
-    timestamps = _RATE_LIMITS[ip]
-    # Purge old entries
-    timestamps[:] = [t for t in timestamps if now - t < _RATE_WINDOW]
-    if len(timestamps) >= _RATE_MAX:
-        return JSONResponse(
-            status_code=429, content={"detail": "Too many requests. Try again later."}
-        )
-    timestamps.append(now)
-    # Prevent unbounded growth — evict stale IPs
-    if len(_RATE_LIMITS) > 10000:
-        stale = [ip for ip, ts in _RATE_LIMITS.items() if not ts or now - ts[-1] > _RATE_WINDOW]
-        for ip in stale:
-            del _RATE_LIMITS[ip]
+    async with _RATE_LIMITS_LOCK:
+        ip = request.client.host if request.client else "unknown"
+        now = time.time()
+        if ip not in _RATE_LIMITS:
+            _RATE_LIMITS[ip] = []
+        timestamps = _RATE_LIMITS[ip]
+        # Purge old entries
+        timestamps[:] = [t for t in timestamps if now - t < _RATE_WINDOW]
+        if len(timestamps) >= _RATE_MAX:
+            return JSONResponse(
+                status_code=429, content={"detail": "Too many requests. Try again later."}
+            )
+        timestamps.append(now)
+        # Prevent unbounded growth — evict stale IPs
+        if len(_RATE_LIMITS) > 10000:
+            stale = [ip for ip, ts in _RATE_LIMITS.items() if not ts or now - ts[-1] > _RATE_WINDOW]
+            for ip in stale:
+                del _RATE_LIMITS[ip]
+        # Periodically persist to disk for restart recovery
+        if now - _last_rate_dump > _RATE_DUMP_INTERVAL:
+            _dump_rate_limits()
     return await call_next(request)
 
 
@@ -140,17 +226,13 @@ async def shutdown():
 async def _delayed_shutdown():
     await asyncio.sleep(0.5)
     logger.info("Shutdown complete")
-    try:
-        import signal
-
-        signal.raise_signal(signal.SIGTERM)
-    except Exception:
-        os._exit(0)
+    # 使用 SIGTERM 优雅关闭，确保 SQLite WAL 和 buffer 被正确 flush
+    os.kill(os.getpid(), signal.SIGTERM)
 
 
 # ── 注册子路由 ──────────────────────────────────────
 
-from backend.routers import analysis, data_jobs, data_management, factors, market, portfolio
+from backend.routers import analysis, data_jobs, data_management, factors, market, portfolio, scan
 
 app.include_router(market.router)
 app.include_router(analysis.router)
@@ -158,6 +240,7 @@ app.include_router(portfolio.router)
 app.include_router(data_management.router)
 app.include_router(data_jobs.router)
 app.include_router(factors.router)
+app.include_router(scan.router)
 
 import asyncio  # noqa: E402
 

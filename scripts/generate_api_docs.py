@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 OpenAPI 文档生成脚本 — 从 FastAPI app 导出 openapi.json
 
@@ -16,8 +15,8 @@ CI 集成:
 """
 
 import json
-import sys
 import os
+import sys
 from pathlib import Path
 
 # 确保项目根目录可导入
@@ -29,16 +28,23 @@ os.chdir(PROJECT_ROOT)
 def get_openapi_spec() -> dict:
     """从 FastAPI app 提取 OpenAPI spec。"""
     from backend.main import app
+
     return app.openapi()
 
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="Generate OpenAPI documentation")
-    parser.add_argument("--output", "-o", default="docs/api/openapi.json",
-                       help="Output file path (default: docs/api/openapi.json)")
-    parser.add_argument("--check", action="store_true",
-                       help="Check if existing spec is up-to-date (for CI)")
+    parser.add_argument(
+        "--output",
+        "-o",
+        default="docs/api/openapi.json",
+        help="Output file path (default: docs/api/openapi.json)",
+    )
+    parser.add_argument(
+        "--check", action="store_true", help="Check if existing spec is up-to-date (for CI)"
+    )
     args = parser.parse_args()
 
     spec = get_openapi_spec()
@@ -59,7 +65,9 @@ def main():
             print("   Run: python scripts/generate_api_docs.py")
             # 打印差异摘要
             new_paths = set(spec.get("paths", {}).keys()) - set(existing.get("paths", {}).keys())
-            removed_paths = set(existing.get("paths", {}).keys()) - set(spec.get("paths", {}).keys())
+            removed_paths = set(existing.get("paths", {}).keys()) - set(
+                spec.get("paths", {}).keys()
+            )
             if new_paths:
                 print(f"   New endpoints: {new_paths}")
             if removed_paths:
@@ -68,9 +76,7 @@ def main():
 
     # 生成模式
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(spec, ensure_ascii=False, indent=2) + "\n"
-    )
+    output_path.write_text(json.dumps(spec, ensure_ascii=False, indent=2) + "\n")
 
     # 打印统计
     paths = spec.get("paths", {})

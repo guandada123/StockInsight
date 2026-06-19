@@ -4,9 +4,18 @@
   - 自动检测项目根目录（向上找 stock_cache.db 或 cli.py）
   - 统一路径常量（供 cache/alert/portfolio/report_html 复用）
   - 因子权重可通过环境变量覆盖
+
+2026-06-14 更新：
+  - 集成 python-dotenv 加载 .env 文件
+  - 敏感配置统一从环境变量读取
 """
 
 import os
+
+from stock_analyzer.env import get_env, load_env
+
+# 启动时自动加载 .env 文件（静默失败如果 dotenv 未安装）
+load_env()
 
 # ── 项目根目录 ────────────────────────────────────
 
@@ -74,7 +83,9 @@ API_HOSTS = [
     "https://push2.eastmoney.com",
 ]
 
-UT = "bd1d9ddb04089700cf9c27f6f7426281"
+UT = get_env("EASTMONEY_UT", "bd1d9ddb04089700cf9c27f6f7426281")
+# ⚠️ 以上默认值为已知公开占位 token，在生产环境请在 .env 中设置 EASTMONEY_UT 覆盖
+# 查看当前值: grep EASTMONEY_UT .env 2>/dev/null || echo "未设置，使用默认值"
 KLINE_PERIODS = {"daily": 101, "weekly": 102, "monthly": 103}
 ADJUST = {"qfq": 1, "hfq": 2, "none": 0}
 
@@ -124,6 +135,14 @@ SCAN_WORKERS = 8  # 扫描并行线程数
 
 # ── TuShare（可选增强数据源）────────────────────
 
-TUSHARE_TOKEN = os.environ.get("TUSHARE_TOKEN", "")
+TUSHARE_TOKEN = get_env("TUSHARE_TOKEN", "")
 # 注册地址: https://tushare.pro/register
-# 设置方式: set TUSHARE_TOKEN=your_token （或直接改此处）
+# 设置方式: 在 .env 文件中设置 TUSHARE_TOKEN=your_token
+# 或在系统环境变量中 export TUSHARE_TOKEN=your_token
+
+# ── 飞书推送（从环境变量读取）────────────────
+FEISHU_WEBHOOK = get_env("FEISHU_WEBHOOK", "")
+FEISHU_CHAT_ID = get_env("FEISHU_CHAT_ID", "")
+
+# ── AI 模型密钥 ─────────────────────────────
+DEEPSEEK_API_KEY = get_env("DEEPSEEK_API_KEY", "")

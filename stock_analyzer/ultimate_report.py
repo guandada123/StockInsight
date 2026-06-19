@@ -4,8 +4,8 @@
 结合 --full 的七层细节 + 板块/资金/预测框架
 """
 
-from datetime import datetime
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +51,8 @@ def ultimate_analysis(code: str):
 
     sector_full = "未知"
     sector_rank = 0
-    sector_score = 0
-    sector_flow = 0
+    sector_score = 0.0
+    sector_flow = 0.0
     ranked = []
     try:
         from .sector_info import get_stock_sector_full

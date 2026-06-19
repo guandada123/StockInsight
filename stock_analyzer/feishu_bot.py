@@ -7,26 +7,16 @@ Webhook URL 配置：环境变量 FEISHU_WEBHOOK_URL
 """
 
 import json
-import os
 import urllib.error
 import urllib.request
 from datetime import datetime
 
+from stock_analyzer.env import get_env
+
 
 def _webhook_url():
-    """获取 Webhook URL，优先环境变量"""
-    url = os.environ.get("FEISHU_WEBHOOK_URL", "")
-    if not url:
-        # 尝试从 .env 文件读取
-        env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
-        if os.path.exists(env_file):
-            with open(env_file, encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if line.startswith("FEISHU_WEBHOOK_URL="):
-                        url = line.split("=", 1)[1].strip().strip('"').strip("'")
-                        break
-    return url
+    """获取 Webhook URL，优先环境变量（.env 由 config.py 自动加载）"""
+    return get_env("FEISHU_WEBHOOK_URL", "")
 
 
 def send_text(content, webhook_url=None):
@@ -190,7 +180,7 @@ def _post(url, payload, timeout=10):
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # nosec — webhook POST 到配置 URL，非任意 URL
             result = json.loads(resp.read().decode("utf-8"))
             ok = result.get("code") == 0 or result.get("StatusCode") == 0
             return {"ok": ok, "response": result}
@@ -248,7 +238,7 @@ def push_daily_picks(webhook_url=None):
 
     # 3. 增强选股
     print("正在执行增强选股...")
-    codes = []
+    codes: list[str] = []
     try:
         from stock_analyzer.enhanced_screener import enhanced_scan
 

@@ -257,8 +257,8 @@ def run_backtest(
     # 模拟交易
     capital = initial_capital
     position = 0  # 持股数量
-    entry_price = 0  # 开仓均价
-    peak_since_entry = 0  # 持仓期间最高价（移动止损用）
+    entry_price = 0.0  # 开仓均价
+    peak_since_entry = 0.0  # 持仓期间最高价（移动止损用）
     trades = []
     equity = [capital]
 
@@ -283,8 +283,8 @@ def run_backtest(
             }
         )
         position = 0
-        entry_price = 0
-        peak_since_entry = 0
+        entry_price = 0.0
+        peak_since_entry = 0.0
 
     for i in range(len(df)):
         price = float(df["收盘"].iloc[i])
@@ -457,7 +457,7 @@ def compare_strategies(
         strategies = DEFAULT_COMPARE_STRATEGIES
 
     results = {}
-    skipped = []
+    skipped: list[str] = []
     for s_name in strategies:
         if s_name not in STRATEGIES:
             skipped.append(f"{s_name}(未知策略)")
@@ -482,7 +482,7 @@ def compare_strategies(
                 "summary": result["summary"],
             }
         else:
-            skipped.append(s_info["name"])
+            skipped.append(s_info["name"])  # type: ignore[arg-type]
 
     if verbose and skipped:
         print(f"  [跳过] {', '.join(skipped)}: 信号不足")

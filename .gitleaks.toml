@@ -1,0 +1,17 @@
+title = "StockInsight Secret Detection Configuration — extends gitleaks defaults"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Legitimate references that should not trigger alarms"
+paths = [
+    '''(?i).*test_.*\.py$''',
+    '''\.github/''',
+]
+regexes = [
+    '''os\.environ\.get''',
+    '''os\.getenv''',
+    '''(?:changeme|placeholder)''',
+    '''yquoter''',  # 私有包名，不是密钥
+]

@@ -1,9 +1,20 @@
+# ============================================================
+# StockInsight Pro CI — v2.0 (Unified Standard)
+# Phases: Lint → Test → Type Check → Security
+# ============================================================
 name: StockInsight Pro CI
 
 on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "20"
+  RUFF_CONFIG: ruff.toml
+  COV_FAIL_UNDER: 70
 
 jobs:
   # ────────────────────────────
@@ -16,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - name: Install dependencies
         run: npm ci
@@ -38,7 +49,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - name: Install dependencies
         run: npm ci
@@ -46,7 +57,25 @@ jobs:
         run: npx vitest run
 
   # ────────────────────────────
-  # Backend: Ruff + Tests
+  # Pre-commit Hooks Check
+  # ────────────────────────────
+  pre-commit:
+    name: Pre-commit Hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: "requirements*.txt"
+      - name: Install pre-commit
+        run: pip install pre-commit
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files --show-diff-on-failure
+
+  # ────────────────────────────
+  # Backend: Ruff Lint + Format
   # ────────────────────────────
   backend-lint:
     name: Backend Lint
@@ -55,14 +84,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: "requirements*.txt"
       - name: Install ruff
         run: pip install ruff
       - name: Ruff lint
-        run: ruff check backend/ stock_analyzer/ --config ruff.toml
+        run: ruff check backend/ backend/services/ stock_analyzer/ --config ${{ env.RUFF_CONFIG }}
       - name: Ruff format check
-        run: ruff format --check backend/ stock_analyzer/ --config ruff.toml
+        run: ruff format --check backend/ backend/services/ stock_analyzer/ --config ${{ env.RUFF_CONFIG }}
 
+  # ────────────────────────────
+  # Backend: Unit Tests
+  # ────────────────────────────
   backend-test:
     name: Backend Tests
     runs-on: ubuntu-latest
@@ -71,18 +105,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: "requirements*.txt"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-cov fastapi uvicorn httpx
-          pip install -r requirements.txt 2>/dev/null || true
+          pip install pytest pytest-cov pytest-asyncio fastapi uvicorn httpx aiosqlite
+          pip install -r <(grep -v '^yquoter' requirements.txt) || echo "::warning::私有包安装失败，测试会跳过对应用例"
       - name: Run tests with coverage
         run: |
-          python -m pytest stock_analyzer/test_*.py backend/tests/ -v --tb=short \
-            --cov=stock_analyzer --cov=backend \
+          python -m pytest stock_analyzer/tests/ backend/tests/ -v --tb=short \
+            --cov=stock_analyzer --cov=backend --cov=backend.services \
             --cov-report=term-missing \
-            --cov-fail-under=40
+            --cov-fail-under=${{ env.COV_FAIL_UNDER }} \
+            --no-cov-on-fail
 
   # ────────────────────────────
   # Type Check (mypy)
@@ -94,22 +131,24 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: "requirements*.txt"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install mypy
-          pip install -r requirements.txt 2>/dev/null || true
+          pip install -r <(grep -v '^yquoter' requirements.txt) || echo "::warning::私有包安装失败，mypy 会忽略缺失导入"
       - name: Type check
         run: |
-          mypy stock_analyzer/ backend/ \
+          mypy stock_analyzer/ backend/ backend/services/ \
             --ignore-missing-imports \
             --check-untyped-defs \
             --warn-return-any \
             --warn-redundant-casts || echo "::warning::mypy 发现类型提示问题（非阻塞）"
 
   # ────────────────────────────
-  # Security
+  # Security Scan
   # ────────────────────────────
   security:
     name: Security Scan
@@ -118,22 +157,28 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: "requirements*.txt"
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - name: Python security scan
+      - name: Install scanners
         run: |
-          pip install bandit
-          bandit -r backend/ stock_analyzer/ -ll --skip B101
+          pip install bandit safety
+      - name: Bandit (code-level scan)
+        run: bandit -r backend/ backend/services/ stock_analyzer/ -ll --skip B101 --exclude '*/tests/*'
+      - name: Safety (dependency scan)
+        run: safety check --full-report || true
       - name: npm audit
         run: |
           npm ci
           npm audit --audit-level=high || true
-      - name: Check for secrets
+      - name: Secret scan
         run: |
-          if grep -rn "API_KEY\s*=\s*['\"][^'\"]*['\"]" backend/ stock_analyzer/ 2>/dev/null | grep -v "None\|your_\|changeme\|example"; then
-            echo "::warning::Possible hardcoded API key detected"
+          if grep -rn "PRIVATE KEY\|-----BEGIN RSA\|-----BEGIN OPENSSH" backend/ backend/services/ stock_analyzer/ 2>/dev/null; then
+            echo "::error::Private key detected in source code"
+            exit 1
           fi
-          echo "Secret scan complete"
+          echo "No secrets found"

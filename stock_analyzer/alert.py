@@ -9,9 +9,14 @@
 存储路径：
 - 规则: {os.path.join(os.path.dirname(os.path.dirname(__file__)), "alerts.json")}
 - 日志: {os.path.join(os.path.dirname(os.path.dirname(__file__)), "alerts_log.txt")}
+
+飞书集成：
+- 触发预警时自动推送到飞书群（需配置 FEISHU_WEBHOOK_URL 环境变量）
+- 设置 FEISHU_ALERTS_ENABLED=0 可禁用飞书推送
 """
 
 import json
+import logging
 import os
 import re
 import time
@@ -22,8 +27,10 @@ import numpy as np
 from .analysis import full_technical_analysis
 from .cache import cached_fundamentals, cached_kline
 from .config import ALERTS_LOG_PATH, ALERTS_PATH
+from .env import get_env
 from .fetcher import sina_real_time
 
+logger = logging.getLogger("stockinsight.alert")
 LOG_PATH = ALERTS_LOG_PATH
 
 
@@ -68,7 +75,7 @@ def add_alert(config):
     config.setdefault("enabled", True)
     alerts.append(config)
     _save_alerts(alerts)
-    print(f"  预警已添加 [{alert_id}]: {config}")
+    logger.info("预警已添加 [%s]: %s", alert_id, config)
     return alert_id
 
 
@@ -77,10 +84,10 @@ def remove_alert(alert_id):
     alerts = load_alerts()
     new_alerts = [a for a in alerts if a.get("id") != alert_id]
     if len(new_alerts) == len(alerts):
-        print(f"  未找到预警: {alert_id}")
+        logger.warning("未找到预警: %s", alert_id)
         return False
     _save_alerts(new_alerts)
-    print(f"  预警已删除: {alert_id}")
+    logger.info("预警已删除: %s", alert_id)
     return True
 
 
@@ -318,10 +325,10 @@ def check_alerts(alert_list):
                 )
             elif result is None:
                 # 检查出错，打印警告但不中断
-                print(f"  [警告] {msg}")
+                logger.warning("[警告] %s", msg)
 
         except Exception as e:
-            print(f"  [错误] 检查预警 {config.get('id', '?')} 时异常: {e}")
+            logger.error("检查预警 %s 时异常: %s", config.get("id", "?"), e)
 
     return triggered
 
@@ -329,26 +336,62 @@ def check_alerts(alert_list):
 # ── 运行全部预警 ───────────────────────────────────
 
 
+def _notify_via_feishu(triggered: list) -> bool:
+    """将触发的预警推送到飞书群"""
+    webhook_url = get_env("FEISHU_WEBHOOK_URL", get_env("FEISHU_WEBHOOK", ""))
+    if not webhook_url:
+        return False
+
+    if get_env("FEISHU_ALERTS_ENABLED", "1") != "1":
+        return False
+
+    try:
+        lines = ["【StockInsight 预警触发】"]
+        for t in triggered:
+            emoji = "🔴" if t.get("type") in ("price", "fundamental") else "🟡"
+            lines.append(f"{emoji} [{t['type']}] {t['message']}")
+
+        content = "\n".join(lines)
+        payload = {"msg_type": "text", "content": {"text": content}}
+
+        import urllib.request
+
+        req = urllib.request.Request(
+            webhook_url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:  # nosec — webhook POST 到配置 URL，非任意 URL
+            result = json.loads(resp.read().decode("utf-8"))
+            if result.get("code") == 0:
+                logger.info("✅ 已推送 %d 条预警到飞书", len(triggered))
+                return True
+            else:
+                logger.warning("⚠️ 飞书返回异常: %s", result)
+                return False
+    except Exception as e:
+        logger.error("⚠️ 飞书推送失败: %s", e)
+        return False
+
+
 def run_all_alerts():
-    """加载并检查所有预警，触发时打印到终端并写入日志文件"""
+    """加载并检查所有预警，触发时打印到终端、写入日志文件、飞书推送"""
     alerts = load_alerts()
     if not alerts:
-        print("  无待检查的预警规则")
+        logger.info("无待检查的预警规则")
         return []
 
-    print(f"  共 {len(alerts)} 条预警规则，开始检查...")
+    logger.info("共 %d 条预警规则，开始检查...", len(alerts))
     triggered = check_alerts(alerts)
 
     if not triggered:
-        print("  本次无预警触发")
+        logger.info("本次无预警触发")
         return []
 
     # 终端输出
-    print("\n  ╔══════════════════════════════════════════╗")
-    print(f"  ║       触发预警汇总 ({len(triggered)} 条)          ║")
-    print("  ╚══════════════════════════════════════════╝")
+    logger.info("触发预警汇总 (%d 条):", len(triggered))
     for t in triggered:
-        print(f"  [{t['time']}] [{t['type']}] {t['message']}")
+        logger.info("[%s] [%s] %s", t["time"], t["type"], t["message"])
 
     # 写入日志
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -358,5 +401,9 @@ def run_all_alerts():
             f.write(f"[{t['time']}] [{t['type']}] [{t['code']}] {t['message']}\n")
         f.write(f"-- 检查完成于 {timestamp}, 触发 {len(triggered)} 条 --\n")
 
-    print(f"  日志已写入: {LOG_PATH}")
+    logger.info("日志已写入: %s", LOG_PATH)
+
+    # 飞书推送
+    _notify_via_feishu(triggered)
+
     return triggered

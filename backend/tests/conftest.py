@@ -1,9 +1,13 @@
 """
 StockInsight API 集成测试 — 共享 fixtures
+
+注意: stock_analyzer mock 在 test_api_integration.py 模块加载时自动处理，
+      conftest 仅提供通用测试数据 fixtures 和 mock_fetcher 引用。
 """
 
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -11,6 +15,10 @@ import pytest
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "backend"))
+
+
+# ── 模块级 mock_fetcher 引用（供 test_api_integration.py 使用）──
+mock_fetcher = MagicMock()
 
 
 @pytest.fixture

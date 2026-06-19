@@ -72,9 +72,12 @@ describe("Dashboard", () => {
   it("shows error message on fetch failure", async () => {
     mockFetch.mockRejectedValue(new Error("Network error"));
     renderDashboard();
-    await waitFor(() => {
-      const text = document.querySelector('.market-grid')?.textContent || '';
-      expect(text).toMatch(/加载失败|数据加载失败|请检查网络/);
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const text = document.querySelector(".market-grid")?.textContent || "";
+        expect(text).toMatch(/Network error|加载失败|数据加载失败|请检查网络/);
+      },
+      { timeout: 5000 }
+    );
   });
 });

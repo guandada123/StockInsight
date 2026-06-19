@@ -82,7 +82,7 @@ class FactorExpressionEngine:
         value = self._eval_node(parsed.body, df)
 
         if np.isscalar(value):
-            value = pd.Series([float(value)] * len(df), index=df.index)
+            value = pd.Series([float(value)] * len(df), index=df.index)  # type: ignore[arg-type]
         if not isinstance(value, pd.Series):
             raise ValueError("表达式结果必须是 pandas Series")
 
@@ -99,10 +99,10 @@ class FactorExpressionEngine:
                 raise ValueError(f"不支持的运算符: {type(node.op).__name__}")
             return op(left, right)
         if isinstance(node, ast.UnaryOp):
-            op = self.unary_ops.get(type(node.op))
+            op = self.unary_ops.get(type(node.op))  # type: ignore[assignment]
             if op is None:
                 raise ValueError(f"不支持的一元运算符: {type(node.op).__name__}")
-            return op(self._eval_node(node.operand, df))
+            return op(self._eval_node(node.operand, df))  # type: ignore[call-arg]
         if isinstance(node, ast.Name):
             if node.id.startswith("__"):
                 raise ValueError("不安全的表达式")
@@ -112,7 +112,7 @@ class FactorExpressionEngine:
                 raise ValueError(f"列不存在: {node.id}")
             return pd.to_numeric(df[node.id], errors="coerce")
         if isinstance(node, ast.Constant):
-            if isinstance(node.value, (int, float)):
+            if isinstance(node.value, int | float):
                 return node.value
             raise ValueError("仅允许数值常量")
         if isinstance(node, ast.Call):
@@ -160,9 +160,9 @@ class FactorExpressionEngine:
         raise ValueError(f"不支持的方法: {method_name}")
 
     def _as_scalar(self, value: Any, name: str):
-        if isinstance(value, (int, np.integer)):
+        if isinstance(value, int | np.integer):
             return int(value)
-        if isinstance(value, (float, np.floating)):
+        if isinstance(value, float | np.floating):
             return float(value)
         raise ValueError(f"{name} 必须为数值标量")
 

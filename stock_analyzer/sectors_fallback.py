@@ -935,7 +935,7 @@ SECTOR_STOCKS_FALLBACK = {
 }
 
 # ── 代码 → 板块名称 反向映射 ─────────────────────
-CODE_TO_SECTOR = {}
+CODE_TO_SECTOR: dict[str, list[str]] = {}
 for _sector_name, _sector_info in SECTOR_STOCKS_FALLBACK.items():
     for _code in _sector_info.get("成分股", []):
         if _code not in CODE_TO_SECTOR:

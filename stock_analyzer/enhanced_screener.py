@@ -64,7 +64,7 @@ def _get_sector_stocks(sector_name):
         if row:
             import pickle
 
-            data = pickle.loads(row[0])
+            data = pickle.loads(row[0])  # nosec — 从本地 SQLite 读取，非不可信数据
             if isinstance(data, dict) and "stocks" in data:
                 return data["stocks"]
     except Exception:
@@ -80,7 +80,7 @@ def _get_sector_stocks(sector_name):
 
 
 def pass1_quick_filter(
-    codes, sector_top_n=5, min_price=5, max_price=500, min_amplitude=0, min_turnover=0
+    codes, sector_top_n=5, min_price=5, max_price=500, min_amplitude=0, min_turnover=1_000_000
 ):
     """第一轮快速预筛 — 仅用实时行情 + 板块排名
 
@@ -151,7 +151,7 @@ def pass1_quick_filter(
             stats["price_filtered"] += 1
             continue
         vol = float(info.get("成交量", 0) or 0)
-        if vol < 1_000_000:
+        if vol < min_turnover:
             stats["vol_filtered"] += 1
             continue
         if min_amplitude > 0:
@@ -284,7 +284,7 @@ def pass2_deep_analyze(candidates, top_n=30, use_ml=True, use_custom_factors=Tru
                 "量能分": round(_gf(fs, "volume"), 1),
                 "风险分": round(_gf(fs, "risk"), 1),
                 "舆情分": round(_gf(fs, "sentiment"), 1),
-                "短线评分": round(st_score, 1) if isinstance(st_score, (int, float)) else 50,
+                "短线评分": round(st_score, 1) if isinstance(st_score, int | float) else 50,
                 "长线评分": round(trading.get("long_term_score", 50), 1),
                 "组合信号强度": combo.get("强度", 0),
                 "共振强度": mr.get("共振强度", 0),

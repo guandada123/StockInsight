@@ -3,7 +3,7 @@
 // 开发模式走 Vite 代理 (相对路径)，生产模式直连
 export const API_BASE = window.location.hostname === "localhost" ? "" : "http://127.0.0.1:8765";
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data: T;
   error: string | null;
@@ -137,7 +137,7 @@ export interface MlPrediction {
   direction: string;
   confidence: number;
   votes: string;
-  models: Record<string, any>;
+  models: Record<string, unknown>;
 }
 
 export interface SignalData {

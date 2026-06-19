@@ -28,6 +28,18 @@ A股全链路量化投资分析平台 — 65个Python文件 · 23,000+行代码 
 - **三重过滤系统** — 大盘→板块→个股，板块排名定胜率
 - **Tauri桌面端** — React + FastAPI + Rust 三进程架构
 
+## 测试状态
+
+[![StockInsight CI](https://github.com/guandada123/StockInsight/actions/workflows/stockinsight-ci.yml/badge.svg)](https://github.com/guandada123/StockInsight/actions/workflows/stockinsight-ci.yml)
+![Tests](https://img.shields.io/badge/tests-45%20passing-brightgreen.svg)
+![Coverage](https://img.shields.io/badge/coverage-79.9%25-yellow.svg)
+![Python](https://img.shields.io/badge/python-3.12-blue.svg)
+
+当前测试分布：
+- **后端 (Python)**：45+ 测试，覆盖率 **79.91%**（超 70% 阈值 ✅）
+- **前端 (TypeScript)**：45 测试，6 个测试文件全部通过 ✅
+- **Docker 构建**：多阶段镜像构建通过，镜像大小 2.45GB
+
 ## 快速开始
 
 ```bash
@@ -55,6 +67,34 @@ python cli.py analyze 601677 --ultimate
 # 生成DOCX深度报告
 python gen_docx_report.py 600066
 ```
+
+## Docker 构建与运行
+
+多阶段 Docker 构建（`Dockerfile`），3 阶段流水线：
+
+| 阶段 | 基础镜像 | 功能 |
+|:----:|----------|------|
+| `frontend-builder` | `node:20-slim` | 编译 React TypeScript 前端 (Vite) |
+| `python-deps` | `python:3.12-slim` | 安装 Python 依赖 (pip) |
+| `runtime` | `python:3.12-slim` | 最终运行镜像，合并前端产物 + Python 依赖 |
+
+```bash
+# 构建镜像
+docker build -t stockinsight-pro:latest .
+
+# 使用 docker-compose 启动（含健康检查）
+docker compose up -d
+
+# 查看日志
+docker compose logs -f
+
+# 停止服务
+docker compose down
+```
+
+API 服务默认监听 `127.0.0.1:8765`，支持 35+ API 端点，健康检查端点：`/api/health`。
+
+> 镜像大小约 **2.45GB**（含完整 Python 数据科学栈：pandas, numpy, scikit-learn, XGBoost, LightGBM, matplotlib, FastAPI 等）。如需减少体积，可进一步精简 Python 依赖。
 
 ## 选股流程
 

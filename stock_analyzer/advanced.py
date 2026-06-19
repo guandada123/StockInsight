@@ -33,7 +33,7 @@ def _cached_perm(table, key, fetch_fn, ttl_seconds):
         from .cache import _get_conn
 
         c = _get_conn()
-        cur = c.execute(f"SELECT updated_at FROM {table} WHERE key=?", (key,))
+        cur = c.execute(f"SELECT updated_at FROM {table} WHERE key=?", (key,))  # nosec — table 为内部常量
         row = cur.fetchone()
         if row and time.time() - row[0] < ttl_seconds:
             _MEM_CACHE[mem_key] = (time.time(), stored)
@@ -461,7 +461,7 @@ def get_macro_indicators():
 
 def _fetch_macro_indicators():
     """主要宏观指标汇总"""
-    result = {}
+    result: dict[str, float | str | None] = {}
     try:
         import akshare as ak
 

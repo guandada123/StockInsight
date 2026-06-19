@@ -30,5 +30,12 @@ mainboard_summary_*.csv
 !package-lock.json
 !tsconfig.json
 !portfolios/*.json
+portfolios/test_*.json
 !alerts.json
 !mainboard_*.json
+venv/
+.venv/
+*,cover
+.coverage
+*.tmp.json
+.rate_limits.json

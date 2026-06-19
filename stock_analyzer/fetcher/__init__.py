@@ -25,7 +25,9 @@ class Freshness(Enum):
 
 
 # 熔断器：连续失败 N 次后，M 秒内跳过该 API
-_CIRCUIT_STATE = {}  # {api_name: {"failures": N, "last_fail": timestamp, "open_until": timestamp}}
+_CIRCUIT_STATE: dict[
+    str, dict[str, float | int]
+] = {}  # {api_name: {"failures": N, "last_fail": timestamp, "open_until": timestamp}}
 
 
 def _circuit_breaker(api_name, max_failures=3, cooldown=300):
@@ -91,6 +93,7 @@ from ..logging_config import get_logger
 logger = get_logger("fetcher")
 
 from ..config import HEADERS
+from ..env import get_env
 from ..sectors_fallback import SECTOR_STOCKS_FALLBACK
 
 # ═══════════════════════════════════════════════════════════════
@@ -200,22 +203,58 @@ def _retry_request(method, url, max_retries=1, base_delay=0.5, timeout=5, sessio
 
 
 # ── 新浪速率限制跟踪 ──────────────────────────────
+#
+# v2.0: 支持两种模式：
+#   - 默认：跨进程 FileRateLimiter（fcntl 文件锁，多进程安全）
+#   - 降级：内存列表（单进程可用，向后兼容）
+#
+# 通过环境变量 RATE_LIMITER_MODE 切换：
+#   export RATE_LIMITER_MODE=file     # 文件锁（新，推荐）
+#   export RATE_LIMITER_MODE=memory   # 内存列表（旧，兼容）
 
-_SINA_REQUEST_TIMES = []  # 记录最近120秒内请求的时间戳
+_SINA_REQUEST_TIMES: list[float] = []  # 降级模式：记录最近120秒内请求的时间戳
 _SINA_RATE_LIMIT = 130  # 安全阈值（实际约150次/120s）
 _SINA_COOLDOWN = 120  # 冷却时间（秒）
 
+# 文件锁速率限制器（懒加载）
+_FILE_RATE_LIMITER = None
+
+
+def _get_file_rate_limiter():
+    """获取文件锁速率限制器（懒加载单例）"""
+    global _FILE_RATE_LIMITER
+    if _FILE_RATE_LIMITER is None:
+        try:
+            from stock_analyzer.data_sources import get_sina_rate_limiter
+
+            _FILE_RATE_LIMITER = get_sina_rate_limiter()
+        except ImportError:
+            return None
+    return _FILE_RATE_LIMITER
+
 
 def _sina_check_rate():
-    """检查新浪API速率限制，接近阈值时自动等待冷却"""
+    """检查新浪API速率限制，接近阈值时自动等待冷却
+
+    v2.0: 默认使用跨进程 FileRateLimiter（多进程安全）。
+          可通过 RATE_LIMITER_MODE=memory 回退到内存列表。
+    """
+    # 文件锁模式（默认，多进程安全）
+    use_file_lock = get_env("RATE_LIMITER_MODE", "file") != "memory"
+    if use_file_lock:
+        rl = _get_file_rate_limiter()
+        if rl is not None:
+            rl.check_and_wait()
+            return
+
+    # 降级模式：内存列表（单进程兼容）
     global _SINA_REQUEST_TIMES
     now = time.time()
-    # 清理120秒前的记录
     _SINA_REQUEST_TIMES = [t for t in _SINA_REQUEST_TIMES if now - t < 120]
 
     if len(_SINA_REQUEST_TIMES) >= _SINA_RATE_LIMIT:
         oldest = min(_SINA_REQUEST_TIMES)
-        wait = 120 - (now - oldest) + 5  # 等到最早的请求过期 + 5s缓冲
+        wait = 120 - (now - oldest) + 5
         if wait > 0:
             logger.info(f"新浪API速率限制({len(_SINA_REQUEST_TIMES)}次/120s)，等待{wait:.0f}s...")
             time.sleep(wait)
@@ -577,42 +616,13 @@ def _adata_kline(code, days):
 
 
 def _get_tushare_token():
-    """获取 Tushare token，优先 .env 再环境变量再 config"""
-    # 从 .env 文件读取
-    try:
-        env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
-        if os.path.exists(env_file):
-            with open(env_file, encoding="utf-8") as f:
-                for line in f:
-                    if line.startswith("TUSHARE_TOKEN="):
-                        return line.strip().split("=", 1)[1].strip().strip('"').strip("'")
-    except Exception:
-        pass
-    # 环境变量
-    token = os.environ.get("TUSHARE_TOKEN", "")
-    if token:
-        return token
-    # config.py
-    try:
-        from .config import TUSHARE_TOKEN
-
-        return TUSHARE_TOKEN
-    except ImportError:
-        return ""
+    """获取 Tushare token（使用统一 env 模块，.env 由 config.py 自动加载）"""
+    return get_env("TUSHARE_TOKEN", "")
 
 
 def _get_tushare_api_url():
     """获取 Tushare API 地址，支持代理"""
-    try:
-        env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
-        if os.path.exists(env_file):
-            with open(env_file, encoding="utf-8") as f:
-                for line in f:
-                    if line.startswith("TUSHARE_API_URL="):
-                        return line.strip().split("=", 1)[1].strip().strip('"').strip("'")
-    except Exception:
-        pass
-    return ""
+    return get_env("TUSHARE_API_URL", "")
 
 
 def _tushare_kline(code, days):
@@ -789,23 +799,23 @@ def _tickflow_kline(code, days):
 
 
 def get_kline(code, days=120):
-    """获取日K线（七源容灾：根据网络健康动态调整优先级）
+    """获取日K线（七源容灾：网络健康 → DataSourceChain含熔断 → 兜底源）
 
     优先使用当前最快源，失败或限流时自动切换。
+    主链 5 源受熔断器保护（3次失败/5分钟冷却），兜底 2 源无熔断。
     返回 DataFrame，包含 日期/开盘/收盘/最高/最低/成交量/涨跌幅 等标准列。
     """
-    # 读取网络健康状态，决定源优先级
+    # ── 网络健康状态：决定源优先级 ──
     try:
         from .network_health import get_health
 
         h = get_health()
-        mode = h.mode
-        # 离线模式：跳过所有网络源，直接尝试Baostock
-        if mode == "offline":
+        # 离线模式：跳过所有网络源，直接尝试 Baostock
+        if h.mode == "offline":
             df = _baostock_kline(code, days)
             return df if not df.empty else pd.DataFrame()
         # 快速模式：优先当前最快源
-        if mode == "fast" and h.best_kline_source == "tencent":
+        if h.mode == "fast" and h.best_kline_source == "tencent":
             df = _tencent_kline(code, days)
             if not df.empty:
                 return df
@@ -815,22 +825,19 @@ def get_kline(code, days=120):
     except Exception:
         pass  # 健康检测不可用，走默认容灾链
 
-    # 默认容灾链：新浪→腾讯→Baostock→AData→TuShare→yquoter→TickFlow
-    df = _sina_kline(code, days)
-    if not df.empty:
-        return df
-    df = _tencent_kline(code, days)
-    if not df.empty:
-        return df
-    df = _baostock_kline(code, days)
-    if not df.empty:
-        return df
-    df = _adata_kline(code, days)
-    if not df.empty:
-        return df
-    df = _tushare_kline(code, days)
-    if not df.empty:
-        return df
+    # ── DataSourceChain 主容灾链（熔断器保护）──
+    # 新浪→腾讯→Baostock→AData→Tushare
+    try:
+        from stock_analyzer.data_sources import get_default_kline_chain
+
+        chain = get_default_kline_chain()
+        df = chain.fetch_kline(code, days)
+        if not df.empty:
+            return df
+    except Exception:
+        pass  # Chain 不可用，走兜底
+
+    # ── 兜底源：yquoter → TickFlow（无熔断，最后防线）──
     df = _yquoter_kline(code, days)
     if not df.empty:
         return df
