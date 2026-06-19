@@ -47,7 +47,7 @@ repos:
     hooks:
       - id: prettier
         files: ^src/.*\.(ts|tsx|css)$
-        types_or: [typescript, tsx, css]
+        types_or: [ts, tsx, css]
         additional_dependencies:
           - prettier@3.3.0
 

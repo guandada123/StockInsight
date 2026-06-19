@@ -88,7 +88,7 @@ describe("ManipulatorSection", () => {
   });
 
   it("does not render volume analysis when empty", () => {
-    const { container } = render(<ManipulatorSection mi={makeMI({ volume_analysis: "" })} />);
+    render(<ManipulatorSection mi={makeMI({ volume_analysis: "" })} />);
     expect(screen.queryByText("近期成交量明显放大")).not.toBeInTheDocument();
   });
 
@@ -98,7 +98,7 @@ describe("ManipulatorSection", () => {
   });
 
   it("does not render chip analysis when empty", () => {
-    const { container } = render(<ManipulatorSection mi={makeMI({ chip_analysis: "" })} />);
+    render(<ManipulatorSection mi={makeMI({ chip_analysis: "" })} />);
     expect(screen.queryByText("低位筹码集中")).not.toBeInTheDocument();
   });
 

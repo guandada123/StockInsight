@@ -21,10 +21,13 @@ import pandas as pd
 # ── 辅助：不关闭的 SQLite 连接 wrapper ──────────────────────────────
 class _NoCloseConn:
     """包装 sqlite3.Connection，使其 close() 成为 no-op，用于验证数据"""
+
     def __init__(self, conn):
         self._conn = conn
+
     def __getattr__(self, name):
         return getattr(self._conn, name)
+
     def close(self):
         pass
 
@@ -350,7 +353,7 @@ class TestDownloadDailyBasic(unittest.TestCase):
     @patch("stock_analyzer.tushare_loader._get_conn")
     @patch("stock_analyzer.tushare_loader.get_tushare_pro")
     def test_download_daily_basic(self, mock_get_pro, mock_get_conn):
-        """下载基本面数据 → 插入 """
+        """下载基本面数据 → 插入"""
         real_conn = sqlite3.connect(":memory:")
         mock_get_conn.return_value = _NoCloseConn(real_conn)
 
@@ -528,9 +531,7 @@ class TestDownloadDailyHistory(unittest.TestCase):
             "CREATE TABLE IF NOT EXISTS stock_trade_calendar "
             "(exchange TEXT, cal_date TEXT PRIMARY KEY, is_open INTEGER, pretrade_date TEXT)"
         )
-        conn.execute(
-            "INSERT INTO stock_trade_calendar VALUES ('SSE', '20250601', 1, '20250531')"
-        )
+        conn.execute("INSERT INTO stock_trade_calendar VALUES ('SSE', '20250601', 1, '20250531')")
         conn.execute(
             "CREATE TABLE IF NOT EXISTS kline_store "
             "(code TEXT PRIMARY KEY, data BLOB, update_time REAL)"

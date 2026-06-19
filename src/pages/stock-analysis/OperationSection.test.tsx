@@ -56,7 +56,7 @@ describe("OperationSection", () => {
   });
 
   it("does not render take profit when array is empty", () => {
-    const { container } = render(<OperationSection op={makeOp({ take_profit: [] })} />);
+    render(<OperationSection op={makeOp({ take_profit: [] })} />);
     expect(screen.queryByText("止盈目标1")).not.toBeInTheDocument();
   });
 
