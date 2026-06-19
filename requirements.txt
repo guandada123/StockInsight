@@ -17,7 +17,7 @@ tushare>=1.4
 
 # 可选数据源（增强容灾）
 yquoter>=0.1
-adata>=0.1
+adata>=2.9.5
 
 # 自然语言选股
 pywencai>=0.1
