@@ -53,17 +53,13 @@ describe("RiskSection", () => {
   });
 
   it("applies medium class for medium risk", () => {
-    const { container } = render(
-      <RiskSection risks={[makeRisk({ level: "medium" })]} />
-    );
+    const { container } = render(<RiskSection risks={[makeRisk({ level: "medium" })]} />);
     const item = container.querySelector(".risk-item");
     expect(item?.className).toContain("medium");
   });
 
   it("applies low class for low risk", () => {
-    const { container } = render(
-      <RiskSection risks={[makeRisk({ level: "low" })]} />
-    );
+    const { container } = render(<RiskSection risks={[makeRisk({ level: "low" })]} />);
     const item = container.querySelector(".risk-item");
     expect(item?.className).toContain("low");
   });

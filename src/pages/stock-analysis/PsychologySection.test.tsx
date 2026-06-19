@@ -41,49 +41,37 @@ describe("PsychologySection", () => {
   });
 
   it("uses greed class for 追涨", () => {
-    const { container } = render(
-      <PsychologySection rp={makeRP({ emotion: "追涨" })} />
-    );
+    const { container } = render(<PsychologySection rp={makeRP({ emotion: "追涨" })} />);
     const label = container.querySelector(".emotion-label");
     expect(label?.className).toContain("greed");
   });
 
   it("uses fear class for 恐惧", () => {
-    const { container } = render(
-      <PsychologySection rp={makeRP({ emotion: "恐惧" })} />
-    );
+    const { container } = render(<PsychologySection rp={makeRP({ emotion: "恐惧" })} />);
     const label = container.querySelector(".emotion-label");
     expect(label?.className).toContain("fear");
   });
 
   it("uses fear class for 恐慌抛售", () => {
-    const { container } = render(
-      <PsychologySection rp={makeRP({ emotion: "恐慌抛售" })} />
-    );
+    const { container } = render(<PsychologySection rp={makeRP({ emotion: "恐慌抛售" })} />);
     const label = container.querySelector(".emotion-label");
     expect(label?.className).toContain("fear");
   });
 
   it("uses hesitation class for 犹豫观望", () => {
-    const { container } = render(
-      <PsychologySection rp={makeRP({ emotion: "犹豫观望" })} />
-    );
+    const { container } = render(<PsychologySection rp={makeRP({ emotion: "犹豫观望" })} />);
     const label = container.querySelector(".emotion-label");
     expect(label?.className).toContain("hesitation");
   });
 
   it("uses panic class for emotion containing 恐慌", () => {
-    const { container } = render(
-      <PsychologySection rp={makeRP({ emotion: "恐慌加剧" })} />
-    );
+    const { container } = render(<PsychologySection rp={makeRP({ emotion: "恐慌加剧" })} />);
     const label = container.querySelector(".emotion-label");
     expect(label?.className).toContain("panic");
   });
 
   it("uses unknown class for unexpected emotion", () => {
-    const { container } = render(
-      <PsychologySection rp={makeRP({ emotion: "淡定" })} />
-    );
+    const { container } = render(<PsychologySection rp={makeRP({ emotion: "淡定" })} />);
     const label = container.querySelector(".emotion-label");
     expect(label?.className).toContain("unknown");
   });
@@ -123,9 +111,7 @@ describe("PsychologySection", () => {
   });
 
   it("does not render advice when advice is empty string", () => {
-    const { container } = render(
-      <PsychologySection rp={makeRP({ advice: "" })} />
-    );
+    const { container } = render(<PsychologySection rp={makeRP({ advice: "" })} />);
     expect(container.querySelector(".emotion-advice")).not.toBeInTheDocument();
   });
 

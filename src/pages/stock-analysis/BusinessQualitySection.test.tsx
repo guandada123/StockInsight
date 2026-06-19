@@ -138,7 +138,7 @@ describe("BusinessQualitySection", () => {
 
   it("uses original dimension key when not in DIM_LABELS mapping", () => {
     const bq = makeBQ();
-    bq.moat.dimensions = { "管理层能力": 10, "客户忠诚度": 7 };
+    bq.moat.dimensions = { 管理层能力: 10, 客户忠诚度: 7 };
     render(<BusinessQualitySection bq={bq} />);
     expect(screen.getByText("管理层能力")).toBeInTheDocument();
     expect(screen.getByText("客户忠诚度")).toBeInTheDocument();
@@ -432,10 +432,8 @@ describe("BusinessQualitySection", () => {
     // 22 characters — slice(0, 20) will truncate 2 chars
     const longTitle = "这是一个超过二十个字符的非常长的事件标题呀";
     const truncated = longTitle.slice(0, 20); // "这是一个超过二十个字符的非常长的事件标"
-    const remaining = longTitle.slice(20);     // "题呀"
-    bq.events.events = [
-      { type: "公告", date: "2026-06-01", title: longTitle },
-    ];
+    const remaining = longTitle.slice(20); // "题呀"
+    bq.events.events = [{ type: "公告", date: "2026-06-01", title: longTitle }];
     render(<BusinessQualitySection bq={bq} />);
     expect(screen.getByText(truncated, { exact: false })).toBeInTheDocument();
     // The title is rendered inside "[公告] 2026-06-01 这是一个…", so remaining part should not appear

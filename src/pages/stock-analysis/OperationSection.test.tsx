@@ -56,9 +56,7 @@ describe("OperationSection", () => {
   });
 
   it("does not render take profit when array is empty", () => {
-    const { container } = render(
-      <OperationSection op={makeOp({ take_profit: [] })} />
-    );
+    const { container } = render(<OperationSection op={makeOp({ take_profit: [] })} />);
     expect(screen.queryByText("止盈目标1")).not.toBeInTheDocument();
   });
 
@@ -84,9 +82,7 @@ describe("OperationSection", () => {
   });
 
   it("does not render key points when array is empty", () => {
-    const { container } = render(
-      <OperationSection op={makeOp({ key_points: [] })} />
-    );
+    const { container } = render(<OperationSection op={makeOp({ key_points: [] })} />);
     expect(container.querySelector(".operation-points")).not.toBeInTheDocument();
   });
 
@@ -114,11 +110,7 @@ describe("OperationSection", () => {
   });
 
   it("renders multiple take profit targets", () => {
-    render(
-      <OperationSection
-        op={makeOp({ take_profit: [16.0, 18.5, 21.0] })}
-      />
-    );
+    render(<OperationSection op={makeOp({ take_profit: [16.0, 18.5, 21.0] })} />);
     expect(screen.getByText("止盈目标1")).toBeInTheDocument();
     expect(screen.getByText("止盈目标2")).toBeInTheDocument();
     expect(screen.getByText("止盈目标3")).toBeInTheDocument();

@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, PropertyMock, call, patch
 
 import pandas as pd
 
+
 # ── 辅助：不关闭的 SQLite 连接 wrapper ──────────────────────────────
 class _NoCloseConn:
     """包装 sqlite3.Connection，使其 close() 成为 no-op，用于验证数据"""
