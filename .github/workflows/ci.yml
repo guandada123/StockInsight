@@ -1,0 +1,22 @@
+name: CI - Quality Gate
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  quality-gate:
+    uses: guandada123/engineering-audit-kit/.github/workflows/quality-gate.yml@v1
+    with:
+      run-python: on
+      run-php: off
+      run-eslint: false
+      run-prettier: false
+      npm-audit-level: high
+    secrets: inherit
+
+concurrency:
+  group: ci-quality-gate-${{ github.ref }}
+  cancel-in-progress: true
