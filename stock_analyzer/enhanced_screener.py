@@ -284,7 +284,7 @@ def pass2_deep_analyze(candidates, top_n=30, use_ml=True, use_custom_factors=Tru
                 "量能分": round(_gf(fs, "volume"), 1),
                 "风险分": round(_gf(fs, "risk"), 1),
                 "舆情分": round(_gf(fs, "sentiment"), 1),
-                "短线评分": round(st_score, 1) if isinstance(st_score, (int, float)) else 50,
+                "短线评分": round(st_score, 1) if isinstance(st_score, int | float) else 50,
                 "长线评分": round(trading.get("long_term_score", 50), 1),
                 "组合信号强度": combo.get("强度", 0),
                 "共振强度": mr.get("共振强度", 0),

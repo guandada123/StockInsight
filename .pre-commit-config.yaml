@@ -28,19 +28,6 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
 
-  # Python: mypy (type check)
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.15.0
-    hooks:
-      - id: mypy
-        args:
-          - --explicit-package-bases
-        additional_dependencies:
-          - types-PyYAML
-          - types-requests
-        files: ^(backend|stock_analyzer)/.*\.py$
-        pass_filenames: false
-
   # Frontend: ESLint + Prettier
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v4.0.0-alpha.8

@@ -21,7 +21,7 @@ class TestOk:
         assert resp["data"] == {"price": 10.5}
         assert resp["error"] is None
         assert resp["freshness"] == "fresh"
-        assert isinstance(resp["timing_ms"], (int, float))
+        assert isinstance(resp["timing_ms"], int | float)
 
     def test_ok_with_freshness(self):
         """自定义 freshness"""

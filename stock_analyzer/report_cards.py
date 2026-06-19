@@ -87,9 +87,9 @@ def _stock_detail_card(code: str, detail: dict, index: int = 1) -> str:
 
     # 止损止盈评语
     sl_commentary = []
-    if stop_loss and isinstance(stop_loss, (int, float)):
+    if stop_loss and isinstance(stop_loss, int | float):
         sl_commentary.append(f"建议止损价 {stop_loss}，回撤幅度约{stop_pct}%")
-    if take_profit and isinstance(take_profit, (int, float)):
+    if take_profit and isinstance(take_profit, int | float):
         sl_commentary.append(f"建议止盈价 {take_profit}，预期涨幅约{tp_pct}%")
 
     # 短线/长线风格信息
@@ -126,7 +126,7 @@ def _stock_detail_card(code: str, detail: dict, index: int = 1) -> str:
         ff_main_ratio = ff_main_amount = ff_super_ratio = ff_date = ""
     # 格式化主力金额（元→亿）
     ff_amount_str = ""
-    if ff_main_amount and isinstance(ff_main_amount, (int, float)) and abs(ff_main_amount) > 0:
+    if ff_main_amount and isinstance(ff_main_amount, int | float) and abs(ff_main_amount) > 0:
         ff_amount_str = f"{ff_main_amount / 1e8:.2f}亿"
 
     # 新闻舆情

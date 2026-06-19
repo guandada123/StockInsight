@@ -112,7 +112,7 @@ class FactorExpressionEngine:
                 raise ValueError(f"列不存在: {node.id}")
             return pd.to_numeric(df[node.id], errors="coerce")
         if isinstance(node, ast.Constant):
-            if isinstance(node.value, (int, float)):
+            if isinstance(node.value, int | float):
                 return node.value
             raise ValueError("仅允许数值常量")
         if isinstance(node, ast.Call):
@@ -160,9 +160,9 @@ class FactorExpressionEngine:
         raise ValueError(f"不支持的方法: {method_name}")
 
     def _as_scalar(self, value: Any, name: str):
-        if isinstance(value, (int, np.integer)):
+        if isinstance(value, int | np.integer):
             return int(value)
-        if isinstance(value, (float, np.floating)):
+        if isinstance(value, float | np.floating):
             return float(value)
         raise ValueError(f"{name} 必须为数值标量")
 

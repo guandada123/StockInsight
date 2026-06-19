@@ -292,9 +292,9 @@ gen_report(short_top5, "reports/rational_short_5_20260525.html", "短线5只")
 
 # 保存JSON
 def convert(obj):
-    if isinstance(obj, (np.integer,)):
+    if isinstance(obj, np.integer):
         return int(obj)
-    if isinstance(obj, (np.floating,)):
+    if isinstance(obj, np.floating):
         return float(obj)
     if isinstance(obj, np.ndarray):
         return obj.tolist()
