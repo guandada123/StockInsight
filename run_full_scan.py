@@ -6,22 +6,30 @@
   - 单只股票 45 秒超时保护，卡住自动跳过
   - 扫描完成自动追加历史评分数据库
 """
-import sys, os, time, json, argparse, fcntl
+
+import argparse
+import fcntl
+import json
+import os
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 from contextlib import contextmanager
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # 复用 cli.py 的分析函数（含 skip_nt + 完整返回）
 from stock_analyzer.analyzer import deep_analyze
+from stock_analyzer.config import SCAN_WORKERS
 from stock_analyzer.fetcher import sina_real_time
 from stock_analyzer.screener import load_all_a_shares
-from stock_analyzer.config import SCAN_WORKERS
 
 
 def _get_checkpoint_file():
     from stock_analyzer.config import CHECKPOINT_FILE
+
     return CHECKPOINT_FILE
 
 
@@ -88,7 +96,7 @@ def main():
     print("步骤2: 获取实时行情，排除ST/退市...")
     rt_all = {}
     for i in range(0, len(all_codes), 500):
-        batch = all_codes[i:i + 500]
+        batch = all_codes[i : i + 500]
         rt_all.update(sina_real_time(batch))
 
     valid_codes = []
@@ -114,14 +122,18 @@ def main():
             if args.resume:
                 print(f"  ✅ 续跑模式：已完成 {len(done)} 只，剩余 {len(todo)} 只")
             else:
-                print(f"  💡 发现 {len(done)} 只已完成。使用 --resume 跳过，或 --no-resume 重新扫描")
+                print(
+                    f"  💡 发现 {len(done)} 只已完成。使用 --resume 跳过，或 --no-resume 重新扫描"
+                )
     else:
         clear_checkpoint()
         done = set()
         todo = valid_codes
 
     # 4. 并行分析（8线程 + skip_nt，复用 cli.py 的 deep_analyze）
-    print(f"步骤3: 并行深度分析（{len(todo)} 只，{SCAN_WORKERS}线程，超时{PER_STOCK_TIMEOUT}s/只）...")
+    print(
+        f"步骤3: 并行深度分析（{len(todo)} 只，{SCAN_WORKERS}线程，超时{PER_STOCK_TIMEOUT}s/只）..."
+    )
 
     results = []
     total = len(todo)
@@ -131,20 +143,20 @@ def main():
     def analyze_one(code):
         try:
             r = deep_analyze(code, days=120, skip_nt=True)
-            if r and r['qs_composite'] > 0:
+            if r and r["qs_composite"] > 0:
                 # 转为扫描结果格式
                 return {
                     "代码": code,
                     "名称": rt_all.get(code, {}).get("名称", ""),
-                    "综合评分": r['qs_composite'],
-                    "评级": r['qs_rating'],
-                    "动量分": r['mom_s'],
-                    "技术分": r['tech_s'],
-                    "基本面分": r['fund_s'],
-                    "量能分": r['vol_s'],
-                    "风险分": r['risk_s'],
-                    "最新价": r['price'],
-                    "近5日涨跌幅": r['near_5d'],
+                    "综合评分": r["qs_composite"],
+                    "评级": r["qs_rating"],
+                    "动量分": r["mom_s"],
+                    "技术分": r["tech_s"],
+                    "基本面分": r["fund_s"],
+                    "量能分": r["vol_s"],
+                    "风险分": r["risk_s"],
+                    "最新价": r["price"],
+                    "近5日涨跌幅": r["near_5d"],
                 }
             return None
         except Exception:
@@ -181,19 +193,23 @@ def main():
                 rate = completed / elapsed if elapsed > 0 else 0
                 eta = (total - completed) / rate if rate > 0 else 0
                 pct = completed / total * 100
-                print(f"  [{completed}/{total}] {pct:.0f}%  速率 {rate:.1f}只/s  "
-                      f"ETA {eta/60:.0f}min  结果 {len(results)}  跳过 {skipped}")
+                print(
+                    f"  [{completed}/{total}] {pct:.0f}%  速率 {rate:.1f}只/s  "
+                    f"ETA {eta / 60:.0f}min  结果 {len(results)}  跳过 {skipped}"
+                )
 
     # 5. 保存结果
     elapsed = time.time() - t0
-    print(f"\n步骤4: 保存结果...")
-    print(f"扫描完成: {len(results)} 只 | 跳过/失败: {skipped} 只 | 耗时 {elapsed/60:.1f} 分钟")
+    print("\n步骤4: 保存结果...")
+    print(f"扫描完成: {len(results)} 只 | 跳过/失败: {skipped} 只 | 耗时 {elapsed / 60:.1f} 分钟")
 
     import pandas as pd
+
     df = pd.DataFrame(results)
 
     # 5a. 追加到历史数据库
     from stock_analyzer.history_db import append_daily_results
+
     try:
         today = datetime.now().strftime("%Y-%m-%d")
         n_hist = append_daily_results(df, today)
@@ -219,9 +235,13 @@ def main():
     print(f"JSON: {json_path}")
 
     # 评分分布
-    print(f"\n评分分布:")
-    for label, lo, hi in [("优秀(≥80)", 80, 100), ("良好(60-79)", 60, 80),
-                           ("中等(40-59)", 40, 60), ("偏低(<40)", 0, 40)]:
+    print("\n评分分布:")
+    for label, lo, hi in [
+        ("优秀(≥80)", 80, 100),
+        ("良好(60-79)", 60, 80),
+        ("中等(40-59)", 40, 60),
+        ("偏低(<40)", 0, 40),
+    ]:
         n = len([r for r in results if lo <= r["综合评分"] < hi])
         print(f"  {label}: {n} 只")
 

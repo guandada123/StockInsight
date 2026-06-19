@@ -1,10 +1,12 @@
 # ML-filtered stock scan with two-tier fallback
-import json, urllib.request, subprocess, sys, time, os, logging
+import logging
+import os
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 s_codes = []  # cache
+
 
 def run(mode, top_n):
     result = _tier(mode, top_n, False)
@@ -18,15 +20,17 @@ def run(mode, top_n):
             result.append(r)
     return result
 
+
 def _tier(mode, top_n, relaxed):
     for line in open(".env"):
         if line.startswith("TUSHARE_TOKEN="):
             os.environ["TUSHARE_TOKEN"] = line.split("=", 1)[1].strip().strip('"').strip("'")
             break
-    from stock_analyzer.tushare_loader import get_tushare_pro
-    from stock_analyzer.cache import cached_kline
     from stock_analyzer.analysis import full_technical_analysis
+    from stock_analyzer.cache import cached_kline
     from stock_analyzer.ml_predict import _cached_predict_ensemble
+    from stock_analyzer.tushare_loader import get_tushare_pro
+
     pro = get_tushare_pro()
     pool = pro.stock_basic(exchange="", list_status="L", fields="ts_code,symbol,name,market")
     if mode == "mainboard":
@@ -45,13 +49,35 @@ def _tier(mode, top_n, relaxed):
     db["code"] = db["ts_code"].str.split(".").str[0]
     dp = db[db["code"].isin(list(cmap.keys()))]
     if relaxed:
-        cond = (dp["close"] >= 5) & (dp["close"] <= 100) & (dp["pe"] > 0) & (dp["pe"] <= 100) & (dp["pb"] > 0) & (dp["pb"] <= 15) & (dp["volume_ratio"] >= 0.5) & (dp["turnover_rate"] <= 35)
+        cond = (
+            (dp["close"] >= 5)
+            & (dp["close"] <= 100)
+            & (dp["pe"] > 0)
+            & (dp["pe"] <= 100)
+            & (dp["pb"] > 0)
+            & (dp["pb"] <= 15)
+            & (dp["volume_ratio"] >= 0.5)
+            & (dp["turnover_rate"] <= 35)
+        )
     else:
-        cond = (dp["close"] >= 5) & (dp["close"] <= 80) & (dp["pe"] > 0) & (dp["pe"] <= 60) & (dp["pb"] > 0) & (dp["pb"] <= 8) & (dp["volume_ratio"] >= 0.7) & (dp["turnover_rate"] <= 25)
+        cond = (
+            (dp["close"] >= 5)
+            & (dp["close"] <= 80)
+            & (dp["pe"] > 0)
+            & (dp["pe"] <= 60)
+            & (dp["pb"] > 0)
+            & (dp["pb"] <= 8)
+            & (dp["volume_ratio"] >= 0.7)
+            & (dp["turnover_rate"] <= 25)
+        )
     fd = dp[cond].copy()
     if len(fd) == 0:
         return []
-    fd["score"] = fd["pe"].rank(pct=True, ascending=False) * 0.25 + fd["turnover_rate"].rank(pct=True) * 0.40 + fd["volume_ratio"].rank(pct=True) * 0.35
+    fd["score"] = (
+        fd["pe"].rank(pct=True, ascending=False) * 0.25
+        + fd["turnover_rate"].rank(pct=True) * 0.40
+        + fd["volume_ratio"].rank(pct=True) * 0.35
+    )
     top = fd.sort_values("score", ascending=False).head(top_n * 3)
     result = []
     for _, row in top.iterrows():

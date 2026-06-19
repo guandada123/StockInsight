@@ -19,25 +19,25 @@ import re
 import sys
 
 VALID_TYPES = [
-    "feat",      # 新功能
-    "fix",       # Bug 修复
-    "docs",      # 文档
-    "test",      # 测试
+    "feat",  # 新功能
+    "fix",  # Bug 修复
+    "docs",  # 文档
+    "test",  # 测试
     "refactor",  # 重构
-    "perf",      # 性能优化
-    "ci",        # CI/CD
-    "chore",     # 杂务
-    "deps",      # 依赖更新
-    "style",     # 代码格式
-    "build",     # 构建系统
-    "revert",    # 回滚
+    "perf",  # 性能优化
+    "ci",  # CI/CD
+    "chore",  # 杂务
+    "deps",  # 依赖更新
+    "style",  # 代码格式
+    "build",  # 构建系统
+    "revert",  # 回滚
 ]
 
 PATTERN = re.compile(
     r"^(" + "|".join(VALID_TYPES) + r")"
     r"(\([a-z0-9\-]+\))?"  # 可选 scope
-    r"!?"                    # 可选 breaking change 标记
-    r": .{3,100}$"           # 冒号 + 空格 + 描述(3-100字符)
+    r"!?"  # 可选 breaking change 标记
+    r": .{3,100}$"  # 冒号 + 空格 + 描述(3-100字符)
 )
 
 MERGE_PATTERN = re.compile(r"^Merge (branch|pull request|remote)")
@@ -82,7 +82,7 @@ def main():
         sys.exit(1)
 
     msg_file = sys.argv[1]
-    with open(msg_file, "r", encoding="utf-8") as f:
+    with open(msg_file, encoding="utf-8") as f:
         msg = f.read()
 
     ok, error = validate(msg)

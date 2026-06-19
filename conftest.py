@@ -4,6 +4,7 @@ Root conftest for StockInsight.
 1. Cleans persistent state before test session starts.
 2. Ensures deterministic test collection order.
 """
+
 import os
 
 
@@ -16,9 +17,7 @@ def pytest_sessionstart(session):
     inherits stale entries and tests start returning 429 Too Many Requests
     before the suite completes.
     """
-    rate_file = os.path.join(
-        os.path.dirname(__file__), "backend", ".rate_limits.json"
-    )
+    rate_file = os.path.join(os.path.dirname(__file__), "backend", ".rate_limits.json")
     if os.path.exists(rate_file):
         os.remove(rate_file)
 
