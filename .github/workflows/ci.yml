@@ -6,6 +6,10 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   quality-gate:
     uses: guandada123/engineering-audit-kit/.github/workflows/quality-gate.yml@v1
