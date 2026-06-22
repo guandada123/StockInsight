@@ -36,7 +36,7 @@ lightgbm>=4.0
 python-dotenv>=1.0
 
 # 数据库异步化
-aiosqlite>=0.20
+aiosqlite>=0.22.1
 
 # Web API (Tauri 桌面端后端)
 fastapi>=0.115
