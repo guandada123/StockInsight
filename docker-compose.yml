@@ -9,6 +9,7 @@ services:
       - ./stock_cache.db:/app/stock_cache.db
       - ./logs:/app/logs
       - ./portfolios:/app/portfolios
+      - .:/app:ro
     environment:
       - TUSHARE_TOKEN=${TUSHARE_TOKEN:-}
     restart: unless-stopped

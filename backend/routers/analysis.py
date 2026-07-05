@@ -126,10 +126,15 @@ async def analyze_owned():
         total_profit = sum(r["profit_amount"] for r in results)
         total_cost = sum(r["cost"] * r["shares"] for r in results)
 
+        # 补充分项权重（前端依赖 weight_pct 渲染表格）
+        for r in results:
+            r["weight_pct"] = round(r["market_value"] / total_value * 100, 1) if total_value else 0
+
         return _ok(
             {
                 "holdings": results,
                 "total_value": round(total_value, 2),
+                "total_cost": round(total_cost, 2),
                 "total_profit": round(total_profit, 2),
                 "total_profit_pct": round(total_profit / total_cost * 100, 2) if total_cost else 0,
                 "count": len(results),
