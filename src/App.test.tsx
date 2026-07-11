@@ -26,7 +26,7 @@ vi.mock("./components/ErrorBoundary", () => ({
 
 // ── Mock fetch for health check ──
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+globalThis.fetch = mockFetch;
 
 function renderApp(initialEntries = ["/"]) {
   return render(
