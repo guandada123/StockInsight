@@ -37,8 +37,6 @@ export default function StockAnalysis() {
 
   useEffect(() => {
     if (!code) return;
-    setLoading(true);
-    setError(null);
     loadAnalysis(code);
     loadKline(code);
     loadIndicatorData(code, "macd");
@@ -46,6 +44,7 @@ export default function StockAnalysis() {
   }, [code]);
 
   async function loadAnalysis(c: string) {
+    setLoading(true);
     const res = await analysisApi.fetchApi(`/api/analysis/${c}/full`);
     if (res.success) setResult(res.data);
     else setError(res.error || "分析失败");

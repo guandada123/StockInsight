@@ -29,12 +29,16 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
     else setSectorError(res.error || "获取板块数据失败");
   }, [sectorsApi]);
 
+  // react-hooks/set-state-in-effect 误报：loadMarket/loadSectors 是 async 函数，
+  // 内部 setState 均在 await 之后执行，并非同步 setState
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     loadMarket();
     loadSectors();
     const timer = setInterval(loadMarket, 60000); // 每分钟刷新
     return () => clearInterval(timer);
   }, [loadMarket, loadSectors]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function handleQuickAnalysis() {
     const code = quickCode.trim();
