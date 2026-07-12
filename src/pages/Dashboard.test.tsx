@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import Dashboard from "./Dashboard";
 
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+globalThis.fetch = mockFetch;
 
 const mockSetIndices = vi.fn();
 
