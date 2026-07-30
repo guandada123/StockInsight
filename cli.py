@@ -682,9 +682,9 @@ def cmd_scan(args):
     )
     print("-" * 72)
     for i, r in enumerate(top):
-        from stock_analyzer.sector_info import get_stock_sector
+        from stock_analyzer.sector_info import get_stock_sector_full
 
-        sect = get_stock_sector(r["code"])[:10]
+        sect = get_stock_sector_full(r["code"])[:10]
         print(
             f"{i + 1:<4} {r['code']:<8} {sect:<10} {r['qs_composite']:<7.1f} "
             f"{r['near_20d']:<+9.1f} {r['rsi']:<5.0f} {r['macd_signal']:<6} {r['fund_s']:<6.0f}"
