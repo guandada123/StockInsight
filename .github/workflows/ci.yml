@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   quality-gate:
-    uses: guandada123/engineering-audit-kit/.github/workflows/quality-gate.yml@v1
+    uses: guandada123/engineering-audit-kit/.github/workflows/quality-gate.yml@v2
     with:
       run-python: on
       run-php: off
