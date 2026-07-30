@@ -36,6 +36,7 @@ ignore = [
     "PLC0415",         # import-outside-top-level
     "PLR0912",         # too-many-branches
     "PLR0913",         # too-many-arguments
+    "PLR0917",         # too-many-positional-arguments — 同 PLR0913，渐进收紧
     "PLR0915",         # too-many-statements
     "PLR0911",         # too-many-return-statements
     "PLR2004",         # magic-value-comparison
