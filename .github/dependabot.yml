@@ -18,6 +18,9 @@ updates:
     labels: ["dependencies", "frontend"]
     commit-message:
       prefix: "deps(npm)"
+    groups:
+      react:
+        patterns: ["react", "react-dom"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
