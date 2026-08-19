@@ -634,7 +634,8 @@ class TestCachedPredictEnsemble:
         expected_key = hashlib.md5(
             str(df.shape).encode()
             + str(df.iloc[-20:, 1].sum()).encode()
-            + str(df.iloc[-1, 1]).encode()
+            + str(df.iloc[-1, 1]).encode(),
+            usedforsecurity=False,
         ).hexdigest()
 
         with patch("stock_analyzer.ml_predict.predict_ensemble") as mock_ens:
