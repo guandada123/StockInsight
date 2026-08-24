@@ -17,6 +17,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
+# ML 模型依赖（xgboost/lightgbm）为可选重型依赖：容器/CI 环境已安装，
+# 本地轻量 venv 可能缺失。缺失时整个 ML 测试模块 skip 而非 fail，
+# 与 ml_predict 的「缺 xgboost→降级 RF」设计一致，避免掩盖真实回归。
+pytest.importorskip("xgboost")
+pytest.importorskip("lightgbm")
+
 from stock_analyzer import ml_predict
 
 # ═══════════════════════════════════════════════════════════

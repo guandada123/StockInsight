@@ -21,7 +21,10 @@ export default defineConfig({
   envPrefix: ["VITE_", "TAURI_"],
   build: {
     target: process.env.TAURI_PLATFORM === "windows" ? "chrome105" : "es2020",
-    minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
+    // vite 8 默认用 rolldown 构建器，esbuild 已拆为独立包且 transformWithEsbuild 弃用。
+    // 改用内置 oxc 压缩器（rolldown 原生支持，无需额外依赖），避免 docker 构建时
+    // "Failed to load transformWithEsbuild / Cannot find package 'esbuild'" 报错。
+    minify: !process.env.TAURI_DEBUG ? "oxc" : false,
     sourcemap: !!process.env.TAURI_DEBUG,
   },
   test: {

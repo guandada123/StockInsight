@@ -19,8 +19,8 @@ RUN npm ci && npm cache clean --force
 COPY vite.config.ts tsconfig.json tsconfig.node.json index.html ./
 COPY src/ src/
 
-# 生产构建（不生成 sourcemap，esbuild 压缩）
-RUN npx vite build --minify esbuild
+# 生产构建（压缩器由 vite.config.ts 的 minify 决定，vite 8 默认 oxc）
+RUN npx vite build
 
 # 清理：移除 node_modules（构建后不再需要）
 RUN rm -rf node_modules
