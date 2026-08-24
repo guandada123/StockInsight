@@ -583,6 +583,19 @@ def _cmd_premarket_check():
 def cmd_scan(args):
     """执行全市场/主板扫描"""
     from stock_analyzer.screener import load_all_a_shares, quick_filter
+    from stock_analyzer.trade_day import is_trading_day
+
+    # 非交易日短路（08-24 根因修复）：周末/法定节假日收盘扫描时全 K 线源普遍离线，
+    # 每只 fetch_kline 阻塞至 300s 熔断冷却，聚合超时 600s 被外层 timeout 杀掉(exit 124)。
+    # 接 tushare_loader 交易日表精确判断（表缺失时 fallback 内置 2026 休市 + 周末），
+    # 非交易日直接跳过，避免无效 API 调用 + 误报告警。交易日仍走完整路径。
+    _now = datetime.now()
+    if not is_trading_day(_now.date()):
+        print(f"{'=' * 60}")
+        print(f"⏸️  非交易日跳过扫描（{_now.strftime('%Y-%m-%d')}）")
+        print(f"    行情源休市期间普遍离线，跳过以避免无效抓取与超时误报。下一交易日自动恢复。")
+        print(f"{'=' * 60}")
+        return 0
 
     print(f"{'=' * 60}")
     print(

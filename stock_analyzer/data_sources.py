@@ -19,6 +19,7 @@ import tempfile
 import threading
 import time
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional
@@ -637,6 +638,17 @@ class AKShareFundamentalsSource(DataSource):
 # ============================================
 
 
+# 单源硬超时（秒）：防止源 SDK 无内部超时（Baostock.login / AData 网络调用）在源离线时无限阻塞。
+# 取值须使 5 源全超时总上限 5×PER_SOURCE_TIMEOUT < cli.py 单只 future.result(45s) 窗：
+# 取 8s → 全源最坏 40s < 45s，且与 Sina/Tencent 既有 HTTP timeout=8 对齐，不惩罚正常源。
+PER_SOURCE_TIMEOUT = 8
+
+# 进程级单例线程池：每次 fetch_kline 的每源调用在此提交，timeout 兜底。
+# max_workers 须 >= 默认 K 线源数量（5），否则某源超时后其后台线程仍占 1 个 worker，
+# 会串行化后续源（实测 1 worker → 5 源全挂时单只阻塞 5×10s）。8 留余量，模块级常驻，勿用 with 关闭。
+_SRC_TIMEOUT_POOL = ThreadPoolExecutor(max_workers=8, thread_name_prefix="kline_src")
+
+
 class DataSourceChain:
     """数据源容灾链：按优先级依次尝试，成功即返回。
 
@@ -665,18 +677,27 @@ class DataSourceChain:
         cb.report(success)
 
     def fetch_kline(self, code: str, days: int = 120) -> pd.DataFrame:
-        """按优先级依次尝试 K 线数据源，返回第一个非空 DataFrame"""
+        """按优先级依次尝试 K 线数据源，返回第一个非空 DataFrame。
+
+        每源包一层硬超时（PER_SOURCE_TIMEOUT），防止个别源 SDK 无内部超时
+        （如 Baostock.login / AData 网络调用）在源离线时无限阻塞，放大为
+        整轮扫描 hang（08-24 根因：周日全源失败 → 单只阻塞超 45s → 外层 600s 被杀）。
+        """
         for src in self.sources:
             if not self._allow_source(src):
                 logger.debug(f"K线[{code}] 熔断跳过: {src.name}")
                 continue
             try:
-                df = src.fetch_kline(code, days)
+                fut = _SRC_TIMEOUT_POOL.submit(src.fetch_kline, code, days)
+                df = fut.result(timeout=PER_SOURCE_TIMEOUT)
                 if not df.empty:
                     self._report_source(src, True)
                     logger.debug(f"K线[{code}] 命中: {src.name} ({len(df)}行)")
                     return df
                 self._report_source(src, False)
+            except FutureTimeout:
+                self._report_source(src, False)
+                logger.debug(f"K线[{code}] 超时: {src.name} (>{PER_SOURCE_TIMEOUT}s)")
             except Exception:
                 self._report_source(src, False)
                 logger.debug(f"K线[{code}] 异常: {src.name}")
