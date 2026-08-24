@@ -593,7 +593,7 @@ def cmd_scan(args):
     if not is_trading_day(_now.date()):
         print(f"{'=' * 60}")
         print(f"⏸️  非交易日跳过扫描（{_now.strftime('%Y-%m-%d')}）")
-        print(f"    行情源休市期间普遍离线，跳过以避免无效抓取与超时误报。下一交易日自动恢复。")
+        print("    行情源休市期间普遍离线，跳过以避免无效抓取与超时误报。下一交易日自动恢复。")
         print(f"{'=' * 60}")
         return 0
 

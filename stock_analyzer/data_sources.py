@@ -19,7 +19,8 @@ import tempfile
 import threading
 import time
 from abc import ABC, abstractmethod
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional
