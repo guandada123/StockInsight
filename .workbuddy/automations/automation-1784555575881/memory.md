@@ -139,3 +139,11 @@
 - 效果：彻底消除"无单源超时→300s熔断→600s被外层timeout杀(exit 124)"放大链。交易日/周末全源故障均被 8s/源 兜底。
 - 未做：交易日历精确化(节假日静默跳过)，当前已被单源硬超时降级为 24s 而非 600s hang，优先级降。
 - ruff I001 预存 import 排序告警(项目既有，非本次引入)，未动。
+
+## 2026-08-24 19:01 交易日历精确化落地（用户指令"接 tushare_loader 交易日表"）
+- 新增 stock_analyzer/trade_day.py: is_trading_day(dt) 优先查 stock_cache.db.stock_trade_calendar(tushare_loader schema)，表缺失/越界 fallback 内置2026休市(上交所2025-12-22官方核实)+weekday<5(保守不误跳交易日)。
+- cli.py cmd_scan 短路升级为 `if not is_trading_day(now.date()): return 0` → 周末+法定节假日均静默 exit 0。
+- 部署坑: 容器跑旧镜像，本地改动 docker cp cli.py/data_sources.py/trade_day.py 进 stockinsight-api-1 生效(未重建镜像, API 不中断)；stock_cache.db 是 bind mount 实时同步。
+- 表数据: 容器无 Tushare token 跑不了 download_trade_calendar，本地直接生成 2026 全年交易日历(365行/242交易日)写 stock_trade_calendar，容器经 mount 读到 → 表优先路径生效。越界(>2026-12-31)自动 fallback。
+- 验证: 容器内 is_trading_day 表优先确认(2026-08-24→交易日/2026-10-01→非交易日/2027-01-01→None fallback)。已 git commit 9bb6348。
+- 结论: 止血(周末短路)+根治(单源8s硬超时)+精确化(交易日表)三层防御齐备，周日/节假日/交易日全源故障均不再误报告警。
