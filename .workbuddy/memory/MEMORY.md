@@ -19,6 +19,7 @@
 - 健康检查：`curl -f http://localhost:8765/api/health`
 - 容器名：**`stockinsight-api-1`**（当前 Up 3 days healthy）
 - 已在助手 self_heal 白名单（1 容器）
+- 🔴 **容器运行时代码 = 本地挂载，非镜像层**：`docker-compose.yml` 第12行 `.:/app:ro` 把整个项目目录只读挂载覆盖镜像 `/app`。故 `git commit` 的修复经 mount 实时对容器可见，重启容器也用本地最新代码。**无需 `docker compose build` 固化 Python 改动**（build 仅影响"从零建镜像"）。`stock_cache.db`/`logs`/`portfolios` 也是 bind mount 实时同步。
 
 ## CI 状态
 - workflows：`stockinsight-ci.yml` + `security-scan.yml` + `build.yml`（pre-commit✓）
@@ -35,6 +36,7 @@
 
 ## 已知坑（来自 2026-07-21 日志）
 - `sector_info.py` 函数重命名 `get_stock_sector → get_stock_sector_full` 时，`cli.py:685/687` 漏改（全项目其他 10+ 处已用 `_full`）；修复 commit `d21a81e`。改 sector_info 公共函数名时务必全局 grep 同步。
+- 🔴 **前端 vite8 构建债（2026-08-24 修复）**：vite ^8 + rolldown 构建器下 `minify:"esbuild"` 已弃用（需独立装 esbuild 包，否则 `docker compose build` 卡 `npx vite build` exit1 报 `Failed to load transformWithEsbuild / Cannot find package 'esbuild'`）。修复：`vite.config.ts` minify 改 `"oxc"`（rolldown 原生，免依赖）+ Dockerfile 去 `--minify esbuild` 参数。注意：运行时因 `.:/app:ro` mount 不受影响，仅"从零建镜像"受阻。重包 xgboost/lightgbm 为可选重型依赖，ML 测试已加 `importorskip` 在缺依赖时 skip。
 
 ## 助手接管边界（2026-08-05 授权）
 - ✅ 接管：每日 CI 红扫描 + 容器存活快照（docker `stockinsight-*`）+ 自愈白名单 `stockinsight-api-1`
