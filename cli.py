@@ -580,6 +580,34 @@ def _cmd_premarket_check():
     print(f"{'=' * W}\n")
 
 
+def _json_default(o):
+    """JSON 序列化兜底：扫描结果偶发含 DataFrame/Series/numpy 类型(2026-08-25 复盘定位)。"""
+    name = type(o).__name__
+    if name == "DataFrame":
+        try:
+            return o.to_dict(orient="records")
+        except Exception:
+            return str(o)
+    if name == "Series":
+        try:
+            return o.to_dict()
+        except Exception:
+            return str(o)
+    if "ndarray" in name:
+        try:
+            return o.tolist()
+        except Exception:
+            return list(o)
+    if "int" in name or "float" in name:  # numpy scalar (int64/float64 等)
+        try:
+            return o.item()
+        except Exception:
+            return str(o)
+    if name in ("Timestamp", "datetime"):
+        return str(o)
+    return str(o)
+
+
 def cmd_scan(args):
     """执行全市场/主板扫描"""
     from stock_analyzer.screener import load_all_a_shares, quick_filter
@@ -704,7 +732,9 @@ def cmd_scan(args):
         )
 
     if not args.no_save:
-        out = args.output or f"scan_{args.mode}_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
+        out = args.output or os.path.join(
+            _SCAN_DIR, f"scan_{args.mode}_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
+        )
         with open(out, "w", encoding="utf-8") as f:
             json.dump(
                 {
@@ -716,6 +746,7 @@ def cmd_scan(args):
                 f,
                 ensure_ascii=False,
                 indent=2,
+                default=_json_default,
             )
         print(f"\n结果已保存: {out}")
 
@@ -1540,15 +1571,44 @@ def cmd_clean(args):
 
 # ── 辅助 ──────────────────────────────────────────
 
-_CHECKPOINT_FILE = ".scan_progress"
+import tempfile  # 可写目录回退(顶部未 import 时在此补齐，重复 import 无害)
+
+
+def _scan_writable_dir():
+    """扫描产物(断点/结果JSON)写入目录。
+
+    容器以 `.:/app:ro` 只读挂载项目目录，/app 不可写；断点文件与结果JSON
+    原写 cwd(/app) 会触发 OSError 致扫描崩溃(2026-08-25 复盘定位根因)。
+    优先选项目自身 logs 目录(宿主侧/容器内均可写)，回退 /app/logs 与系统临时目录。
+    """
+    _proj_logs = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+    for cand in (_proj_logs, "/app/logs", tempfile.gettempdir()):
+        try:
+            os.makedirs(cand, exist_ok=True)
+            probe = os.path.join(cand, f".wprobe_{os.getpid()}")
+            with open(probe, "w") as _f:
+                _f.write("ok")
+            os.remove(probe)
+            return cand
+        except OSError:
+            continue
+    return tempfile.gettempdir()
+
+
+_SCAN_DIR = _scan_writable_dir()
+_CHECKPOINT_FILE = os.path.join(_SCAN_DIR, ".scan_progress")
 
 
 def _save_checkpoint_single(code):
-    """追加一只股票到 checkpoint（立即刷盘，崩溃最多丢 1 只）"""
-    with open(_CHECKPOINT_FILE, "a") as f:
-        f.write(code + "\n")
-        f.flush()
-        os.fsync(f.fileno())
+    """追加一只股票到 checkpoint（立即刷盘，崩溃最多丢 1 只）。
+    写入失败(如只读挂载)仅告警不中断扫描(2026-08-25 兜底)。"""
+    try:
+        with open(_CHECKPOINT_FILE, "a") as f:
+            f.write(code + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+    except OSError as e:
+        print(f"  ⚠️ 断点写入失败(已忽略): {e}")
 
 
 def _load_checkpoint():
