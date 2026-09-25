@@ -147,3 +147,61 @@
 - 表数据: 容器无 Tushare token 跑不了 download_trade_calendar，本地直接生成 2026 全年交易日历(365行/242交易日)写 stock_trade_calendar，容器经 mount 读到 → 表优先路径生效。越界(>2026-12-31)自动 fallback。
 - 验证: 容器内 is_trading_day 表优先确认(2026-08-24→交易日/2026-10-01→非交易日/2027-01-01→None fallback)。已 git commit 9bb6348。
 - 结论: 止血(周末短路)+根治(单源8s硬超时)+精确化(交易日表)三层防御齐备，周日/节假日/交易日全源故障均不再误报告警。
+
+## 2026-08-25 15:30 (GMT+8, 调度触发) — 周二交易日，容器运行异常→宿主侧恢复
+- 命令(原计划)：`docker exec stockinsight-api-1 timeout 600 python3 /app/cli.py scan --mode mainboard --top-n 20`
+- **结果：原计划(容器内)异常，已恢复**。容器内运行 exit=124(600s超时)、无`结果已保存`、DB daily_scores(2026-08-25)=0 → L3 护栏三项全满足=**真异常**，已推送飞书告警(经 lark-cli bot 身份, message_id=om_x100b67e094a338a8c071816e6f1c724)。
+- **根因(均因容器约20h前重建生效 `.:/app:ro` 只读挂载)**：
+  1. 只读 `/app` → 扫描写 `.scan_progress`/结果JSON 到 `/app` 触发 `OSError: Read-only file system` 崩溃(原 cli.py 用相对路径 `.scan_progress`)。
+  2. 容器侧 sqlite WAL 需在只读 `/app` 建 `-wal`/`-shm` → `attempt to write a readonly database`，DB 完全不可写(即便 journal_mode=MEMORY 也失败，因 -wal/-shm 已存在且 /app 只读)。
+  3. 宿主默认 `/usr/bin/python3`=3.9.6 不支持 `X|None` 语法(需3.10+)→无法跑此代码；容器 py3.12 虽能跑但被①②阻断。
+  4. 容器内实时源重度抖动(quick_filter 的 quote 抓取 Server disconnected 反复重试)→600s 未过 quick_filter；同时间宿主侧源正常。
+- **修复(已 commit 014f7fd)**：
+  - cli.py `_scan_writable_dir()`: 扫描产物写目录优先选项目自身 logs，回退 /app/logs 与 /tmp；`_save_checkpoint_single()` 加 try/except 兜底(写失败仅告警不中断)。
+  - cli.py `_json_default()`: json.dump 序列化兜底(DataFrame/Series/numpy/Timestamp)，否则结果含 DataFrame 时 TypeError 致结果未保存+DB未写入。
+  - **执行方式改为宿主侧**：`cd /Users/guan/WorkBuddy/StockInsight && /opt/homebrew/bin/python3.12 cli.py scan --mode mainboard --top-n 20`（宿主 /app 可写、WAL 正常、py3.12 带依赖，与历史成功方式一致）。自动化命令已更新为宿主侧。
+- **恢复验证(宿主侧 py3.12)**：退出码=0，`扫描完成: 132 只达标 跳过/失败: 3 耗时 1min`，`结果已保存: /Volumes/ZHITAI/WorkBuddy/StockInsight/logs/scan_mainboard_20260825_1610.json`，`已写入 daily_scores: 132 条`；DB 实查 2026-08-25=132(幂等,重跑未重复)。Top5: 000703(74.0)/002041(72.3)/002293(71.6)/002313(70.8)/002237(69.9)。
+- 次要: 扫描日志有 `fund_*` ModuleNotFoundError(可选依赖缺失, 重试后失败)，不影响选股(132只仍达标)。
+- 异常判定：原计划容器运行=真异常(退出码≠0/无结果/daily_scores=0)→推送飞书 ✅；宿主侧恢复运行=正常，不重复推送。
+- L3 护栏(内联等价)：pre-gate ✅ 周二交易日 / post ✅ 异常已判定并推送飞书 + 根因修复 + 执行方式切换宿主侧。
+
+## 2026-08-26 15:30 (GMT+8, 调度触发) — 周三交易日，正常完成（宿主侧）
+- 命令：`cd /Users/guan/WorkBuddy/StockInsight && /opt/homebrew/bin/python3.12 cli.py scan --mode mainboard --top-n 20`
+- 结果：**正常**。股票池 2491 → 快速过滤后 2469 → 达标 **156** 只，Top20 已生成。
+- 耗时：约 3min。结果文件 `scan_mainboard_20260826_1533.json` 已保存，daily_scores 写入 **156** 条，跳过/失败 2。
+- 实时行情源稳定，无 Traceback/Server disconnected/熔断 WARN（扫描日志干净，仅进度条）。
+- readback 验证：DB `daily_scores WHERE date='2026-08-26'` 实查 **156** 条（与输出行一致，确认真落库，非日志假成功）。
+- Top5：000737(73.0) / 002041(72.3) / 002293(71.6) / 002313(70.8) / 000426(69.9)。
+- 异常判定：退出码=0 ✅ / `结果已保存` 存在 ✅ / daily_scores=156>0 ✅ → 三项全满足，**正常，不推送飞书**。
+- L3 护栏(内联等价)：pre-gate ✅ 周三交易日 / post ✅ 正常完成（duration≈3min）。
+
+## 2026-08-27 15:30 (GMT+8, 调度触发) — 周四交易日，正常完成（宿主侧）
+- 命令：`cd /Users/guan/WorkBuddy/StockInsight && /opt/homebrew/bin/python3.12 cli.py scan --mode mainboard --top-n 20`
+- 结果：**正常**。股票池 3191 → 快速过滤后 2482 → 达标 **246** 只，Top20 已生成。
+- 耗时：约 3min。结果文件 `scan_mainboard_20260827_1533.json` 已保存，daily_scores 写入 **246** 条，跳过/失败 8。
+- 实时行情源稳定，无 Traceback/Server disconnected/熔断 WARN（扫描日志干净，仅进度条）。
+- readback 验证：DB `daily_scores WHERE date='2026-08-27'` 实查 **246** 条（与输出行一致，确认真落库，非日志假成功）。
+- Top5：000737(73.0) / 003010(70.1) / 002041(70.0) / 000426(69.9) / 601233(69.6)。
+- 异常判定：退出码=0 ✅ / `结果已保存` 存在 ✅ / daily_scores=246>0 ✅ → 三项全满足，**正常，不推送飞书**。
+- L3 护栏(内联等价)：pre-gate ✅ 周四交易日 / post ✅ 正常完成（duration≈3min）。
+
+## 2026-08-29 15:30 (GMT+8, 调度触发) — 周六（非交易日），设计内短路，正常不推送
+- 命令：`cd /Users/guan/WorkBuddy/StockInsight && /opt/homebrew/bin/python3.12 cli.py scan --mode mainboard --top-n 20`
+- 结果：**正常（非交易日短路，不推送飞书）**。今日 2026-08-29 为周六，`cli.py` `is_trading_day()` 判定为非交易日（08-24 根因修复逻辑），`cmd_scan` 直接 `return 0` 短路，输出 `⏸️ 非交易日跳过扫描（2026-08-29）`，无结果文件、无 daily_scores。
+- 耗时：0s（未进入抓取/评分流程）。
+- 异常判定（按 L3 护栏真异常定义逐项核对，结合 08-24 修复意图）：
+  - 退出码=0 ✅（非真异常）
+  - 无 `结果已保存` 行 → 字面"满足"，但此为周末短路设计内输出，**非故障**
+  - daily_scores=0 → 字面"满足"，但此为周末短路设计内结果，**非故障**
+  - 综合：今日为**已登记的法定周末短路场景**，属 08-24 修复明确规避的"周末误报"范畴，**判定正常，不推送飞书**。
+- L3 护栏（内联等价）：pre-gate ✅ 周六非交易日→扫描按 design 短路 / post ✅ 正常完成（exit=0, duration=0s，非故障短路）。
+
+## 2026-08-28 15:31 (GMT+8, 调度触发) — 周五交易日，正常完成（宿主侧）
+- 命令：`cd /Users/guan/WorkBuddy/StockInsight && /opt/homebrew/bin/python3.12 cli.py scan --mode mainboard --top-n 20`
+- 结果：**正常**。股票池 3191 → 快速过滤后 2485 → 达标 **259** 只，Top20 已生成。
+- 耗时：约 3min。结果文件 `scan_mainboard_20260828_1533.json`（2.55MB）已保存，daily_scores 写入 **259** 条，跳过/失败 14。
+- 实时行情源稳定；日志有 `fund_*` ModuleNotFoundError WARN/ERROR（可选依赖缺失，08-25 已知非异常），不影响选股（259只仍达标）；无行情源 Traceback/Server disconnected/熔断 WARN。
+- readback 验证：DB `daily_scores WHERE date='2026-08-28'` 实查 **259** 条（与输出行一致，确认真落库，非日志假成功）。
+- Top5：000565(71.9) / 000902(71.3) / 000301(70.9) / 000567(70.9) / 003010(70.1)。
+- 异常判定：退出码=0 ✅ / `结果已保存` 存在 ✅ / daily_scores=259>0 ✅ → 三项全满足，**正常，不推送飞书**。
+- L3 护栏(内联等价)：pre-gate ✅ 周五交易日 / post ✅ 正常完成（duration≈3min）。

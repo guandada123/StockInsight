@@ -1,4 +1,4 @@
-# ★升级候选 StockInsight 收盘选股周日硬 hang 根因与修复
+# ✅已升级(2026-08-30) StockInsight 收盘选股周日硬 hang 根因与修复
 
 **日期**: 2026-08-24
 **项目**: StockInsight (收盘选股扫描自动化 automation-1784555575881)

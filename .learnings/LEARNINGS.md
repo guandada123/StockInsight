@@ -14,7 +14,7 @@ Corrections, insights, and knowledge gaps captured during development.
 - **✅已升级(2026-08-16)**: 本例"单点日志/告警误判、须查源码全链路"并入🔴铁律「单链路日志≠全链路, 禁脑补归因」(incident-triage 反模式已含 nc/curl、告警源误判条目)。
 - **去重**: 首次
 
-### 2026-08-23 收盘扫描全源失败死锁（knowledge_gap + insight → ★升级候选）
+### 2026-08-23 收盘扫描全源失败死锁（knowledge_gap + insight → ✅已升级(2026-08-30)）
 - **类型**: knowledge_gap（代码健壮性缺陷）+ insight（运维处置）
 - **现象（证据，非脑补）**: 自动化 automation-1784555575881 触发 `scan --mode mainboard --top-n 20`，连续 3 次均硬 hang / 600s 超时（exit=124）：
   - 日志实锤：`K线[X] 全部数据源失败` 贯穿多只股票；熔断器[SinaKlineSource]/[TencentKlineSource]/[BaostockKlineSource] 均触发（另有 aux 源 AData/Tushare 熔断）；
