@@ -21,6 +21,11 @@ updates:
     groups:
       react:
         patterns: ["react", "react-dom"]
+    ignore:
+      # typescript 7.x 是大版本破坏性升级：PR#70 实测前端依赖安装失败(npm install 报错)
+      # 且 npm audit 报安全项，CI 全红。暂不自动跟大版本，需人工评估后再放开。
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
