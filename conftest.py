@@ -3,6 +3,7 @@ Root conftest for StockInsight.
 
 1. Cleans persistent state before test session starts.
 2. Ensures deterministic test collection order.
+3. Cleans up temp portfolio files leaked by integration tests.
 """
 
 import os
@@ -49,3 +50,23 @@ def pytest_collection_modifyitems(config, items):
 
     # Reorder: stock_analyzer first, then backend, then everything else
     items[:] = stock_items + backend_items + other_items
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Post-test cleanup: remove temp portfolio files written by integration tests.
+
+    TestPortfolioAPI（backend/tests/test_api_integration.py）直接调用真实路由，
+    会经 portfolio_service 把 test_*.json 写到仓库 portfolios/ 目录。这些文件只在
+    .gitignore 里被忽略，磁盘上仍会残留（例如 test_update_tmp.json 不会被用例自身
+    删除，每跑一次测试就多一份）。这里在会话结束时统一清理，只匹配 .gitignore 同款
+    模式 portfolios/test_*.json，不会触碰真实组合文件。
+    """
+    portfolio_dir = os.path.join(os.path.dirname(__file__), "portfolios")
+    if not os.path.isdir(portfolio_dir):
+        return
+    for name in os.listdir(portfolio_dir):
+        if name.startswith("test_") and name.endswith(".json"):
+            try:
+                os.remove(os.path.join(portfolio_dir, name))
+            except OSError:
+                pass
