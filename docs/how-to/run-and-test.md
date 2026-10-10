@@ -4,7 +4,7 @@
 
 ```bash
 # 开发模式（热重载）
-cd /Users/guan/WorkBuddy/StockInsight
+cd /path/to/StockInsight
 uvicorn backend.main:app --host 127.0.0.1 --port 8765 --reload
 
 # 或直接运行
@@ -22,7 +22,7 @@ docker compose up -d
 
 ```bash
 # 全量测试
-cd /Users/guan/WorkBuddy/StockInsight
+cd /path/to/StockInsight
 python -m pytest backend/tests/ -v
 
 # 带覆盖率
@@ -38,7 +38,7 @@ python -m pytest stock_analyzer/tests/ -q --tb=short --disable-warnings
 ## 前端测试
 
 ```bash
-cd /Users/guan/WorkBuddy/StockInsight
+cd /path/to/StockInsight
 npx vitest run                    # 全量
 npx vitest run --reporter=verbose  # 详细
 ```

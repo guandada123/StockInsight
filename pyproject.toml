@@ -97,9 +97,10 @@ ignore_errors = true
 [tool.coverage.report]
 # ═══════════════════════════════════════════════════════════
 # 覆盖率阈值（阻塞模式）
-# 当前实际覆盖率 78%，调至 70% 留有余量
+# 2026-10-10 CI 口径实测 82.75%（stock_analyzer + backend + backend.services 合并）
+# 门禁抬至 75%（留 ≥7 点缓冲），与 stockinsight-ci.yml 的 COV_FAIL_UNDER 一致
 # ═══════════════════════════════════════════════════════════
-fail_under = 70
+fail_under = 75
 precision = 2
 
 # 排除无需测试覆盖的文件

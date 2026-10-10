@@ -14,7 +14,8 @@ env:
   PYTHON_VERSION: "3.12"
   NODE_VERSION: "22"
   RUFF_CONFIG: ruff.toml
-  COV_FAIL_UNDER: 70
+  # 2026-10-10 CI 口径实测 82.75%，门禁由 70 抬至 75（留 ≥7 点缓冲）
+  COV_FAIL_UNDER: 75
 
 jobs:
   # ────────────────────────────
