@@ -361,6 +361,60 @@ class TestImportData:
 
         assert result["imported"] == "myfile"
 
+    # ── 路径穿越防护（2026-10-11 审计修复） ──────────────
+
+    @pytest.mark.parametrize(
+        "evil_name",
+        [
+            "../../evil",
+            "../outside",
+            "a/b",
+            "a\\b",
+            "..",
+            ".",
+            " ",
+            "x" * 65,  # 超长（>64）
+            "组合/../x",
+        ],
+    )
+    async def test_portfolio_import_rejects_traversal_names(self, tmp_path, monkeypatch, evil_name):
+        """恶意/非法 name 必须被拒绝，且不得产生任何越目录写入。"""
+        monkeypatch.setattr("backend.common.PROJECT_ROOT", str(tmp_path))
+        payload = json.dumps({"name": evil_name, "holdings": {}}).encode()
+
+        with pytest.raises(ValueError):
+            await dsvc.import_data(payload, "portfolio", "fallback.json")
+
+        # portfolios 目录之外不得出现任何被写入的文件
+        stray = [p for p in tmp_path.rglob("*") if p.is_file()]
+        assert stray == [], f"存在越目录写入: {stray}"
+
+    async def test_portfolio_import_empty_name_falls_back_to_filename(self, tmp_path, monkeypatch):
+        """空 name 不视为攻击：回退用 filename（filename 仍会过白名单校验）。"""
+        monkeypatch.setattr("backend.common.PROJECT_ROOT", str(tmp_path))
+        payload = json.dumps({"name": "", "holdings": {}}).encode()
+
+        result = await dsvc.import_data(payload, "portfolio", "fallback.json")
+
+        assert result["imported"] == "fallback"
+
+    async def test_portfolio_import_rejects_traversal_via_filename(self, tmp_path, monkeypatch):
+        """name 缺失时回退用 filename，同样必须过滤（原实现的另一条入口）。"""
+        monkeypatch.setattr("backend.common.PROJECT_ROOT", str(tmp_path))
+        payload = json.dumps({"holdings": {}}).encode()
+
+        with pytest.raises(ValueError):
+            await dsvc.import_data(payload, "portfolio", "../../evil.json")
+
+    async def test_portfolio_import_keeps_safe_names_working(self, tmp_path, monkeypatch):
+        """回归：合法中文/英文/数字/连字符名称不受影响（不能修出误伤）。"""
+        monkeypatch.setattr("backend.common.PROJECT_ROOT", str(tmp_path))
+        for good in ("我的组合", "my_pool-2026", "600519"):
+            payload = json.dumps({"name": good, "holdings": {}}).encode()
+            result = await dsvc.import_data(payload, "portfolio", "f.json")
+            assert result["imported"] == good
+            assert (tmp_path / "portfolios" / f"{good}.json").exists()
+
 
 # ════════════════════════════════════════════════════
 # export_data

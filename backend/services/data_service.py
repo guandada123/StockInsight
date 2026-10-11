@@ -11,12 +11,28 @@
 import json as _json
 import logging
 import os
+import re
 import time
 from typing import Any
 
 from backend.common import _get_db_path, async_safe_table_count
 
 logger = logging.getLogger(__name__)
+
+# ── 安全：组合名白名单（2026-10-11 审计修复路径穿越） ──────────
+# 原实现直接 `os.path.join(PROJECT_ROOT, "portfolios", f"{name}.json")`，
+# 而 name 取自**上传 JSON 内容**且未消毒 → `name="../../evil"` 可越目录写文件。
+# 修复：白名单字符 + 长度上限（中文/字母/数字/下划线/连字符），并在写盘前
+# 二次校验 realpath 前缀（双防线）。
+_PORTFOLIO_NAME_RE = re.compile(r"^[\w\u4e00-\u9fff-]{1,64}$")
+
+
+def _safe_portfolio_name(raw: str) -> str:
+    """净化并校验组合名；非法直接抛 ValueError（拒绝写入）。"""
+    name = (raw or "").strip()
+    if not _PORTFOLIO_NAME_RE.fullmatch(name):
+        raise ValueError(f"非法组合名: {raw!r}（仅允许中文/字母/数字/下划线/连字符，1-64 字符）")
+    return name
 
 
 async def get_data_stats() -> dict[str, Any]:
@@ -196,12 +212,17 @@ async def import_data(file: bytes, data_type: str, filename: str) -> dict[str, A
 
     elif data_type == "portfolio":
         data = _json.loads(content.decode("utf-8"))
-        name = data.get("name", filename.rsplit(".", 1)[0])
+        name = _safe_portfolio_name(data.get("name") or filename.rsplit(".", 1)[0])
 
         from backend.common import PROJECT_ROOT
 
-        fpath = os.path.join(PROJECT_ROOT, "portfolios", f"{name}.json")
-        os.makedirs(os.path.dirname(fpath), exist_ok=True)
+        portfolio_dir = os.path.join(PROJECT_ROOT, "portfolios")
+        fpath = os.path.join(portfolio_dir, f"{name}.json")
+        # 第二道防线：写盘前确认目标仍在 portfolios/ 目录内（防符号链接/边界绕过）
+        real_dir = os.path.realpath(portfolio_dir)
+        if not os.path.realpath(fpath).startswith(real_dir + os.sep):
+            raise ValueError("非法路径")
+        os.makedirs(portfolio_dir, exist_ok=True)
         with open(fpath, "w", encoding="utf-8") as f:
             _json.dump(data, f, ensure_ascii=False, indent=2)
         return {"imported": name, "type": "portfolio"}
