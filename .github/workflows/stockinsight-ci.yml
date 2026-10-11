@@ -181,8 +181,15 @@ jobs:
           python3 - <<'PY'
           import json, sys
 
-          # 基线（只许减不许加）：均为 dev-only 构建工具链的**传递**依赖，
-          # 强制 overrides 升级的破坏风险 > 收益；待工具链整体升级时消项。
+          # 基线（只许减不许加）：
+          #   · brace-expansion (high) / browserslist (high)：dev-only 构建工具链的**传递**依赖，
+          #     强制 overrides 升级的破坏风险 > 收益。
+          #   · baseline-browser-mapping (moderate)：同上（browserslist 依赖）。
+          # 门禁只对 **high/critical 且未豁免** 的项判红；moderate 不拦（避免告警疲劳）。
+          # 现状（2026-10-11 实测）：2 high + 3 moderate + 0 critical。
+          # 已知未修项 vitest/@vitest/mocker (moderate)：vitest 5 与
+          # @testing-library/jest-dom@7.0.1（已是最新）的类型增强不兼容 → `tsc --noEmit`
+          # 报数十条 TS2339（toBeInTheDocument 不存在）→ 暂留 4.1.10，待生态跟上再升。
           BASELINE = {
               "baseline-browser-mapping",  # moderate ← browserslist
               "brace-expansion",           # high     ← glob/minimatch
