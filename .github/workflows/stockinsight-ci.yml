@@ -167,15 +167,38 @@ jobs:
           cache: npm
       - name: Install scanners
         run: |
-          pip install bandit safety
+          pip install bandit pip-audit
       - name: Bandit (code-level scan)
         run: bandit -r backend/ backend/services/ stock_analyzer/ -ll --skip B101 --exclude '*/tests/*'
-      - name: Safety (dependency scan)
-        run: safety check --full-report || true
-      - name: npm audit
+      # 2026-10-11：原 safety 3.x 需账号鉴权 → 产出空报告却被 Summary 显示成「0 漏洞」（静默失效+假 0）。
+      # 换 pip-audit（免费无鉴权），审计锁文件的可复现口径，阻塞式。
+      - name: pip-audit (dependency scan)
+        run: pip-audit -r requirements.lock --progress-spinner off
+      - name: npm audit（基线豁免式）
         run: |
           npm ci
-          npm audit --audit-level=high || true
+          npm audit --json > npm-audit.json || true
+          python3 - <<'PY'
+          import json, sys
+
+          # 基线（只许减不许加）：均为 dev-only 构建工具链的**传递**依赖，
+          # 强制 overrides 升级的破坏风险 > 收益；待工具链整体升级时消项。
+          BASELINE = {
+              "baseline-browser-mapping",  # moderate ← browserslist
+              "brace-expansion",           # high     ← glob/minimatch
+              "browserslist",              # high     ← postcss/autoprefixer
+          }
+          data = json.load(open("npm-audit.json"))
+          offenders = [
+              f"{n} ({v.get('severity')})"
+              for n, v in (data.get("vulnerabilities") or {}).items()
+              if (v.get("severity") or "").lower() in ("high", "critical") and n not in BASELINE
+          ]
+          if offenders:
+              print("::error::npm audit 发现未豁免的 high/critical 漏洞: " + ", ".join(offenders))
+              sys.exit(1)
+          print(f"OK：无未豁免的 high/critical（基线豁免 {len(BASELINE)} 项 dev-only）")
+          PY
       - name: Secret scan
         run: |
           if grep -rn "PRIVATE KEY\|-----BEGIN RSA\|-----BEGIN OPENSSH" backend/ backend/services/ stock_analyzer/ 2>/dev/null; then

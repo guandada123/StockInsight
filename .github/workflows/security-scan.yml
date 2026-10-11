@@ -1,6 +1,14 @@
 # ============================================================
 # StockInsight — Security Scan (Unified Standard)
 # Runs: weekly schedule + on dep/code change + manual
+#
+# 🔴 2026-10-11 审计整改（P1-6）：
+#   · 原 `safety check ... || true` 的 scanner 已失效（safety 3.x 需账号鉴权），
+#     产出的是**空报告**，而 Summary 用 `|| echo 0` 把它显示成「0 vulnerabilities」
+#     —— 典型的「扫描器静默失效 + 假 0」。已换为 **pip-audit**（免费、无需鉴权）。
+#   · bandit 原为 `|| true` + continue-on-error（永不阻断）。基线实测 0 命中，
+#     故改为**阻塞式**：新增 MEDIUM+ 问题即红。
+#   · NODE_VERSION 由 20 对齐到 22（与 stockinsight-ci.yml 一致；Node 20 已 EOL）。
 # ============================================================
 name: Security Scan
 
@@ -18,11 +26,11 @@ on:
 
 env:
   PYTHON_VERSION: "3.12"
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
 
 jobs:
-  safety-check:
-    name: Dependency Scan (safety)
+  dep-scan:
+    name: Dependency Scan (pip-audit)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -31,32 +39,44 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
           cache-dependency-path: "requirements*.txt"
-      - name: Install deps + safety
-        run: |
-          pip install safety
-          pip install -r <(grep -v '^yquoter' requirements.txt) || true
-      - name: Safety check
-        run: safety check --full-report --output json > safety-report.json || true
-        continue-on-error: true
-      - name: Upload safety report
+      - name: Install pip-audit
+        run: pip install pip-audit
+      # 审计 requirements.lock（可复现口径 = 锁文件里记录的版本集合）。
+      # 阻塞式：锁文件存在已知漏洞即红（修复 = 升级对应 pin，一行改动）。
+      - name: pip-audit (lock)
+        run: pip-audit -r requirements.lock --progress-spinner off -f json -o pip-audit-report.json
+      - name: Upload report
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: stockinsight-safety-report
-          path: safety-report.json
+          name: stockinsight-pip-audit-report
+          path: pip-audit-report.json
+      # 注意：本步骤只在扫描成功时才有意义；扫描失败时上一步已失败（不掩盖）。
       - name: Summary
+        if: always()
         run: |
-          VULN_COUNT=$(python3 -c "
-          import json
-          with open('safety-report.json') as f:
-              data = json.load(f)
-          vulns = data.get('vulnerabilities', [])
-          print(len(vulns))
-          ") || echo "0"
-          echo "## Safety Check" >> $GITHUB_STEP_SUMMARY
-          echo "Vulnerabilities found: **${VULN_COUNT:-0}**" >> $GITHUB_STEP_SUMMARY
+          python3 - <<'PY'
+          import json, os
+          summary = os.environ["GITHUB_STEP_SUMMARY"]
+          try:
+              deps = json.load(open("pip-audit-report.json")).get("dependencies", [])
+          except Exception as e:
+              with open(summary, "a") as f:
+                  f.write("## Dependency Scan (pip-audit)\n\n")
+                  f.write(f"> ⚠️ **报告不可解析**（{e}）—— 扫描未成功，**不等于无漏洞**\n")
+              raise SystemExit(0)
+          vulns = [d for d in deps if d.get("vulns")]
+          total = sum(len(d["vulns"]) for d in vulns)
+          with open(summary, "a") as f:
+              f.write("## Dependency Scan (pip-audit)\n\n")
+              f.write(f"受影响包：**{len(vulns)}** ｜ 漏洞条目：**{total}**\n\n")
+              for d in vulns:
+                  fixes = sorted({v for vv in d["vulns"] for v in (vv.get("fix_versions") or [])})
+                  f.write(f"- `{d['name']}` {d['version']} × {len(d['vulns'])} → 修复版本 {fixes}\n")
+          PY
 
   bandit:
-    name: Code Scan (bandit)
+    name: Code Scan (bandit, 阻塞式)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -67,26 +87,31 @@ jobs:
           cache-dependency-path: "requirements*.txt"
       - name: Install bandit
         run: pip install bandit[toml]
+      # 阻塞式（2026-10-11 起）：基线为 0 命中（-ll = MEDIUM+ 严重度与置信度）
       - name: Bandit scan
         run: |
           bandit -r backend/ backend/services/ stock_analyzer/ -f json -o bandit-report.json \
-            -ll --skip B101 --exclude '*/tests/*' || true
-        continue-on-error: true
+            -ll --skip B101 --exclude '*/tests/*'
       - name: Upload bandit report
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: stockinsight-bandit-report
           path: bandit-report.json
       - name: Summary
+        if: always()
         run: |
           COUNT=$(python3 -c "
           import json
           with open('bandit-report.json') as f:
               data = json.load(f)
           print(len(data.get('results', [])))
-          ") || echo "0"
-          echo "## Bandit Code Scan" >> $GITHUB_STEP_SUMMARY
-          echo "Issues found: **${COUNT:-0}**" >> $GITHUB_STEP_SUMMARY
+          " 2>/dev/null) || COUNT="(报告不可解析)"
+          {
+            echo "## Bandit Code Scan (阻塞式)"
+            echo ""
+            echo "Issues found: **${COUNT}**"
+          } >> $GITHUB_STEP_SUMMARY
 
   secret-scan:
     name: Secret Detection (gitleaks)
