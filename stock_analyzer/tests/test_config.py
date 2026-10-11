@@ -153,7 +153,6 @@ class TestConfigDefaults(unittest.TestCase):
         self.assertIsInstance(config.TUSHARE_TOKEN, str)
         self.assertIsInstance(config.FEISHU_WEBHOOK, str)
         self.assertIsInstance(config.FEISHU_CHAT_ID, str)
-        self.assertIsInstance(config.DEEPSEEK_API_KEY, str)
 
 
 if __name__ == "__main__":

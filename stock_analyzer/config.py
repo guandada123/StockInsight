@@ -145,4 +145,11 @@ FEISHU_WEBHOOK = get_env("FEISHU_WEBHOOK", "")
 FEISHU_CHAT_ID = get_env("FEISHU_CHAT_ID", "")
 
 # ── AI 模型密钥 ─────────────────────────────
-DEEPSEEK_API_KEY = get_env("DEEPSEEK_API_KEY", "")
+# 2026-10-11 清理：`DEEPSEEK_API_KEY` 原定义于此，但**全仓无任何消费方**
+#   （grep 全类型仅命中：本文件的定义 + 一个类型断言 + .env.example 模板；
+#    亦无 api.deepseek.com 调用代码，且仓库内连 .env 都没有）
+#   → 属"文档/配置宣称有、实际从不生效"的**死配置**（静默失效类）。
+#   现直接删除，避免后来者误以为 AI 能力已接线。
+#   若将来真要接 AI：在 .env 配 key 后，在此重新定义并在**调用方**接线，
+#   同时补一条「无 key 时明确降级」的分支（禁静默跳过）。
+# （保留本段注释作为口径说明；如无需要可整段删除）
