@@ -74,11 +74,14 @@ def test_no_new_hardcoded_paths():
     current, baseline = scan(), load_baseline()
     new_files = sorted(set(current) - set(baseline))
     increased = sorted(
-        (f, baseline[f], current[f]) for f in set(current) & set(baseline) if current[f] > baseline[f]
+        (f, baseline[f], current[f])
+        for f in set(current) & set(baseline)
+        if current[f] > baseline[f]
     )
     assert not new_files, (
         "以下文件**新增**了本机绝对路径 /Users/guan（禁新增）——请改用派生路径"
-        "（Path(__file__).resolve().parents[N] / Path.home()）或环境变量：\n  - " + "\n  - ".join(new_files)
+        "（Path(__file__).resolve().parents[N] / Path.home()）或环境变量：\n  - "
+        + "\n  - ".join(new_files)
     )
     assert not increased, "以下文件的本机绝对路径**比基线更多**（禁新增）：\n  - " + "\n  - ".join(
         f"{f}: {b} → {c}" for f, b, c in increased
@@ -98,8 +101,15 @@ def test_baseline_has_no_stale_zero_entries():
 def test_report_progress(capsys):
     current, baseline = scan(), load_baseline()
     improved = sorted(
-        (f, baseline[f], current[f]) for f in set(current) & set(baseline) if current[f] < baseline[f]
+        (f, baseline[f], current[f])
+        for f in set(current) & set(baseline)
+        if current[f] < baseline[f]
     )
     if improved:
-        print("📉 以下文件已比基线减少，请把基线数字调小：\n  - " + "\n  - ".join(f"{f}: {b} → {c}" for f, b, c in improved))
-    print(f"📊 当前硬编码总量：{sum(current.values())} 处 / {len(current)} 文件（基线 {sum(baseline.values())} 处）")
+        print(
+            "📉 以下文件已比基线减少，请把基线数字调小：\n  - "
+            + "\n  - ".join(f"{f}: {b} → {c}" for f, b, c in improved)
+        )
+    print(
+        f"📊 当前硬编码总量：{sum(current.values())} 处 / {len(current)} 文件（基线 {sum(baseline.values())} 处）"
+    )
