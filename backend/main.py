@@ -174,6 +174,35 @@ async def add_security_headers(request: Request, call_next):
 
 
 @app.middleware("http")
+async def api_auth_gate(request: Request, call_next):
+    """访问闸门（2026-10-12 审计 P1-5：此前 backend 只有 CORS、无任何鉴权）。
+
+    两档语义（**默认不放行任何非本机请求**）：
+      ① 配了环境变量 `SI_API_TOKEN` → 必须带 `X-API-Key` 且与之相等，否则 401；
+      ② 未配 token → **只允许本机**（127.0.0.1 / ::1）；非本机一律 401
+         —— 与容器仅绑 `127.0.0.1:8766` 形成双保险；将来若要在局域网开放，
+         **先配 token 再改绑定**（顺序反了就是无鉴权暴露）。
+      ③ `/api/health` 免检：监控探针要在无凭据下可用。
+
+    为什么用中间件而不是逐路由 Depends：路由分散在 backend/api/*，逐处加容易漏；
+    中间件是"默认全拦、白名单放行"，漏改的后果是**拒绝**而不是**放行**（fail-safe）。
+    """
+    if request.url.path == "/api/health":
+        return await call_next(request)
+    expected = os.environ.get("SI_API_TOKEN", "").strip()
+    if expected:
+        if request.headers.get("X-API-Key", "") != expected:
+            return JSONResponse({"detail": "unauthorized"}, status_code=401)
+    else:
+        host = request.client.host if request.client else ""
+        if host not in ("127.0.0.1", "::1", "localhost"):
+            return JSONResponse(
+                {"detail": "unauthorized: 未配置 SI_API_TOKEN，仅允许本机访问"}, status_code=401
+            )
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     """Simple sliding-window rate limiter: 60 req/min per IP."""
     async with _RATE_LIMITS_LOCK:

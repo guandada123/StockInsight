@@ -4,6 +4,7 @@ StockInsight API 集成测试 — 验证完整请求链路
 覆盖: health, market, analysis, portfolio, factors, data, 错误处理, 中间件
 """
 
+import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -34,7 +35,11 @@ from fastapi.testclient import TestClient
 
 from backend.main import app
 
-client = TestClient(app)
+# 2026-10-12 P1-5：backend 新增访问闸门（配 token 必须带 X-API-Key；未配则仅本机）。
+# TestClient 的 client.host 是 "testclient"（非本机），故这里显式配 token 并带上头 ——
+# 测试应走"已鉴权"的真实路径，而不是给生产代码开测试专用后门。
+os.environ.setdefault("SI_API_TOKEN", "test-token")
+client = TestClient(app, headers={"X-API-Key": os.environ["SI_API_TOKEN"]})
 
 # 恢复原始模块，避免污染其他 test module
 if _ORIG_SA is not None:
