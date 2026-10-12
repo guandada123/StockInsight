@@ -39,3 +39,5 @@ venv/
 .coverage
 *.tmp.json
 .rate_limits.json
+# P1-12 门禁基线必须入库（CI 也要读它）—— 上面 *.json 通配有例外
+!backend/tests/hardcoded_paths_baseline.json
