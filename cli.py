@@ -750,6 +750,17 @@ def cmd_scan(args):
             )
         print(f"\n结果已保存: {out}")
 
+    # 保留期清理（2026-10-13）：scan_*.json 每次扫描一个（~2.4MB）、
+    # error_*.log 每日一个，均无保留策略 → logs/ 曾积压 128MB。
+    # 默认保留 14 天（与 backend/logging_config.py 的 LOG_BACKUP 一致），
+    # 可用 SCAN_LOG_KEEP_DAYS 覆盖；只删保留期外的旧文件，绝不动当次产物。
+    try:
+        removed = _cleanup_old_logs()
+        if removed:
+            print(f"日志清理: 移除 {len(removed)} 个超过保留期的旧文件")
+    except Exception as e:  # noqa: BLE001 — 清理失败不应让扫描失败
+        print(f"日志清理跳过: {e}")
+
     # 写入 daily_scores 数据库
     try:
         import pandas as pd
@@ -1572,6 +1583,43 @@ def cmd_clean(args):
 # ── 辅助 ──────────────────────────────────────────
 
 import tempfile  # 可写目录回退(顶部未 import 时在此补齐，重复 import 无害)
+
+
+def _cleanup_old_logs(days: int | None = None) -> list[str]:
+    """清理 logs/ 下超过保留期的扫描产物与错误日志（2026-10-13 新增）。
+
+    背景：`scan_<mode>_<ts>.json` 每次扫描写一个（实测 ~2.4MB/个）、
+    `error_<date>.log` 每日一个，两者均无保留策略 —— 曾积压 128MB+。
+    保留期默认 14 天（与 backend/logging_config.py 的 LOG_BACKUP 对齐），
+    可用环境变量 SCAN_LOG_KEEP_DAYS 覆盖；只删保留期外的旧文件，
+    当次产物（刚写入）绝不在删除范围。删除失败不抛出（由调用方兜底）。
+    """
+    if days is None:
+        try:
+            days = int(os.environ.get("SCAN_LOG_KEEP_DAYS", "14"))
+        except ValueError:
+            days = 14
+    if days <= 0:
+        return []
+    cutoff = time.time() - days * 86400
+    removed: list[str] = []
+    try:
+        names = os.listdir(_SCAN_DIR)
+    except OSError:
+        return []
+    for name in names:
+        is_scan = name.startswith("scan_") and name.endswith(".json")
+        is_err = name.startswith("error_") and name.endswith(".log")
+        if not (is_scan or is_err):
+            continue
+        path = os.path.join(_SCAN_DIR, name)
+        try:
+            if os.path.isfile(path) and os.path.getmtime(path) < cutoff:
+                os.remove(path)
+                removed.append(name)
+        except OSError:
+            continue
+    return removed
 
 
 def _scan_writable_dir():
