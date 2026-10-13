@@ -19,6 +19,7 @@ on:
     branches: [main]
     paths:
       - "**/requirements*.txt"
+      - "requirements.lock"          # 2026-10-13：锁文件变更必须触发（否则门禁抓不到；对照 QTS 10-11 同类修复）
       - "**/*.py"
   pull_request:
     branches: [main]
