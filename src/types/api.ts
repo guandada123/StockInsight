@@ -1,7 +1,11 @@
 // API 响应类型定义
 
 // 开发模式走 Vite 代理 (相对路径)，生产模式直连
-export const API_BASE = window.location.hostname === "localhost" ? "" : "http://127.0.0.1:8765";
+// 2026-10-13 部署适配：优先读取运行时注入的 window.__API_BASE__（服务器 nginx 经
+//   /config.js 下发，支持同源或指向任意 API 域名，无需重新构建）；未注入时保持原逻辑
+const injectedBase = (window as unknown as { __API_BASE__?: string }).__API_BASE__;
+export const API_BASE =
+  injectedBase ?? (window.location.hostname === "localhost" ? "" : "http://127.0.0.1:8765");
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
