@@ -3,6 +3,9 @@ services:
     build: .
     ports:
       - "127.0.0.1:8766:8765"
+      # 2026-10-15：供 web 容器（共享本容器网络命名空间）的 nginx 对外发布 80。
+      #   因 network_mode: service:api 下 web 不能自己声明 ports，故端口写在这里。
+      - "127.0.0.1:18080:80"
     volumes:
       - ./stock_cache.db:/app/stock_cache.db
       - ./logs:/app/logs
@@ -10,9 +13,26 @@ services:
       - .:/app:ro
     environment:
       - TUSHARE_TOKEN=${TUSHARE_TOKEN:-}
+      # 2026-10-16：限流状态落盘到可写目录（仓库为只读挂载，默认路径会报 OSError 噪音日志）
+      - SI_RATE_DUMP_PATH=${SI_RATE_DUMP_PATH:-/app/logs/.rate_limits.json}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8765/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # 2026-10-15 新增（本机专用）：SPA + API 同源网关
+  # 与 api 共享网络命名空间，使 API 的"仅允许本机"鉴权闸门放行反代请求（零配置改动）。
+  # 回滚：删掉本服务与 api 的 18080 端口行，再 docker compose up -d 即可。
+  web:
+    image: nginx:alpine
+    container_name: stockinsight-web
+    restart: unless-stopped
+    network_mode: "service:api"
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - ./dist:/usr/share/nginx/html:ro
+      - ./.nginx-local.conf:/etc/nginx/conf.d/default.conf:ro

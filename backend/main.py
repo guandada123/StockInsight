@@ -51,7 +51,13 @@ _RATE_LIMITS_LOCK = asyncio.Lock()
 _RATE_MAX = 60  # max requests
 _RATE_WINDOW = 60.0  # per window (seconds)
 _RATE_DUMP_INTERVAL = 10.0  # flush to disk every N seconds
-_RATE_DUMP_PATH = os.path.join(os.path.dirname(__file__), ".rate_limits.json")
+# 2026-10-16：落盘路径支持环境变量覆盖。容器内仓库以只读挂载（compose `.:/app:ro`），
+#   默认路径 /app/backend/.rate_limits.json 不可写 → 每次转储抛 OSError 并打 WARNING；
+#   经 SI_RATE_DUMP_PATH 指向可写目录（如 /app/logs/）即可消除噪音并让限流状态跨重启保留。
+#   不设该变量时行为与原先完全一致（向后兼容）。
+_RATE_DUMP_PATH = os.environ.get("SI_RATE_DUMP_PATH") or os.path.join(
+    os.path.dirname(__file__), ".rate_limits.json"
+)
 _last_rate_dump = 0.0
 
 
