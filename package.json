@@ -23,7 +23,7 @@
   "dependencies": {
     "@tauri-apps/api": "^2.12.1",
     "@tauri-apps/plugin-dialog": "^2.8.1",
-    "@tauri-apps/plugin-notification": "^2.5.0",
+    "@tauri-apps/plugin-notification": "^2.6.0",
     "@tauri-apps/plugin-shell": "^2.5.0",
     "echarts": "^6.1.0",
     "echarts-for-react": "^3.0.2",
