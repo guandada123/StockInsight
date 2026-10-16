@@ -16,18 +16,25 @@ export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => voi
   const marketApi = useApi<{ indices: Record<string, MarketIndex> }>();
   const sectorsApi = useApi<{ sectors: SectorInfo[] }>();
 
+  // 2026-10-16 审计修复（P0 请求自激循环）：useApi 每次渲染返回新的对象字面量，
+  //   把整个 api 对象放进 useCallback 依赖 → 回调每次渲染都变 → useEffect 每次
+  //   渲染重跑 → 反复发请求直至撞上后端 60 req/min 限流（手机端更明显）。
+  //   改用其内部稳定函数（fetchApi 的 useCallback 链止于 []），依赖恢复稳定。
+  const { fetchApi: fetchMarket } = marketApi;
+  const { fetchApi: fetchSectors } = sectorsApi;
+
   const loadMarket = useCallback(async () => {
-    const res = await marketApi.fetchApi("/api/market/overview");
+    const res = await fetchMarket("/api/market/overview");
     if (res.success) setIndices(res.data.indices);
     else setError(res.error || "获取市场数据失败");
-  }, [setIndices, marketApi]);
+  }, [setIndices, setError, fetchMarket]);
 
   const loadSectors = useCallback(async () => {
     setSectorError(null);
-    const res = await sectorsApi.fetchApi("/api/market/hot-sectors?top_n=12");
+    const res = await fetchSectors("/api/market/hot-sectors?top_n=12");
     if (res.success) setSectors(res.data.sectors || []);
     else setSectorError(res.error || "获取板块数据失败");
-  }, [sectorsApi]);
+  }, [setSectors, setSectorError, fetchSectors]);
 
   // react-hooks/set-state-in-effect 误报：loadMarket/loadSectors 是 async 函数，
   // 内部 setState 均在 await 之后执行，并非同步 setState
