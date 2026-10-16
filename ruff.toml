@@ -6,6 +6,12 @@ line-length = 100
 indent-width = 4
 
 [lint]
+# 2026-10-17 加固（详见 代码审查修复报告_20261017.md）：
+#   RUF006  dangling-asyncio-task   —— create_task 无强引用会被 GC（曾致优雅关闭/批量扫描可能静默不执行）
+#   RUF013  implicit-optional       —— 与 mypy no_implicit_optional=true 对齐，消除两套门禁口径偏差
+#   B904    raise-without-from      —— 已清零，从 ignore 移入（保留异常链，便于回溯根因）
+extend-select = ["RUF006", "RUF013", "B904"]
+
 select = [
     # Error detection
     "E", "W",          # pycodestyle
@@ -64,7 +70,6 @@ ignore = [
     "E741",            # ambiguous-variable-name
     "TRY004", "TRY301",
     "PIE810",          # multiple-starts-ends-with
-    "B904",            # raise-without-from
     "N818",            # error-suffix-on-exception
     "C401", "C416",    # unnecessary-generator
 ]

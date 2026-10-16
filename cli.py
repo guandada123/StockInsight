@@ -15,7 +15,6 @@
 """
 
 import argparse
-import io
 import json
 import os
 import sys
@@ -23,7 +22,18 @@ import time
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+# 强制 stdout 为 UTF-8（Windows/受限环境默认编码会把中文打成乱码）。
+# 修复(2026-10-17)：原为 `sys.stdout = io.TextIOWrapper(sys.stdout.buffer, ...)`
+# ——新建的 wrapper 在被替换/GC 时会**关闭底层 buffer**，破坏任何嵌入方的
+# 流捕获（实测让 pytest 报 "ValueError: I/O operation on closed file"，
+# 同理会影响以 Python 对象捕获输出的自动化宿主）。
+# 改用 reconfigure 原地改编码，不新建对象、不接管 buffer 所有权。
+try:
+    sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
+except (AttributeError, ValueError):
+    # 非 TextIOWrapper（如测试捕获对象）或不允许重配置 → 保持原样，
+    # 编码问题由外层环境（PYTHONIOENCODING）兜底
+    pass
 
 # 延迟导入重型模块（pandas/numpy仅在需要时加载，节省CLI --help等轻量操作启动时间）
 _pd = None
@@ -718,8 +728,6 @@ def cmd_scan(args):
                         key = str(r).split(":", 1)[0].strip() or "unknown"
                         err_reasons[key] = err_reasons.get(key, 0) + 1
 
-                    _save_checkpoint_single(code)
-
                     # 进度报告
                     if completed % 50 == 0 or completed == total:
                         elapsed = time.time() - t0
@@ -730,6 +738,15 @@ def cmd_scan(args):
                             f"  [{completed}/{total}] {pct:.0f}%  速率 {rate:.1f}只/s  "
                             f"ETA {eta / 60:.0f}min  结果 {len(results)}  跳过 {skipped}"
                         )
+
+                # 断点写盘移出锁外（2026-10-17）：
+                # 原在 `with _lock` 内逐只执行 open+write+flush+fsync，
+                # 8 个 worker 必须串行排队等 fsync，临界区被磁盘 I/O 占满。
+                # 迁出后不牺牲崩溃保证（仍逐只落盘），仅缩短锁持有时间。
+                # 并发安全性：checkpoint 是「集合」语义（_load_checkpoint 读成 set），
+                # 行序无关；"a" 模式 = O_APPEND，单次 7 字节 write() 原子更新偏移，
+                # 并发追加不会交错拆行。
+                _save_checkpoint_single(code)
         except FutureTimeout:
             budget_hit = True
             for f in futures:
