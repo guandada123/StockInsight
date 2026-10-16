@@ -1,11 +1,14 @@
 import { Routes, Route, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import Dashboard from "./pages/Dashboard";
-import StockAnalysis from "./pages/StockAnalysis";
-import Portfolio from "./pages/Portfolio";
-import Settings from "./pages/Settings";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { API_BASE } from "./types/api";
+
+// P2-8：按路由做代码分割，把 ECharts（仅个股页使用）等重量依赖移出首屏主包；
+//   Dashboard 作为首屏保留同步加载，避免首屏白屏。
+const StockAnalysis = lazy(() => import("./pages/StockAnalysis"));
+const Portfolio = lazy(() => import("./pages/Portfolio"));
+const Settings = lazy(() => import("./pages/Settings"));
 
 interface WatchlistItem {
   code: string;
@@ -26,22 +29,81 @@ export default function App() {
 
   // 检查 API 后端是否就绪
   const [apiReady, setApiReady] = useState(false);
+  const [apiFailed, setApiFailed] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+
+  // P1-4：原实现 setTimeout 链无清理/无卸载保护，30 次重试耗尽后永久停在"正在启动"
+  //   且无错误态与重试入口。现加 cancelled 标志 + clearTimeout + 单次健康检查超时
+  //   （AbortController），耗尽后切错误态并提供「重试」。
   useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController | undefined;
     let retries = 0;
+
     const check = async () => {
+      controller = new AbortController();
+      const timeout = setTimeout(() => controller?.abort(), 4000);
       try {
-        const res = await fetch(`${API_BASE}/api/health`);
-        if (res.ok) {
+        const res = await fetch(`${API_BASE}/api/health`, { signal: controller.signal });
+        if (!cancelled && res.ok) {
           setApiReady(true);
           return;
         }
       } catch (err) {
-        console.warn("[App] API health check failed, retrying...", err);
+        if (!cancelled) console.warn("[App] API health check failed, retrying...", err);
+      } finally {
+        clearTimeout(timeout);
       }
-      if (retries++ < 30) setTimeout(check, 1000);
+      if (cancelled) return;
+      if (retries++ < 30) {
+        timer = setTimeout(check, 1000);
+      } else {
+        setApiFailed(true);
+      }
     };
+
     check();
-  }, []);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      controller?.abort();
+    };
+  }, [retryKey]);
+
+  // 重试耗尽 → 错误态（提供重试入口）
+  if (apiFailed && !apiReady) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          background: "#060b14",
+          color: "#bac8dc",
+          flexDirection: "column",
+          gap: 16,
+        }}
+      >
+        <div className="fs-24 fw-800 c-white">
+          Stock<span style={{ color: "#3b82f6" }}>Insight</span> Pro
+        </div>
+        <div className="c-dm" style={{ maxWidth: 380, textAlign: "center", padding: "0 16px" }}>
+          无法连接 Python 分析引擎，请确认后端已启动（同源 /api 或 127.0.0.1:8765）。
+        </div>
+        <button
+          className="nav-btn primary"
+          onClick={() => {
+            setApiFailed(false);
+            setRetryKey((k) => k + 1);
+          }}
+        >
+          重试
+        </button>
+      </div>
+    );
+  }
 
   if (!apiReady) {
     return (
@@ -121,12 +183,14 @@ export default function App() {
       <div className="main-body">
         <ErrorBoundary>
           <div className="content">
-            <Routes>
-              <Route path="/" element={<Dashboard onSearch={handleSearch} />} />
-              <Route path="/stock/:code" element={<StockAnalysis />} />
-              <Route path="/portfolio" element={<Portfolio />} />
-              <Route path="/settings" element={<Settings />} />
-            </Routes>
+            <Suspense fallback={<div className="loading">加载中...</div>}>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/stock/:code" element={<StockAnalysis />} />
+                <Route path="/portfolio" element={<Portfolio />} />
+                <Route path="/settings" element={<Settings />} />
+              </Routes>
+            </Suspense>
           </div>
 
           {/* 侧边栏 */}

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import ReactECharts from "echarts-for-react";
 import type { IndicatorData } from "../types/api";
 
@@ -11,6 +11,22 @@ export default function IndicatorChart({
   type: string;
   onTypeChange: (t: string) => void;
 }) {
+  // 容器尺寸变化时同步 ECharts 尺寸，卸载时断开监听（见 KlineChart 同款处理）。
+  const resizeObs = useRef<ResizeObserver | null>(null);
+  const handleChartReady = useCallback(
+    (chart: { resize: () => void; getDom?: () => HTMLElement | null }) => {
+      if (typeof ResizeObserver === "undefined") return;
+      const dom = chart.getDom?.();
+      if (!dom) return;
+      resizeObs.current?.disconnect();
+      const ro = new ResizeObserver(() => chart.resize());
+      ro.observe(dom);
+      resizeObs.current = ro;
+    },
+    []
+  );
+  useEffect(() => () => resizeObs.current?.disconnect(), []);
+
   const types = [
     { key: "macd", label: "MACD" },
     { key: "rsi", label: "RSI" },
@@ -59,7 +75,12 @@ export default function IndicatorChart({
         ))}
       </div>
       <div className="card-body p-0">
-        <ReactECharts option={option} style={{ height: 220 }} opts={{ renderer: "canvas" }} />
+        <ReactECharts
+          option={option}
+          style={{ height: 220 }}
+          opts={{ renderer: "canvas" }}
+          onChartReady={handleChartReady}
+        />
       </div>
     </div>
   );

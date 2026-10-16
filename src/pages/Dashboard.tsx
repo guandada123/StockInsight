@@ -4,7 +4,7 @@ import { useMarketStore } from "../store";
 import { useApi } from "../hooks/useApi";
 import type { MarketIndex, SectorInfo } from "../types/api";
 
-export default function Dashboard({ onSearch: _onSearch }: { onSearch: () => void }) {
+export default function Dashboard() {
   const navigate = useNavigate();
   const { indices, setIndices } = useMarketStore();
   const [sectors, setSectors] = useState<SectorInfo[]>([]);

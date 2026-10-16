@@ -213,7 +213,16 @@ function FactorManagement() {
       `/api/factors/validate?expression=${encodeURIComponent(form.expression)}`,
       { method: "POST" }
     );
-    setValidateMsg(res.data.valid ? "表达式语法正确" : `语法错误: ${res.data.error}`);
+    // P2-7：原实现未判 res.success / res.data 即取 res.data.valid，失败时 null 解引用抛异常
+    if (!res.success) {
+      setValidateMsg(res.error || "验证失败，请稍后重试");
+      return;
+    }
+    if (!res.data) {
+      setValidateMsg("验证失败：服务端未返回结果");
+      return;
+    }
+    setValidateMsg(res.data.valid ? "表达式语法正确" : `语法错误: ${res.data.error ?? "未知错误"}`);
   }
 
   const examples = [

@@ -18,7 +18,7 @@ vi.mock("../store", () => ({
 function renderDashboard() {
   return render(
     <MemoryRouter>
-      <Dashboard onSearch={() => {}} />
+      <Dashboard />
     </MemoryRouter>
   );
 }

@@ -166,57 +166,60 @@ export default function Portfolio() {
           <div className="card">
             <div className="card-header">持仓明细</div>
             <div className="card-body p-0">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>代码</th>
-                    <th>名称</th>
-                    <th>持股</th>
-                    <th>成本</th>
-                    <th>现价</th>
-                    <th>市值</th>
-                    <th>占比</th>
-                    <th>盈亏</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.holdings.map((h: PortfolioHolding) => (
-                    <tr key={h.code}>
-                      <td className="c-dm fs-11">{h.code}</td>
-                      <td
-                        className="fw-600 c-white"
-                        style={{ cursor: "pointer" }}
-                        onClick={() => navigate(`/stock/${h.code}`)}
-                      >
-                        {h.name}
-                      </td>
-                      <td>{h.shares}股</td>
-                      <td>{h.cost.toFixed(2)}</td>
-                      <td className="fw-600">{h.current_price.toFixed(2)}</td>
-                      <td>{h.market_value.toLocaleString()}</td>
-                      <td>{h.weight_pct.toFixed(1)}%</td>
-                      <td className={h.profit_pct >= 0 ? "positive" : "text-red"}>
-                        {h.profit_pct >= 0 ? "+" : ""}
-                        {h.profit_pct.toFixed(2)}%
-                        <div className="fs-10 c-dm">
-                          {h.profit_amount >= 0 ? "+" : ""}
-                          {h.profit_amount.toFixed(0)}
-                        </div>
-                      </td>
-                      <td>
-                        <button
-                          className="nav-btn fs-10"
-                          style={{ padding: "2px 8px" }}
+              {/* P2-9：9 列持仓表在窄屏下横向滚动，避免被页面裁切/撑破 */}
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>代码</th>
+                      <th>名称</th>
+                      <th>持股</th>
+                      <th>成本</th>
+                      <th>现价</th>
+                      <th>市值</th>
+                      <th>占比</th>
+                      <th>盈亏</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.holdings.map((h: PortfolioHolding) => (
+                      <tr key={h.code}>
+                        <td className="c-dm fs-11">{h.code}</td>
+                        <td
+                          className="fw-600 c-white"
+                          style={{ cursor: "pointer" }}
                           onClick={() => navigate(`/stock/${h.code}`)}
                         >
-                          分析
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          {h.name}
+                        </td>
+                        <td>{h.shares}股</td>
+                        <td>{h.cost.toFixed(2)}</td>
+                        <td className="fw-600">{h.current_price.toFixed(2)}</td>
+                        <td>{h.market_value.toLocaleString()}</td>
+                        <td>{h.weight_pct.toFixed(1)}%</td>
+                        <td className={h.profit_pct >= 0 ? "positive" : "text-red"}>
+                          {h.profit_pct >= 0 ? "+" : ""}
+                          {h.profit_pct.toFixed(2)}%
+                          <div className="fs-10 c-dm">
+                            {h.profit_amount >= 0 ? "+" : ""}
+                            {h.profit_amount.toFixed(0)}
+                          </div>
+                        </td>
+                        <td>
+                          <button
+                            className="nav-btn fs-10"
+                            style={{ padding: "2px 8px" }}
+                            onClick={() => navigate(`/stock/${h.code}`)}
+                          >
+                            分析
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </>

@@ -1,17 +1,23 @@
 // API 响应类型定义
 
-// 开发模式走 Vite 代理 (相对路径)，生产模式直连
-// 2026-10-13 部署适配：优先读取运行时注入的 window.__API_BASE__（服务器 nginx 经
-//   /config.js 下发，支持同源或指向任意 API 域名，无需重新构建）；未注入时保持原逻辑
+// 数据时效性：fresh(新鲜) / cached(缓存) / degraded(降级) / stale(过期)
+export type Freshness = "fresh" | "cached" | "degraded" | "stale";
+
+// 优先读取运行时注入的 window.__API_BASE__（由 /config.js 下发，可指向同源或任意
+//   API 域名，无需重新构建）；未注入时回退为**同源相对路径 ""**。
+//
+// 2026-10-16 审计修复：原回退分支在非 localhost 场景会指向 http://127.0.0.1:8765 ——
+//   那是「客户端自己」的 127.0.0.1：手机/局域网直连时指向手机自身，永远连不通。
+//   所有真实部署（docker nginx、tailscale serve、vite dev proxy）都由同源反代提供
+//   /api，因此回退统一使用同源相对路径 ""；确需跨域时由部署方经 /config.js 注入。
 const injectedBase = (window as unknown as { __API_BASE__?: string }).__API_BASE__;
-export const API_BASE =
-  injectedBase ?? (window.location.hostname === "localhost" ? "" : "http://127.0.0.1:8765");
+export const API_BASE = injectedBase ?? "";
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data: T;
   error: string | null;
-  freshness: "fresh" | "cached" | "degraded" | "stale";
+  freshness: Freshness;
   timing_ms: number;
 }
 
@@ -230,14 +236,6 @@ export interface DataStats {
   score_dates: number;
   last_kline_update: string;
   total_stocks: number;
-}
-
-export interface DataSourceStatus {
-  name: string;
-  type: string;
-  status: "ok" | "slow" | "error" | "disabled";
-  latency_ms: number;
-  message: string;
 }
 
 // ── 11段分析新增类型 ──

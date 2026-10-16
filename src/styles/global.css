@@ -61,7 +61,8 @@ body {
 .app-layout {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100vh; /* 回退：不支持 dvh 的旧浏览器 */
+  height: 100dvh; /* 移动端动态视口高度，避免地址栏遮挡 */
 }
 
 /* ---- Nav Bar ---- */
@@ -155,6 +156,46 @@ body {
   background: var(--bl);
   border-color: var(--bl);
   color: #fff;
+}
+
+/* ---- 移动端适配 (<768px) ---- */
+/* 导航换行 + 搜索框自适应，避免固定 240px 搜索框被 body overflow-x:hidden 裁掉 */
+@media (max-width: 768px) {
+  .nav {
+    height: auto;
+    min-height: var(--nav-h);
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  /* 仅作用于导航栏内的搜索框，避免影响设置页里复用 .nav-search 的输入框 */
+  .nav > .nav-search {
+    flex: 1 1 160px;
+    width: auto;
+    min-width: 0;
+  }
+  .content {
+    padding: 10px;
+  }
+  .footer {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+/* ---- 横向滚动表格容器 ---- */
+/* 9 列持仓表在窄屏下改为容器内横向滚动，不再撑破页面 */
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+@media (max-width: 768px) {
+  .table-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+  .table-scroll .data-table {
+    min-width: 680px;
+  }
 }
 
 /* ---- Main Layout ---- */
@@ -1006,6 +1047,12 @@ body {
 }
 .source-dot.ok {
   background: var(--gn);
+}
+.source-dot.warn {
+  background: var(--gd);
+}
+.source-dot.error {
+  background: var(--rd);
 }
 .source-dot.stale {
   background: var(--gd);

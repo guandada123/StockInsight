@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import KlineChart from "../components/KlineChart";
+import IndicatorChart from "../components/IndicatorChart";
 import { useApi } from "../hooks/useApi";
 import SectorSection from "./stock-analysis/SectorSection";
 import PatternSection from "./stock-analysis/PatternSection";
@@ -15,7 +16,24 @@ import ScoreCircle from "./stock-analysis/ScoreCircle";
 import BusinessQualitySection from "./stock-analysis/BusinessQualitySection";
 import MarketIndicesSection from "./stock-analysis/MarketIndicesSection";
 import CoreDataSection from "./stock-analysis/CoreDataSection";
-import type { StockAnalysisResult, KlineData, IndicatorData, MarketIndex } from "../types/api";
+import type {
+  StockAnalysisResult,
+  KlineData,
+  IndicatorData,
+  MarketIndex,
+  Freshness,
+} from "../types/api";
+
+// P2-6：原三元链未覆盖 sentiment/fund_flow → 都落到"风险"，语义错误。改为查表 + 兜底。
+const FACTOR_LABELS: Record<string, string> = {
+  momentum: "动量",
+  technical: "技术",
+  fundamental: "基本面",
+  volume: "量能",
+  risk: "风险",
+  sentiment: "情绪",
+  fund_flow: "资金",
+};
 
 export default function StockAnalysis() {
   const { code } = useParams<{ code: string }>();
@@ -29,46 +47,65 @@ export default function StockAnalysis() {
   const [klineError, setKlineError] = useState<string | null>(null);
   const [indicatorError, setIndicatorError] = useState<string | null>(null);
   const [marketError, setMarketError] = useState<string | null>(null);
+  // P2-5：把分析响应里的 freshness 透传给数据来源区块
+  const [freshness, setFreshness] = useState<Freshness>("fresh");
+  // P2-10：记录当前 code，在 setState 前校验，避免切股时过期响应覆盖新数据
+  const codeRef = useRef(code);
 
   const analysisApi = useApi<StockAnalysisResult>();
   const klineApi = useApi<KlineData>();
   const indicatorApi = useApi<IndicatorData>();
   const marketApi = useApi<{ indices: Record<string, MarketIndex> }>();
 
+  // P2-10：effect 内建 AbortController，cleanup 时取消 4 个在途请求，消除切股竞态
   useEffect(() => {
     if (!code) return;
-    loadAnalysis(code);
-    loadKline(code);
-    loadIndicatorData(code, "macd");
-    loadMarketOverview();
+    codeRef.current = code;
+    const controller = new AbortController();
+    loadAnalysis(code, controller.signal);
+    loadKline(code, controller.signal);
+    loadIndicatorData(code, "macd", controller.signal);
+    loadMarketOverview(controller.signal);
+    return () => controller.abort();
   }, [code]);
 
-  async function loadAnalysis(c: string) {
+  async function loadAnalysis(c: string, signal?: AbortSignal) {
     setLoading(true);
-    const res = await analysisApi.fetchApi(`/api/analysis/${c}/full`);
-    if (res.success) setResult(res.data);
-    else setError(res.error || "分析失败");
+    const res = await analysisApi.fetchApi(`/api/analysis/${c}/full`, signal);
+    if (codeRef.current !== c) return; // 已切股，丢弃过期响应
+    if (res.success) {
+      setResult(res.data);
+      setFreshness(res.freshness);
+    } else {
+      setError(res.error || "分析失败");
+    }
     setLoading(false);
   }
 
-  async function loadKline(c: string) {
+  async function loadKline(c: string, signal?: AbortSignal) {
     setKlineError(null);
-    const res = await klineApi.fetchApi(`/api/analysis/${c}/kline?days=120`);
+    const res = await klineApi.fetchApi(`/api/analysis/${c}/kline?days=120`, signal);
+    if (codeRef.current !== c) return;
     if (res.success) setKline(res.data);
     else setKlineError(res.error || "K线数据加载失败");
   }
 
-  async function loadIndicatorData(c: string, type: string) {
+  async function loadIndicatorData(c: string, type: string, signal?: AbortSignal) {
     setIndType(type);
     setIndicatorError(null);
-    const res = await indicatorApi.fetchApi(`/api/analysis/${c}/indicators?indicator=${type}`);
+    const res = await indicatorApi.fetchApi(
+      `/api/analysis/${c}/indicators?indicator=${type}`,
+      signal
+    );
+    if (codeRef.current !== c) return;
     if (res.success) setIndicator(res.data);
     else setIndicatorError(res.error || "指标数据加载失败");
   }
 
-  async function loadMarketOverview() {
+  async function loadMarketOverview(signal?: AbortSignal) {
     setMarketError(null);
-    const res = await marketApi.fetchApi("/api/market/overview");
+    const res = await marketApi.fetchApi("/api/market/overview", signal);
+    if (signal?.aborted) return; // 已取消，不写入错误态
     if (res.success && res.data) setMarketIndices(res.data.indices || {});
     else setMarketError(res.error || "市场概况加载失败");
   }
@@ -84,6 +121,9 @@ export default function StockAnalysis() {
   if (!result) return <div className="loading">无数据</div>;
 
   const { technical, quant, financial, fund_flow, debate, ml, signal, business_quality } = result;
+
+  // 仅在指标数据完整时才渲染 IndicatorChart（防御后端/异常场景返回的畸形数据）
+  const showIndicator = !!indicator && Array.isArray(indicator.dates) && !!indicator.values;
 
   return (
     <div>
@@ -118,31 +158,36 @@ export default function StockAnalysis() {
 
       {/* K线图 + 量化评分 */}
       <div className="grid23 mt-10">
-        <div className="card">
-          <div className="card-header">
-            <span>K线图 — {result.name}</span>
-            <div className="flex gap-4">
-              {["macd", "rsi", "kdj"].map((t) => (
-                <button
-                  key={t}
-                  className={`nav-tab ${indType === t ? "active" : ""}`}
-                  onClick={() => loadIndicatorData(code!, t)}
-                >
-                  {t.toUpperCase()}
-                </button>
-              ))}
+        <div>
+          <div className="card">
+            <div className="card-header">
+              <span>K线图 — {result.name}</span>
+            </div>
+            <div className="card-body">
+              {klineError ? (
+                <div className="text-center p-20 c-dm fs-12">K线数据加载失败: {klineError}</div>
+              ) : kline ? (
+                <KlineChart data={kline} indicator={indicator} />
+              ) : null}
             </div>
           </div>
-          <div className="card-body">
-            {klineError ? (
-              <div className="text-center p-20 c-dm fs-12">K线数据加载失败: {klineError}</div>
-            ) : kline ? (
-              <KlineChart data={kline} indicator={indicator} />
-            ) : null}
-            {indicatorError && !klineError && (
-              <div className="text-center p-8 c-dm fs-11">指标数据加载失败: {indicatorError}</div>
-            )}
-          </div>
+
+          {/* P1-3：原 KlineChart 把 indicator prop 丢弃（_indicator），真正实现该图的
+              IndicatorChart 在生产代码零引用 → 指标切换无效。现由 IndicatorChart 承载
+              指标图与其 MACD/RSI/KDJ 分段切换控件（并避免与其重复渲染一套按钮）。 */}
+          {indicator && showIndicator ? (
+            <IndicatorChart
+              data={indicator}
+              type={indType}
+              onTypeChange={(t) => loadIndicatorData(code!, t)}
+            />
+          ) : indicatorError && !klineError ? (
+            <div className="card">
+              <div className="card-body text-center p-12 c-dm fs-11">
+                指标数据加载失败: {indicatorError}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* 量化评分 + 交易信号 + 资金 & 财务 */}
@@ -154,17 +199,7 @@ export default function StockAnalysis() {
               <div className="mt-8">
                 {Object.entries(quant.factor_scores).map(([k, v]) => (
                   <div key={k} className="bar-row">
-                    <div className="br-lbl">
-                      {k === "momentum"
-                        ? "动量"
-                        : k === "technical"
-                          ? "技术"
-                          : k === "fundamental"
-                            ? "基本面"
-                            : k === "volume"
-                              ? "量能"
-                              : "风险"}
-                    </div>
+                    <div className="br-lbl">{FACTOR_LABELS[k] ?? k}</div>
                     <div className="br-bar">
                       <div
                         className="br-fill"
@@ -425,7 +460,7 @@ export default function StockAnalysis() {
             </div>
           </div>
           <div className="card-body">
-            <DataSourcesSection ds={result.data_sources} />
+            <DataSourcesSection ds={result.data_sources} freshness={freshness} />
           </div>
         </div>
       )}

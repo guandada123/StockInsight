@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import ReactECharts from "echarts-for-react";
 import type { KlineData, IndicatorData } from "../types/api";
 
@@ -9,6 +9,23 @@ export default function KlineChart({
   data: KlineData;
   indicator: IndicatorData | null;
 }) {
+  // 容器尺寸变化（侧栏折叠/窗口缩放/移动端旋转）时同步 ECharts 尺寸。
+  // 用 ResizeObserver 观测图表根 DOM，卸载时 disconnect。
+  const resizeObs = useRef<ResizeObserver | null>(null);
+  const handleChartReady = useCallback(
+    (chart: { resize: () => void; getDom?: () => HTMLElement | null }) => {
+      if (typeof ResizeObserver === "undefined") return;
+      const dom = chart.getDom?.();
+      if (!dom) return;
+      resizeObs.current?.disconnect();
+      const ro = new ResizeObserver(() => chart.resize());
+      ro.observe(dom);
+      resizeObs.current = ro;
+    },
+    []
+  );
+  useEffect(() => () => resizeObs.current?.disconnect(), []);
+
   const dates = data.dates;
   const ohlc = dates.map((_d, i) => [data.opens[i], data.closes[i], data.lows[i], data.highs[i]]);
 
@@ -101,5 +118,12 @@ export default function KlineChart({
     [data]
   );
 
-  return <ReactECharts option={option} style={{ height: 380 }} opts={{ renderer: "canvas" }} />;
+  return (
+    <ReactECharts
+      option={option}
+      style={{ height: 380 }}
+      opts={{ renderer: "canvas" }}
+      onChartReady={handleChartReady}
+    />
+  );
 }
