@@ -13,6 +13,18 @@ build/
 *.egg
 .venv/
 .venv*/
+# 本地工具链产物（不影响构建：Dockerfile 只 COPY package/manifest/src/backend/
+# stock_analyzer/cli.py/requirements.txt，以下均无任何 COPY/CMD 引用）
+# .deps 为本地 macOS 依赖目录（含 darwin .so），实测 217M
+.deps/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+# Rust 桌面壳的 cargo 构建产物：实测 1.4G（git 未跟踪，仅本地存在；Docker 构建不引用）
+src-tauri/target/
+# 运行日志（git 未跟踪，镜像内日志目录由 logging_config 运行时自建）
+logs/
 
 # Node
 node_modules/
