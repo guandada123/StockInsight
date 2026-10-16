@@ -1,4 +1,5 @@
 node_modules/
+node_modules/.tmp/
 target/
 dist/
 __pycache__/
@@ -29,6 +30,7 @@ mainboard_summary_*.csv
 !package.json
 !package-lock.json
 !tsconfig.json
+!tsconfig.node.json
 !portfolios/*.json
 portfolios/test_*.json
 !alerts.json
@@ -41,3 +43,4 @@ venv/
 .rate_limits.json
 # P1-12 门禁基线必须入库（CI 也要读它）—— 上面 *.json 通配有例外
 !backend/tests/hardcoded_paths_baseline.json
+.deps/
