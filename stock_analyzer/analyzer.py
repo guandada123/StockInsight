@@ -3,6 +3,8 @@
 将 CLI 层的 deep_analyze 移到这里供后端 API 复用，消除循环依赖。
 """
 
+import math
+
 import numpy as np
 
 
@@ -135,42 +137,58 @@ def deep_analyze(code, days=365, skip_nt=False):
         has_nt = False
         nt_holders = []
 
+    # 安全 round：None / 非数值 / NaN 一律降级为 default。
+    # 2026-10-16 事故根因：创业板纳入扫描后，1398 只全部无缓存 + akshare 缺失
+    # → 指标与基本面为 None → round(None) 抛 TypeError → 整只标的被 analyze_one
+    # 记为 ("err", ...) 而跳过 → 当日创业板达标 0 只、总达标从 220 掉到 123。
+    # 单只标的数据缺失**不应该**让整只分析崩掉（会静默丢掉整个板块）。
+    def _r(v, nd=2, default=0.0):
+        try:
+            if v is None:
+                return default
+            f = float(v)
+            if math.isnan(f):  # NaN（用 math.isnan，避免 `f != f` 触发 PLR0124）
+                return default
+            return round(f, nd)
+        except (TypeError, ValueError):
+            return default
+
     return {
         "code": code,
         "price": price,
         "atr": atr,
-        "near_5d": round(n5, 2),
-        "near_20d": round(n20, 2),
-        "rsi": round(rsi, 1),
+        "near_5d": _r(n5, 2),
+        "near_20d": _r(n20, 2),
+        "rsi": _r(rsi, 1),
         "macd_signal": macd_sig,
         "kdj_signal": kdj_sig,
-        "fund_score": round(fsv, 1),
-        "roe": round(funds.get("ROE", 0), 2) if funds else 0,
-        "sharpe": round(risk_d.get("sharpe_ratio", 0), 3),
-        "max_dd": round(risk_d.get("max_drawdown_pct", 0), 2),
-        "var95": round(risk_d.get("VaR_95_pct", 0), 2),
-        "volatility": round(risk_d.get("annualized_volatility_pct", 0), 2),
+        "fund_score": _r(fsv, 1),
+        "roe": _r(funds.get("ROE"), 2) if funds else 0,
+        "sharpe": _r(risk_d.get("sharpe_ratio"), 3),
+        "max_dd": _r(risk_d.get("max_drawdown_pct"), 2),
+        "var95": _r(risk_d.get("VaR_95_pct"), 2),
+        "volatility": _r(risk_d.get("annualized_volatility_pct"), 2),
         "signal_bias": sigs_d.get("bias", "neutral"),
         "signal_score": sigs_d.get("score", 0),
-        "short_score": round(ts_d.get("short_term_score", 0), 1),
-        "long_score": round(ts_d.get("long_term_score", 0), 1),
+        "short_score": _r(ts_d.get("short_term_score"), 1),
+        "long_score": _r(ts_d.get("long_term_score"), 1),
         "style": ts_d.get("style", ""),
         "confidence": ts_d.get("style_confidence", ""),
         "short_basis": ts_d.get("short_term_basis", ""),
         "long_basis": ts_d.get("long_term_basis", ""),
-        "qs_composite": round(float(qs.get("composite_score", 0)), 1),
+        "qs_composite": _r(qs.get("composite_score"), 1),
         "qs_rating": str(qs.get("rating", "")),
-        "mom_s": round(gf("momentum"), 1),
-        "tech_s": round(gf("technical"), 1),
-        "fund_s": round(gf("fundamental"), 1),
-        "vol_s": round(gf("volume"), 1),
-        "risk_s": round(gf("risk"), 1),
+        "mom_s": _r(gf("momentum"), 1),
+        "tech_s": _r(gf("technical"), 1),
+        "fund_s": _r(gf("fundamental"), 1),
+        "vol_s": _r(gf("volume"), 1),
+        "risk_s": _r(gf("risk"), 1),
         "has_nt": has_nt,
         "nt_holders": nt_holders,
-        "support": [round(float(x), 2) for x in sl[:2]],
-        "resistance": [round(float(x), 2) for x in rl[:2]],
-        "stop_loss": round(stop_d.get("止损参考价", 0), 2),
-        "stop_profit": round(stop_d.get("止盈参考价", 0), 2),
+        "support": [_r(x, 2) for x in sl[:2]],
+        "resistance": [_r(x, 2) for x in rl[:2]],
+        "stop_loss": _r(stop_d.get("止损参考价"), 2),
+        "stop_profit": _r(stop_d.get("止盈参考价"), 2),
         "_kline": kline,
         "fundamentals": funds,
         "quant_score": quant,
