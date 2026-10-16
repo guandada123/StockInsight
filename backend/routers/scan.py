@@ -25,6 +25,19 @@ router = APIRouter(prefix="/api/scan", tags=["扫描进度"])
 
 _SAFE_ERROR_MSG = "服务暂不可用，请稍后重试"
 
+# 后台任务强引用集合（2026-10-16 修复）
+# asyncio 仅保存弱引用：create_task() 返回值不持有的话，任务可能在执行前被 GC，
+# 表现为「接口返回了 task_id，但 SSE 进度永远不动、扫描从未真正开始」。
+_BACKGROUND_TASKS: set[asyncio.Task] = set()
+
+
+def _spawn_background(coro) -> asyncio.Task:
+    """创建后台任务并持强引用，完成后自动移除。"""
+    task = asyncio.create_task(coro)
+    _BACKGROUND_TASKS.add(task)
+    task.add_done_callback(_BACKGROUND_TASKS.discard)
+    return task
+
 
 # ── SSE 进度流 ──────────────────────────────────────
 
@@ -115,8 +128,8 @@ async def batch_scan(
     task_id = await tracker.create(f"批量扫描 {len(code_list)} 只股票", total_items=len(code_list))
     await tracker.update(task_id, progress=0, message=f"任务已创建，共 {len(code_list)} 只股票")
 
-    # 后台执行（委托给 service 层）
-    asyncio.create_task(run_batch_scan(task_id, code_list))
+    # 后台执行（委托给 service 层）；持强引用，见 _spawn_background 说明
+    _spawn_background(run_batch_scan(task_id, code_list))
 
     return _ok(
         {

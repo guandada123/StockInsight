@@ -764,7 +764,10 @@ def overnight_sell_check(positions):
     """
     if not positions:
         print("当前无隔夜持仓。")
-        return
+        # 修复(2026-10-16)：原为裸 `return`（隐式 None），而正常路径返回 dict，
+        # 返回类型不一致。调用方若写 `overnight_sell_check(p).get(...)` 会在空仓时
+        # 抛 AttributeError。改为返回空 dict，真值判断（if not data）语义不变。
+        return {}
 
     codes = [p["代码"] for p in positions]
     em_data = _em_quote_batch(codes)

@@ -55,7 +55,7 @@ _PAGE_FOOTER = """</div>
 </html>"""
 
 
-def generate_sector_report(output_path: str = None) -> str:
+def generate_sector_report(output_path: str | None = None) -> str:
     """全市场板块分析报告"""
     if output_path is None:
         ts = datetime.now().strftime("%Y%m%d_%H%M")
@@ -274,11 +274,11 @@ def generate_sector_report(output_path: str = None) -> str:
         <th>标准差</th><th>优质(≥60)</th><th style="font-size:11px;">偏低(<40)</th>
       </tr></thead><tbody>""")
 
-    bar_max = max(r[2] for r in sorted_rows) if sorted_rows else 1
+    # 移除死代码(2026-10-16)：原 `bar_max = max(...)` + `score_pct = avg / bar_max * 100`
+    # 计算后从未被引用，却在板块均分为 0 时触发除零 RuntimeWarning（NaN 污染）。直接删除。
     for i, (name, cnt, avg, med, std, hi, lo, _) in enumerate(sorted_rows):
         rank = i + 1
         rclass = f"r{rank}" if rank <= 3 else ""
-        score_pct = avg / bar_max * 100
         hi_pct = hi / cnt * 100 if cnt else 0
         lo_pct = lo / cnt * 100 if cnt else 0
         html.append(f"""      <tr>

@@ -265,6 +265,12 @@ def _sina_check_rate():
 
 # ── 通用重试装饰器（给 akshare 调用用）────────────
 
+# 确定性错误 —— 重试不可能自愈，直接短路（2026-10-16 修复）
+# 依据：10-12~10-16 期间 `.deps` 未就位，akshare 不在 PYTHONPATH，
+#       fund_* 每次失败都白等一次退避重试，仅 10-16 一小时就产生 3660 次无谓重试+sleep。
+# 仅列「环境/依赖」类错误；AttributeError 等可能是上游限流引起的瞬时错误，仍保留重试。
+_NON_RETRYABLE_EXC = (ImportError, ModuleNotFoundError)
+
 
 def _retry_on_failure(max_retries=1, base_delay=1.0, label="", default=None):
     """装饰器：给网络函数加指数退避重试
@@ -277,23 +283,29 @@ def _retry_on_failure(max_retries=1, base_delay=1.0, label="", default=None):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             last_error = None
+            tag = f"[{label}]" if label else ""
             for attempt in range(max_retries + 1):
                 try:
                     return func(*args, **kwargs)
+                except _NON_RETRYABLE_EXC as e:
+                    # 依赖缺失/环境未装：重试 0.5s 不可能变好，短路退出（省 sleep 与日志噪声）
+                    logger.error(f"{tag}不可重试错误，放弃: {type(e).__name__}: {e}")
+                    return default
                 except Exception as e:
                     last_error = e
                     if attempt < max_retries:
                         delay = min(base_delay * (2**attempt), 20)
                         jitter = delay * 0.25 * (2 * random.random() - 1)
                         actual_delay = delay + jitter
-                        tag = f"[{label}]" if label else ""
                         logger.warning(
-                            f"{tag}{type(e).__name__}，{actual_delay:.1f}s后重试({attempt + 1}/{max_retries})"
+                            f"{tag}{type(e).__name__}: {e}，{actual_delay:.1f}s后重试"
+                            f"({attempt + 1}/{max_retries})"
                         )
                         time.sleep(actual_delay)
             if last_error:
-                tag = f"[{label}]" if label else ""
-                logger.error(f"{tag}最终失败: {type(last_error).__name__}")
+                # 修复(2026-10-16)：原仅记 type(...).__name__，丢失异常 message，
+                # 导致 9.4k 次 AttributeError / 32k 次 ModuleNotFoundError 全部无法定位根因。
+                logger.error(f"{tag}最终失败: {type(last_error).__name__}: {last_error}")
             return default
 
         return wrapper
@@ -766,7 +778,7 @@ def _tickflow_kline(code, days):
     try:
         if code.startswith("6"):
             symbol = f"{code}.SH"
-        elif code.startswith("0") or code.startswith("3"):
+        elif code.startswith(("0", "3")):
             symbol = f"{code}.SZ"
         else:
             return pd.DataFrame()

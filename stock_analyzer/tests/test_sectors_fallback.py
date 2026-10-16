@@ -88,7 +88,7 @@ class TestSectorsFallback(unittest.TestCase):
             for code in data["成分股"]:
                 if not code.startswith("6"):
                     self.assertTrue(
-                        code.startswith("0") or code.startswith("3"),
+                        code.startswith(("0", "3")),
                         f"'{name}' 深市代码 '{code}' 前缀异常",
                     )
 

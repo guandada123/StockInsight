@@ -665,7 +665,9 @@ def cmd_scan(args):
     skipped = 0
     completed = 0
     _lock = Lock()
-    _print_lock = Lock()
+    # 失败原因聚合（2026-10-16 新增）：原实现把 analyze_one 的异常文本直接丢弃，
+    # 导致 2699 只标的静默跳过、事后无法归因。
+    err_reasons: dict[str, int] = {}
 
     def analyze_one(code):
         """单只分析（供线程池调用）"""
@@ -673,46 +675,76 @@ def cmd_scan(args):
             r = deep_analyze(code, days=120, skip_nt=True)
             return ("ok", code, r)
         except Exception as e:
-            return ("err", code, str(e))
+            return ("err", code, f"{type(e).__name__}: {e}")
+
+    # 修复(2026-10-16)：原 `future.result(timeout=45)` 是**死代码** ——
+    #   `as_completed()` 只产出已完成 future，对其调用 result(timeout=...) 永不超时，
+    #   所谓「单项 45s 超时护栏」从未生效（历史日志 0 次命中），
+    #   个别卡死任务会一路拖到外层 timeout(exit 124) 才被杀。
+    # 改为对整个扫描加**硬性总预算**：超预算即取消未开始任务并明确报告，不再静默。
+    try:
+        scan_budget = float(os.environ.get("SCAN_TOTAL_BUDGET_SEC", "5400"))
+        if scan_budget <= 0:
+            scan_budget = 5400.0
+    except ValueError:
+        # 环境变量被写坏不应导致整轮扫描启动即崩，回退默认值
+        print("  ⚠️ SCAN_TOTAL_BUDGET_SEC 非数字，已回退默认 5400s")
+        scan_budget = 5400.0
+    budget_hit = False
 
     with ThreadPoolExecutor(max_workers=SCAN_WORKERS) as executor:
         futures = {executor.submit(analyze_one, c): c for c in codes}
 
-        for future in as_completed(futures):
-            code = futures[future]
-            try:
-                status, code2, r = future.result(timeout=45)
-            except FutureTimeout:
+        try:
+            for future in as_completed(futures, timeout=scan_budget):
+                code = futures[future]
+                try:
+                    status, _code, r = future.result()
+                except Exception as e:
+                    # 原实现此处静默 `continue`（异常变量未使用），失败无迹可查
+                    with _lock:
+                        skipped += 1
+                        completed += 1
+                        key = f"future:{type(e).__name__}"
+                        err_reasons[key] = err_reasons.get(key, 0) + 1
+                    continue
+
                 with _lock:
-                    skipped += 1
                     completed += 1
-                print(f"  ⏰ [{code}] 超时，跳过")
-                continue
-            except Exception as e:
-                with _lock:
-                    skipped += 1
-                    completed += 1
-                continue
+                    if status == "ok" and r and r["qs_composite"] >= args.min_score:
+                        results.append(r)
+                    elif status == "err":
+                        skipped += 1
+                        key = str(r).split(":", 1)[0].strip() or "unknown"
+                        err_reasons[key] = err_reasons.get(key, 0) + 1
 
-            with _lock:
-                completed += 1
-                if status == "ok" and r and r["qs_composite"] >= args.min_score:
-                    results.append(r)
-                elif status == "err":
-                    skipped += 1
+                    _save_checkpoint_single(code)
 
-                _save_checkpoint_single(code)
+                    # 进度报告
+                    if completed % 50 == 0 or completed == total:
+                        elapsed = time.time() - t0
+                        rate = completed / elapsed if elapsed > 0 else 0
+                        eta = (total - completed) / rate if rate > 0 else 0
+                        pct = completed / total * 100
+                        print(
+                            f"  [{completed}/{total}] {pct:.0f}%  速率 {rate:.1f}只/s  "
+                            f"ETA {eta / 60:.0f}min  结果 {len(results)}  跳过 {skipped}"
+                        )
+        except FutureTimeout:
+            budget_hit = True
+            for f in futures:
+                f.cancel()
+            executor.shutdown(wait=False, cancel_futures=True)
+            print(
+                f"  ⏰ 扫描总预算 {scan_budget:.0f}s 耗尽，已取消未开始任务 "
+                f"({completed}/{total} 已完成)"
+            )
 
-                # 进度报告
-                if completed % 50 == 0 or completed == total:
-                    elapsed = time.time() - t0
-                    rate = completed / elapsed if elapsed > 0 else 0
-                    eta = (total - completed) / rate if rate > 0 else 0
-                    pct = completed / total * 100
-                    print(
-                        f"  [{completed}/{total}] {pct:.0f}%  速率 {rate:.1f}只/s  "
-                        f"ETA {eta / 60:.0f}min  结果 {len(results)}  跳过 {skipped}"
-                    )
+    if err_reasons:
+        top_err = sorted(err_reasons.items(), key=lambda kv: -kv[1])[:5]
+        print("  失败原因 Top: " + "；".join(f"{k}×{v}" for k, v in top_err))
+    if budget_hit:
+        print(f"  ⚠️ 本轮为预算截断结果（{completed}/{total}），达标数偏低属预期，勿据此判定市场。")
 
     # 排序输出
     results.sort(key=lambda x: x["qs_composite"], reverse=True)
@@ -795,6 +827,9 @@ def cmd_scan(args):
         print(f"写入 daily_scores 失败: {e}")
 
     _clear_checkpoint()
+    # 显式返回成功码（RET503）：与函数开头「非交易日 return 0」保持同一契约，
+    # 并让 main() 的 sys.exit(...) 有确定值。
+    return 0
 
 
 def _print_full_analysis(code, days=365, fast=False):
@@ -2098,7 +2133,13 @@ def main():
         "ml": cmd_ml,
         "quality": cmd_quality,
     }
-    dispatch[args.command](args)
+    # 修复(2026-10-16)：原为 `dispatch[args.command](args)`，**丢弃返回值**，
+    # 进程恒以 0 退出 —— 于是调用方依赖的「退出码非 0 = 异常」判定永远不成立
+    # （StockInsight 收盘选股扫描自动化的异常条件之一），cmd_audit 的
+    # `1 if has_issues else 0` 也从未生效。改为把返回值交给 sys.exit：
+    #   · 返回 None → sys.exit(None) → 退出码 0，与修复前行为一致
+    #   · 返回 int → 真实传播（cmd_audit / cmd_scan 的失败码将真正可观测）
+    sys.exit(dispatch[args.command](args))
 
 
 if __name__ == "__main__":

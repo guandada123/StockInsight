@@ -434,28 +434,33 @@ def _profit_quality_rating(a):
 def get_macro_indicators():
     import json
     import sqlite3
+    from contextlib import closing
     from datetime import datetime
 
-    conn = sqlite3.connect("stock_cache.db")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS macro_cache (key TEXT PRIMARY KEY, value TEXT, ts TEXT)"
-    )
-    cur = conn.execute("SELECT value, ts FROM macro_cache WHERE key=?", ("macro_indicators",))
-    row = cur.fetchone()
+    # 修复(2026-10-16)：原实现 connect/close 手工配对，中间任一环节抛异常
+    # （datetime.fromisoformat 解析失败、json.loads 失败等）都会泄漏连接。
+    # 改用 closing() 保证异常路径也释放，语义不变。
+    row = None
+    with closing(sqlite3.connect("stock_cache.db")) as conn:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS macro_cache (key TEXT PRIMARY KEY, value TEXT, ts TEXT)"
+        )
+        row = conn.execute(
+            "SELECT value, ts FROM macro_cache WHERE key=?", ("macro_indicators",)
+        ).fetchone()
+
     if row:
         ts = datetime.fromisoformat(row[1])
         if (datetime.now() - ts).days < 7:
-            conn.close()
             return json.loads(row[0])
-    conn.close()
+
     result = _fetch_macro_indicators()
-    conn = sqlite3.connect("stock_cache.db")
-    conn.execute(
-        "INSERT OR REPLACE INTO macro_cache VALUES (?,?,?)",
-        ("macro_indicators", json.dumps(result), datetime.now().isoformat()),
-    )
-    conn.commit()
-    conn.close()
+    with closing(sqlite3.connect("stock_cache.db")) as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO macro_cache VALUES (?,?,?)",
+            ("macro_indicators", json.dumps(result), datetime.now().isoformat()),
+        )
+        conn.commit()
     return result
 
 

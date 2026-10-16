@@ -226,7 +226,8 @@ def create_factor(
     try:
         ast.parse(expression, mode="eval")
     except SyntaxError as e:
-        raise ValueError(f"表达式语法错误: {e}")
+        # 修复(2026-10-16)：原缺 `from e`，异常链断裂，调用方难以回溯原始语法错误位置
+        raise ValueError(f"表达式语法错误: {e}") from e
     conn = _get_conn()
     now = time.time()
     conn.execute(

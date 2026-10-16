@@ -15,7 +15,7 @@ from .report_html_utils import (
 # ══════════════════════════════════════════════════════
 
 
-def _build_market_overview(df: pd.DataFrame, stock_details: dict = None) -> str:
+def _build_market_overview(df: pd.DataFrame, stock_details: dict | None = None) -> str:
     """根据选股结果和个股详情生成市场概述文字"""
     total = len(df)
     if not total:
@@ -137,7 +137,7 @@ def _build_market_overview(df: pd.DataFrame, stock_details: dict = None) -> str:
 
 
 def _build_selection_rationale(
-    df: pd.DataFrame, stock_details: dict = None, total_scanned: int = 4405, top_n: int = 5
+    df: pd.DataFrame, stock_details: dict | None = None, total_scanned: int = 4405, top_n: int = 5
 ) -> str:
     """生成板块分析 + 个股选择依据的完整说明，含全市场板块分布、板块对比、落选分析、个股详解"""
     total = len(df)

@@ -237,6 +237,19 @@ async def rate_limit_middleware(request: Request, call_next):
 
 # ── 注册路由 ────────────────────────────────────────
 
+# 后台任务强引用集合（2026-10-16 修复）
+# asyncio 只保存 task 的**弱引用**；create_task() 的返回值若不持有，
+# 任务可能在第一个 await 之前就被 GC 回收，导致「优雅关闭」静默不执行。
+_BACKGROUND_TASKS: set[asyncio.Task] = set()
+
+
+def spawn_background(coro, name: str = "") -> asyncio.Task:
+    """创建后台任务并持强引用，完成后自动移除。"""
+    task = asyncio.create_task(coro, name=name or None)
+    _BACKGROUND_TASKS.add(task)
+    task.add_done_callback(_BACKGROUND_TASKS.discard)
+    return task
+
 
 @app.get("/api/health")
 async def health():
@@ -252,9 +265,7 @@ async def health():
 async def shutdown():
     """优雅关闭（Tauri 退出时调用）"""
     logger.info("Shutdown requested")
-    import asyncio
-
-    asyncio.create_task(_delayed_shutdown())
+    spawn_background(_delayed_shutdown(), name="delayed_shutdown")
     return {"status": "shutting_down"}
 
 

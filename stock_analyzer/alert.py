@@ -116,7 +116,9 @@ def _check_price_alert(config):
         return None, f"{code}: 无法获取实时价格"
 
     triggered = False
-    if direction == "above" and price > target or direction == "below" and price < target:
+    # 显式加括号（2026-10-16）：`and` 优先级高于 `or`，语义本就等价，
+    # 但混写易被误读为 `above and (price>target or direction=="below") and price<target`。
+    if (direction == "above" and price > target) or (direction == "below" and price < target):
         triggered = True
 
     if triggered:
@@ -258,15 +260,12 @@ def _check_fundamental_alert(config):
     threshold = float(val_str)
 
     triggered = False
+    # 显式加括号（2026-10-16）：见上文同族修复说明，`and`/`or` 混写需明确分组。
     if (
-        op == ">"
-        and actual > threshold
-        or op == "<"
-        and actual < threshold
-        or op == ">="
-        and actual >= threshold
-        or op == "<="
-        and actual <= threshold
+        (op == ">" and actual > threshold)
+        or (op == "<" and actual < threshold)
+        or (op == ">=" and actual >= threshold)
+        or (op == "<=" and actual <= threshold)
     ):
         triggered = True
 
