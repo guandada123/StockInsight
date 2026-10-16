@@ -1028,8 +1028,13 @@ class TestEnhancedScan:
     @patch("stock_analyzer.enhanced_screener.pass1_quick_filter")
     @patch("stock_analyzer.enhanced_screener._load_all_codes")
     def test_mainboard_mode(self, mock_codes, mock_p1, mock_p2, mock_save, mock_snap):
-        """主板模式（60/00 开头）"""
-        all_codes = ["600000", "000001", "834765", "300001"]  # 834765 和 300001 应被过滤
+        """主板+创业板模式（60/00/30 开头）
+
+        2026-10-16 口径变更：创业板 300/301 纳入扫描范围（对齐 Claw 模拟盘 07-29 起
+        放开创业板的规则）。此前断言为 `300001 not in passed_codes`，与新口径冲突，
+        故改为断言创业板**应被保留**；北交所（8/920 开头）与科创板（688）仍应排除。
+        """
+        all_codes = ["600000", "000001", "834765", "300001", "688981"]  # 834765、688981 应被过滤
         mock_codes.return_value = all_codes
         mock_p1.return_value = (
             [{"code": "600000", "name": "浦发"}],
@@ -1049,8 +1054,10 @@ class TestEnhancedScan:
         # 验证 pass1 只收到过滤后的代码
         passed_codes = mock_p1.call_args[0][0]
         assert "600000" in passed_codes
-        assert "834765" not in passed_codes
-        assert "300001" not in passed_codes
+        assert "000001" in passed_codes
+        assert "300001" in passed_codes  # 创业板纳入（2026-10-16 新口径）
+        assert "834765" not in passed_codes  # 北交所
+        assert "688981" not in passed_codes  # 科创板
 
     @patch("stock_analyzer.enhanced_screener._save_snapshot")
     @patch("stock_analyzer.enhanced_screener._save_to_daily_scores")

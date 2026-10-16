@@ -28,6 +28,7 @@ from .analysis import full_technical_analysis, get_technical_summary
 from .cache import cached_fundamentals, cached_kline, cached_weibo_sentiment
 from .fetcher import get_sectors, sina_real_time
 from .quant import composite_quant_score, evaluate_trading_style
+from .screener import SCAN_BOARD_PREFIXES
 from .short_term import calc_combo_signals, calc_multi_timeframe_resonance, short_term_score
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -408,9 +409,9 @@ def enhanced_scan(
         print("无法加载股票列表")
         return pd.DataFrame()
 
-    # 主板过滤
+    # 主板(60/00) + 创业板(300/301) 过滤，口径与 cli.py scan 共用 SCAN_BOARD_PREFIXES
     if mode == "mainboard":
-        codes = [c for c in codes if c.startswith("60") or c.startswith("00")]
+        codes = [c for c in codes if c.startswith(SCAN_BOARD_PREFIXES)]
     elif mode == "top_sectors":
         pass  # Pass1 会做板块过滤
 

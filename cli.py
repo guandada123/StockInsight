@@ -71,7 +71,7 @@ def build_parser():
         "--mode",
         choices=["full", "mainboard"],
         default="mainboard",
-        help="扫描模式: full=全A股, mainboard=仅主板",
+        help="扫描模式: full=全A股, mainboard=主板+创业板(60/00/30，不含科创/北交所)",
     )
     sp.add_argument("--top-n", type=int, default=50, help="保留前N只 (默认50)")
     sp.add_argument("--min-score", type=int, default=60, help="最低综合评分 (默认60)")
@@ -85,7 +85,7 @@ def build_parser():
         "--mode",
         choices=["mainboard", "full", "top_sectors"],
         default="mainboard",
-        help="mainboard=主板, full=全A股, top_sectors=仅前排板块",
+        help="mainboard=主板+创业板, full=全A股, top_sectors=仅前排板块",
     )
     esp.add_argument("--top-n", type=int, default=30, help="返回前N只 (默认30)")
     esp.add_argument("--sector-top-n", type=int, default=5, help="板块排名取前N (默认5)")
@@ -610,7 +610,11 @@ def _json_default(o):
 
 def cmd_scan(args):
     """执行全市场/主板扫描"""
-    from stock_analyzer.screener import load_all_a_shares, quick_filter
+    from stock_analyzer.screener import (
+        SCAN_BOARD_PREFIXES,
+        load_all_a_shares,
+        quick_filter,
+    )
     from stock_analyzer.trade_day import is_trading_day
 
     # 非交易日短路（08-24 根因修复）：周末/法定节假日收盘扫描时全 K 线源普遍离线，
@@ -627,7 +631,7 @@ def cmd_scan(args):
 
     print(f"{'=' * 60}")
     print(
-        f"扫描模式: {'全A股' if args.mode == 'full' else '仅主板'} | "
+        f"扫描模式: {'全A股' if args.mode == 'full' else '主板+创业板(60/00/30)'} | "
         f"最低评分: {args.min_score} | Top: {args.top_n}"
     )
     print(f"{'=' * 60}")
@@ -635,7 +639,8 @@ def cmd_scan(args):
     # 加载股票池
     all_codes = load_all_a_shares()
     if args.mode == "mainboard":
-        codes = [c for c in all_codes if c.startswith("60") or c.startswith("00")]
+        # 主板(60/00) + 创业板(300/301)；科创688/北交所8/920 不在内（见 SCAN_BOARD_PREFIXES）
+        codes = [c for c in all_codes if c.startswith(SCAN_BOARD_PREFIXES)]
     else:
         codes = all_codes
     print(f"股票池: {len(codes)} 只")
