@@ -30,12 +30,14 @@ def _count_oversized(path: Path) -> int:
         tree = ast.parse(path.read_text(encoding="utf-8"))
     except SyntaxError:
         return 0
-    return sum(
-        1
-        for node in ast.walk(tree)
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        and node.end_lineno - node.lineno > THRESHOLD
-    )
+    count = 0
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            # typeshed: end_lineno/lineno 均为 int | None（合成节点可缺省），需守卫
+            end, start = node.end_lineno, node.lineno
+            if end is not None and start is not None and end - start > THRESHOLD:
+                count += 1
+    return count
 
 
 def _scan_current() -> dict[str, int]:
