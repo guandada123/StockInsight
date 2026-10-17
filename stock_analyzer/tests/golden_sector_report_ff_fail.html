@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>全市场板块分析报告</title>
+<script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #f5f7fa; color: #333; padding: 20px; }
+.container { max-width: 1100px; margin: 0 auto; }
+.header { text-align: center; padding: 24px 0 16px; }
+.header h1 { font-size: 22px; color: #1a73e8; }
+.header .meta { font-size: 12px; color: #888; margin-top: 4px; }
+.card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
+.card-title { font-size: 16px; font-weight: 700; color: #1a73e8; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #1a73e8; }
+.sec-title { font-size: 14px; font-weight: 600; color: #333; margin: 14px 0 8px; }
+.sec-title:first-child { margin-top: 0; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #f0f4f8; padding: 8px 6px; text-align: center; font-weight: 600; color: #555; border-bottom: 2px solid #ddd; }
+td { padding: 7px 6px; text-align: center; border-bottom: 1px solid #eee; }
+tr:hover td { background: #f5f8ff; }
+.s-bar { display: inline-block; height: 16px; border-radius: 4px; min-width: 4px; vertical-align: middle; }
+.s-bar-wrapper { display: flex; align-items: center; gap: 6px; }
+.s-bar-val { font-size: 11px; color: #666; min-width: 28px; }
+.rank-badge { display: inline-block; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; text-align: center; font-size: 11px; font-weight: 700; color: #fff; }
+.r1 { background: #c62828; } .r2 { background: #ef6c00; } .r3 { background: #f9a825; }
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media(max-width:700px) { .chart-row { grid-template-columns: 1fr; } }
+.chart-box { position: relative; height: 300px; }
+.chart-box-full { position: relative; height: 380px; }
+.sun-item { display: inline-flex; align-items: center; margin: 3px 6px; }
+.sun-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+.footer { text-align: center; font-size: 11px; color: #aaa; padding: 20px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>全市场板块分析报告</h1>
+    <div class="meta">全市场 9 只成功评分，覆盖 8 个板块 | 生成时间：2026-10-18 12:00:00</div>
+  </div>
+  <div class="card">
+    <div class="card-title">大盘行情</div>
+    <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:10px;">
+      主要指数实时行情：
+    </p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
+
+      <div style="padding:12px;text-align:center;color:#888;">大盘行情数据暂不可用</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">一、市场概览</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px;">
+      <div style="background:#f0f7ff;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:24px;font-weight:700;color:#1a73e8;">9</div><div style="font-size:11px;color:#666;">评分股票</div></div>
+      <div style="background:#f0f7ff;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:24px;font-weight:700;color:#1a73e8;">8</div><div style="font-size:11px;color:#666;">覆盖板块</div></div>
+      <div style="background:#f0f7ff;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:24px;font-weight:700;color:#1a73e8;">46.9</div><div style="font-size:11px;color:#666;">市场均分</div></div>
+      <div style="background:#e8f5e9;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:24px;font-weight:700;color:#2e7d32;">38%</div><div style="font-size:11px;color:#666;">优质(≥60分)</div></div>
+      <div style="background:#ffebee;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:24px;font-weight:700;color:#c62828;">38%</div><div style="font-size:11px;color:#666;">偏低(<40分)</div></div>
+    </div>
+    <p style="font-size:13px;color:#555;line-height:1.8;">
+      市场平均综合评分 <strong>46.9</strong> 分，38% 评分≥60（优质），
+      38% 评分<40（偏低）。买入/强买入占比 33%，卖出/强卖出占比 22%。
+      （注：全市场扫描先排除ST/退市/次新股，仅对具有足够K线数据的股票完成评分。）
+      市场整体评分偏低，需精选个股
+    </p>
+    <div class="sec-title">评级分布</div>
+    <div class="chart-box"><canvas id="ratingChart"></canvas></div>
+    <script>
+    new Chart(document.getElementById('ratingChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Strong Buy', 'Buy', 'Hold', 'Sell', 'Strong Sell'],
+        datasets: [{ data: [1,2,4,1,1],
+          backgroundColor: ['#2e7d32','#66bb6a','#f9a825','#ef6c00','#c62828'] }]
+      },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'right', labels: { font: { size: 12 } } } } }
+    });
+    </script>
+  </div>
+  <div class="card">
+    <div class="card-title">二、板块综合排名</div>
+    <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:10px;">
+      以下按平均综合评分降序排列，展示各板块的数量分布和评分特征。
+      评分越高代表板块整体质地越好，标准差反映板块内部分化程度。
+    </p>
+    <table>
+      <thead><tr>
+        <th>排名</th><th style="text-align:left;">板块</th><th>个股数量</th><th>平均分</th><th>中位数</th>
+        <th>标准差</th><th>优质(≥60)</th><th style="font-size:11px;">偏低(<40)</th>
+      </tr></thead><tbody>
+      <tr>
+        <td><span class="rank-badge r1">1</span></td>
+        <td style="text-align:left;font-weight:600;color:#1a73e8;">科技</td>
+        <td>1</td>
+        <td style="font-weight:600;color:#2e7d32;">80.0</td>
+        <td>80.0</td>
+        <td style="color:#888;font-size:11px;">0.0</td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:100%;background:#66bb6a;"></div><span class="s-bar-val">1</span></div></td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:0%;background:#ef9a9a;"></div><span class="s-bar-val">0</span></div></td>
+      </tr>
+      <tr>
+        <td><span class="rank-badge r2">2</span></td>
+        <td style="text-align:left;font-weight:600;color:#1a73e8;">医药</td>
+        <td>1</td>
+        <td style="font-weight:600;color:#2e7d32;">70.0</td>
+        <td>70.0</td>
+        <td style="color:#888;font-size:11px;">0.0</td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:100%;background:#66bb6a;"></div><span class="s-bar-val">1</span></div></td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:0%;background:#ef9a9a;"></div><span class="s-bar-val">0</span></div></td>
+      </tr>
+      <tr>
+        <td><span class="rank-badge r3">3</span></td>
+        <td style="text-align:left;font-weight:600;color:#1a73e8;">银行</td>
+        <td>1</td>
+        <td style="font-weight:600;color:#2e7d32;">65.0</td>
+        <td>65.0</td>
+        <td style="color:#888;font-size:11px;">0.0</td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:100%;background:#66bb6a;"></div><span class="s-bar-val">1</span></div></td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:0%;background:#ef9a9a;"></div><span class="s-bar-val">0</span></div></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td style="text-align:left;font-weight:400;color:#333;">金融</td>
+        <td>1</td>
+        <td style="font-weight:600;color:#2e7d32;">65.0</td>
+        <td>65.0</td>
+        <td style="color:#888;font-size:11px;">0.0</td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:100%;background:#66bb6a;"></div><span class="s-bar-val">1</span></div></td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:0%;background:#ef9a9a;"></div><span class="s-bar-val">0</span></div></td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td style="text-align:left;font-weight:400;color:#333;">制造</td>
+        <td>1</td>
+        <td style="font-weight:600;color:#333;">55.0</td>
+        <td>55.0</td>
+        <td style="color:#888;font-size:11px;">0.0</td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:0%;background:#66bb6a;"></div><span class="s-bar-val">0</span></div></td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:0%;background:#ef9a9a;"></div><span class="s-bar-val">0</span></div></td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td style="text-align:left;font-weight:400;color:#333;">地产</td>
+        <td>1</td>
+        <td style="font-weight:600;color:#333;">45.0</td>
+        <td>45.0</td>
+        <td style="color:#888;font-size:11px;">0.0</td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:0%;background:#66bb6a;"></div><span class="s-bar-val">0</span></div></td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:0%;background:#ef9a9a;"></div><span class="s-bar-val">0</span></div></td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td style="text-align:left;font-weight:400;color:#333;">综合</td>
+        <td>1</td>
+        <td style="font-weight:600;color:#ef6c00;">30.0</td>
+        <td>30.0</td>
+        <td style="color:#888;font-size:11px;">0.0</td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:0%;background:#66bb6a;"></div><span class="s-bar-val">0</span></div></td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:100%;background:#ef9a9a;"></div><span class="s-bar-val">1</span></div></td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td style="text-align:left;font-weight:400;color:#333;">其他</td>
+        <td>3</td>
+        <td style="font-weight:600;color:#333;">nan</td>
+        <td>nan</td>
+        <td style="color:#888;font-size:11px;">nan</td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:0%;background:#66bb6a;"></div><span class="s-bar-val">0</span></div></td>
+        <td><div class="s-bar-wrapper"><div class="s-bar" style="width:67%;background:#ef9a9a;"></div><span class="s-bar-val">2</span></div></td>
+      </tr>
+    </tbody></table>
+  </div>
+  <div class="card">
+    <div class="card-title">三、板块评分对比（Top 12）</div>
+    <div class="chart-box-full"><canvas id="sectorBarChart"></canvas></div>
+    <script>
+    new Chart(document.getElementById('sectorBarChart'), {
+      type: 'bar',
+      data: {
+        labels: ["科技", "医药", "银行", "金融", "制造", "地产", "综合", "其他"],
+        datasets: [{
+          label: '平均评分',
+          data: [80.0, 70.0, 65.0, 65.0, 55.0, 45.0, 30.0, nan],
+          backgroundColor: ["#2e7d32", "#2e7d32", "#2e7d32", "#2e7d32", "#f9a825", "#f9a825", "#ef6c00", "#f9a825"],
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        indexAxis: 'y',
+        scales: { x: { min: 0, max: 100, title: { display: true, text: '评分' } } },
+        plugins: { legend: { display: false } }
+      }
+    });
+    </script>
+  </div>
+  <div class="card">
+    <div class="card-title">四、板块五因子对比（Top 8）</div>
+    <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:10px;">
+      五个维度：动量（股价涨跌力度）、技术（MACD/RSI/KDJ）、基本面（ROE/增长/毛利率）、
+      量能（成交量变化）、风险（波动率/回撤）。每条线代表一个板块。
+    </p>
+    <div class="chart-box-full"><canvas id="radarChart"></canvas></div>
+    <script>
+    new Chart(document.getElementById('radarChart'), {
+      type: 'radar',
+      data: {
+        labels: ['动量', '技术', '基本面', '量能', '风险'],
+        datasets: [{label:"科技",data:[85.0,75.0,90.0,80.0,70.0],fill:true,backgroundColor:"rgba(50,100,200,0.1)",borderColor:"rgba(50,100,200,0.8)",pointBackgroundColor:"rgba(50,100,200,1)"},{label:"医药",data:[65.0,75.0,80.0,70.0,60.0],fill:true,backgroundColor:"rgba(70,115,185,0.1)",borderColor:"rgba(70,115,185,0.8)",pointBackgroundColor:"rgba(70,115,185,1)"},{label:"银行",data:[60.0,70.0,55.0,50.0,40.0],fill:true,backgroundColor:"rgba(90,130,170,0.1)",borderColor:"rgba(90,130,170,0.8)",pointBackgroundColor:"rgba(90,130,170,1)"},{label:"金融",data:[60.0,70.0,55.0,50.0,40.0],fill:true,backgroundColor:"rgba(110,145,155,0.1)",borderColor:"rgba(110,145,155,0.8)",pointBackgroundColor:"rgba(110,145,155,1)"},{label:"制造",data:[60.0,50.0,55.0,60.0,50.0],fill:true,backgroundColor:"rgba(130,160,140,0.1)",borderColor:"rgba(130,160,140,0.8)",pointBackgroundColor:"rgba(130,160,140,1)"},{label:"地产",data:[50.0,40.0,60.0,45.0,55.0],fill:true,backgroundColor:"rgba(150,175,125,0.1)",borderColor:"rgba(150,175,125,0.8)",pointBackgroundColor:"rgba(150,175,125,1)"},{label:"综合",data:[20.0,30.0,35.0,25.0,45.0],fill:true,backgroundColor:"rgba(170,190,110,0.1)",borderColor:"rgba(170,190,110,0.8)",pointBackgroundColor:"rgba(170,190,110,1)"},{label:"其他",data:[8.3,11.7,13.3,10.0,15.0],fill:true,backgroundColor:"rgba(190,205,95,0.1)",borderColor:"rgba(190,205,95,0.8)",pointBackgroundColor:"rgba(190,205,95,1)"}]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: { r: { min: 0, max: 100, ticks: { stepSize: 20 } } },
+        plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } }
+      }
+    });
+    </script>
+  </div>
+  <div class="card">
+    <div class="card-title">五、各因子领先板块</div>
+    <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:10px;">
+      每个维度上评分最高的板块及其得分：
+    </p>
+    <table><thead><tr><th>因子</th><th style="text-align:left;">领先板块</th><th>得分</th><th style="text-align:left;">说明</th></tr></thead><tbody>
+      <tr>
+        <td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1a73e8;vertical-align:middle;margin-right:4px;"></span>动量</td>
+        <td style="text-align:left;font-weight:600;">科技</td>
+        <td style="font-weight:600;color:#1a73e8;">85.0</td>
+        <td style="text-align:left;color:#888;font-size:12px;">反映股价近期涨跌力度，越高说明短期趋势越强</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#e65100;vertical-align:middle;margin-right:4px;"></span>技术</td>
+        <td style="text-align:left;font-weight:600;">科技</td>
+        <td style="font-weight:600;color:#1a73e8;">75.0</td>
+        <td style="text-align:left;color:#888;font-size:12px;">综合MACD/RSI/KDJ等指标，越高说明技术形态越好</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#2e7d32;vertical-align:middle;margin-right:4px;"></span>基本面</td>
+        <td style="text-align:left;font-weight:600;">科技</td>
+        <td style="font-weight:600;color:#1a73e8;">90.0</td>
+        <td style="text-align:left;color:#888;font-size:12px;">基于ROE/营收增长/毛利率，越高说明公司质地越优</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#6a1b9a;vertical-align:middle;margin-right:4px;"></span>量能</td>
+        <td style="text-align:left;font-weight:600;">科技</td>
+        <td style="font-weight:600;color:#1a73e8;">80.0</td>
+        <td style="text-align:left;color:#888;font-size:12px;">衡量成交活跃度和量价配合，越高说明资金参与度越强</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f9a825;vertical-align:middle;margin-right:4px;"></span>风险</td>
+        <td style="text-align:left;font-weight:600;">科技</td>
+        <td style="font-weight:600;color:#1a73e8;">70.0</td>
+        <td style="text-align:left;color:#888;font-size:12px;">评估波动率和回撤，越高说明风险控制越好</td>
+      </tr>
+    </tbody></table>
+  </div>
+  <div class="card">
+    <div class="card-title">五-B、板块资金流向排名（今日主力净流入）</div>
+    <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:10px;">
+      主力资金为大单和超大单合计（单笔≥20万元），反映机构和大资金的日内流向。
+      正值=净流入（资金买入），负值=净流出（资金卖出）。
+    </p>
+
+    <p style="font-size:13px;color:#888;text-align:center;padding:20px;">板块资金流向获取失败（数据解析失败）</p>
+  </div>
+  <div class="card">
+    <div class="card-title">七、板块详情总览</div>
+    <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:10px;">
+      每个板块的完整评分数据，包含五因子分解。
+    </p>
+    <table><thead><tr>
+      <th>板块</th><th>数量</th><th>均分</th><th>动量</th><th>技术</th><th>基本面</th><th>量能</th><th>风险</th>
+    </tr></thead><tbody>
+      <tr>
+        <td style="text-align:left;font-weight:500;">科技</td>
+        <td>1</td>
+        <td style="font-weight:600;color:#2e7d32;">80.0</td>
+        <td>85</td>
+        <td>75</td>
+        <td>90</td>
+        <td>80</td>
+        <td>70</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:500;">医药</td>
+        <td>1</td>
+        <td style="font-weight:600;color:#2e7d32;">70.0</td>
+        <td>65</td>
+        <td>75</td>
+        <td>80</td>
+        <td>70</td>
+        <td>60</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:500;">银行</td>
+        <td>1</td>
+        <td style="font-weight:600;color:#2e7d32;">65.0</td>
+        <td>60</td>
+        <td>70</td>
+        <td>55</td>
+        <td>50</td>
+        <td>40</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:500;">金融</td>
+        <td>1</td>
+        <td style="font-weight:600;color:#2e7d32;">65.0</td>
+        <td>60</td>
+        <td>70</td>
+        <td>55</td>
+        <td>50</td>
+        <td>40</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:500;">制造</td>
+        <td>1</td>
+        <td style="font-weight:600;color:#333;">55.0</td>
+        <td>60</td>
+        <td>50</td>
+        <td>55</td>
+        <td>60</td>
+        <td>50</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:500;">地产</td>
+        <td>1</td>
+        <td style="font-weight:600;color:#333;">45.0</td>
+        <td>50</td>
+        <td>40</td>
+        <td>60</td>
+        <td>45</td>
+        <td>55</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:500;">综合</td>
+        <td>1</td>
+        <td style="font-weight:600;color:#ef6c00;">30.0</td>
+        <td>20</td>
+        <td>30</td>
+        <td>35</td>
+        <td>25</td>
+        <td>45</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:500;">其他</td>
+        <td>3</td>
+        <td style="font-weight:600;color:#333;">nan</td>
+        <td>8</td>
+        <td>12</td>
+        <td>13</td>
+        <td>10</td>
+        <td>15</td>
+      </tr>
+    </tbody></table>
+  </div>
+</div>
+<div class="footer">报告由量化分析系统自动生成，不构成投资建议 | 2026-10-18 12:00:00</div>
+</body>
+</html>
