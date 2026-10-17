@@ -23,6 +23,9 @@ from datetime import datetime
 from .analysis import calc_ma
 from .cache import cached_kline
 from .fetcher import _get_em_session, sina_real_time
+from .logging_config import get_logger
+
+logger = get_logger("overnight_holding")
 
 # ── 数据获取层 ──────────────────────────────────────
 
@@ -43,8 +46,8 @@ def _batch_sina_quotes(codes, batch_size=300):
         try:
             rt = sina_real_time(batch)
             results.update(rt)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("overnight: sina 批量行情失败 (%s: %s)", type(e).__name__, e)
         # 小延迟避免被限流（>10只才有速率限制）
         if len(batch) > 10 and i + batch_size < len(codes):
             time.sleep(0.15)
@@ -89,8 +92,10 @@ def _em_quote_batch(codes, max_workers=15):
                         "振幅": d.get("f168", 0) or 0,
                         "名称": d.get("f58", ""),
                     }
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "overnight: 东财实时行情解析失败 code=%s (%s: %s)", code, type(e).__name__, e
+            )
         return code, None
 
     results = {}
@@ -195,8 +200,8 @@ def _estimate_float_share_from_kline(df):
         if avg_amount > 0 and avg_price > 0:
             # 假设日均换手2% → floatShare = avg_amount/avg_price / 0.02
             return avg_amount / avg_price / 0.02
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("overnight: K线估算流通股本失败 (%s: %s)", type(e).__name__, e)
     return 0
 
 
@@ -231,8 +236,10 @@ def _get_float_share_from_baostock(code):
             turn = float(last[1])
             if turn > 0:
                 return vol / (turn / 100)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(
+            "overnight: 流通股本两条路径均失败 code=%s (%s: %s)", code, type(e).__name__, e
+        )
     return 0
 
 
@@ -404,8 +411,10 @@ def _validate_discipline(code, data, verbose=False):
                 result["通过"] = False
                 result["淘汰原因"] = f"组合信号强度{strength}偏空"
                 return result
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(
+            "overnight: 纪律校验组合信号计算失败 code=%s (%s: %s)", code, type(e).__name__, e
+        )
 
     # 4. 主力资金标记（不淘汰）
     try:
@@ -413,8 +422,8 @@ def _validate_discipline(code, data, verbose=False):
 
         ff = calc_fund_flow_summary(code, days=5)  # type: ignore[call-arg]
         result["主力"] = ff
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("overnight: 主力资金流获取失败 code=%s (%s: %s)", code, type(e).__name__, e)
 
     return result
 

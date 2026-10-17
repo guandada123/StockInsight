@@ -18,6 +18,9 @@ from .config import (
     NT_HOLDINGS_CACHE_TTL,
 )
 from .fetcher import get_fundamentals, get_kline, get_sectors
+from .logging_config import get_logger
+
+logger = get_logger("cache")
 
 _MEM_CACHE_MAX = MEM_CACHE_MAX  # 5000
 
@@ -150,8 +153,8 @@ def _perm_load(table, key_col, key_val):
         row = cur.fetchone()
         if row:
             return pickle.loads(row[0])  # nosec — 从本地 SQLite 读取，非不可信数据
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("cache: 持久缓存读取失败 (%s: %s)", type(e).__name__, e)
     return None
 
 
@@ -165,8 +168,8 @@ def _perm_save(table, key_col, key_val, data):
             (key_val, blob, time.time()),
         )
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("cache: 持久缓存写入失败 (%s: %s)", type(e).__name__, e)
 
 
 # ── 业务缓存包装 ──────────────────────────────
@@ -229,8 +232,8 @@ def cached_kline(code, days=120):
                     result = combined.tail(days).reset_index(drop=True)
                     _mem_cache_set(mem_key, result)
                     return result
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("cached_kline: 数据源失败 code=%s (%s: %s)", code, type(e).__name__, e)
             # 重拉失败，用已有数据兜底
             if len(stored) >= 20:
                 result = stored.tail(days).reset_index(drop=True)
@@ -253,8 +256,8 @@ def cached_kline(code, days=120):
                     result = combined.tail(days).reset_index(drop=True)
                     _mem_cache_set(mem_key, result)
                     return result
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("cached_kline: 数据源失败 code=%s (%s: %s)", code, type(e).__name__, e)
 
         # 增量跳过/失败，用已有数据兜底
         if len(stored) >= 20:
@@ -272,8 +275,8 @@ def cached_kline(code, days=120):
             result = data.tail(days).reset_index(drop=True)
             _mem_cache_set(mem_key, result)
             return result
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("cached_kline: 数据源失败 code=%s (%s: %s)", code, type(e).__name__, e)
 
     return pd.DataFrame()
 
@@ -501,8 +504,10 @@ def cached_fund_flow(code, days=20):
                 data = get_fund_flow(code, days=days)
                 if not data.empty:
                     cache_set(key, data, ttl=86400)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(
+                    "cached_fund_flow: 后台刷新失败 code=%s (%s: %s)", code, type(e).__name__, e
+                )
 
         threading.Thread(target=_bg_refresh, daemon=True).start()
         return stale
@@ -515,8 +520,8 @@ def cached_fund_flow(code, days=20):
                 data.attrs["freshness"] = "fresh"
             cache_set(key, data, ttl=86400)
             return data
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("cached_fund_flow: 数据源失败 code=%s (%s: %s)", code, type(e).__name__, e)
 
     empty = pd.DataFrame()
     empty.attrs["freshness"] = "stale"
