@@ -81,6 +81,9 @@ ignore = [
 "backend/tests/**" = ["S101", "S306", "SIM117", "ARG005", "N802", "PLC2401", "SIM115", "S108", "PLR1714", "N817", "T201"]
 "scripts/*.py" = ["T201"]
 "cli.py" = ["T201", "E701", "E702", "I001", "C408"]
+# 2026-10-17 cli 三层拆分：新层与入口同规（CLI 工具合法使用 print 等）
+"cli_core.py" = ["T201", "E701", "E702", "I001", "C408"]
+"cli_commands.py" = ["T201", "E701", "E702", "I001", "C408"]
 "pick5_*.py" = ["T201", "E701", "E702"]
 "run_daily.py" = ["T201"]
 "backfill_history.py" = ["T201", "B023"]

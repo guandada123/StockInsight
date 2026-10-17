@@ -22,6 +22,7 @@ from unittest import mock
 import pytest
 
 import cli
+import cli_commands
 
 
 @pytest.mark.parametrize(
@@ -41,7 +42,9 @@ def test_main_propagates_dispatch_return_value(argv, returned):
     """main() 的退出码必须等于对应 cmd_* 的返回值（None → 0）。"""
     with (
         mock.patch.object(sys, "argv", argv),
-        mock.patch.object(cli, f"cmd_{argv[1]}", return_value=returned),
+        mock.patch.object(
+            cli, f"cmd_{argv[1]}", return_value=returned
+        ),  # build_parser 解析期自 cli 命名空间绑定
     ):
         with pytest.raises(SystemExit) as excinfo:
             cli.main()
@@ -143,11 +146,11 @@ def test_cmd_scan_returns_1_when_all_codes_fail():
             screener_mod, "load_all_a_shares", return_value=["600000", "000001", "300001"]
         ),
         mock.patch.object(screener_mod, "quick_filter", side_effect=lambda c: c),
-        mock.patch.object(cli, "deep_analyze", side_effect=RuntimeError("模拟取数全挂")),
-        mock.patch.object(cli, "_save_checkpoint_single"),
-        mock.patch.object(cli, "_clear_checkpoint"),
-        mock.patch.object(cli, "_cleanup_old_logs", return_value=[]),
-        mock.patch.object(cli.sys, "exit", side_effect=SystemExit) as m_exit,
+        mock.patch.object(cli_commands, "deep_analyze", side_effect=RuntimeError("模拟取数全挂")),
+        mock.patch.object(cli_commands, "_save_checkpoint_single"),
+        mock.patch.object(cli_commands, "_clear_checkpoint"),
+        mock.patch.object(cli_commands, "_cleanup_old_logs", return_value=[]),
+        mock.patch.object(cli_commands.sys, "exit", side_effect=SystemExit) as m_exit,
     ):
         with pytest.raises(SystemExit):
             cli.main()
