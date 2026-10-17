@@ -360,7 +360,7 @@ def _load_stock_name_map():
 
     # 先尝试从SQLite缓存加载
     try:
-        from .cache import cache_get, cache_set
+        from ..cache import cache_get, cache_set
 
         cached = cache_get("stock_name_map", max_age=2592000)  # 30天TTL
         if cached is not None:
@@ -380,7 +380,7 @@ def _load_stock_name_map():
             _STOCK_NAME_MAP[code] = str(row["name"])
         # 写入SQLite缓存
         try:
-            from .cache import cache_set
+            from ..cache import cache_set
 
             cache_set("stock_name_map", _STOCK_NAME_MAP, ttl=2592000)
         except Exception as e:
@@ -821,7 +821,7 @@ def get_kline(code, days=120):
     """
     # ── 网络健康状态：决定源优先级 ──
     try:
-        from .network_health import get_health
+        from ..network_health import get_health
 
         h = get_health()
         # 离线模式：跳过所有网络源，直接尝试 Baostock
@@ -1059,7 +1059,7 @@ def get_fund_flow(code, days=20):
     import pandas as pd
 
     # 主源：push2his 历史资金流（5日明细）
-    if _circuit_breaker("fund_flow"):
+    if not _circuit_breaker("fund_flow"):  # 2026-10-17 修复反转：True=可尝试，False 才跳过
         return pd.DataFrame()  # 熔断中，让缓存层兜底
     try:
         market = "1" if code.startswith("6") else "0"
@@ -1203,7 +1203,7 @@ def get_national_team_holdings(code):
 
 def get_top_sector_stocks(sectors_df, top_n=3):
     """从TOP板块中精选个股"""
-    from .analysis import score_stocks_in_sector
+    from ..analysis import score_stocks_in_sector
 
     top3 = sectors_df.head(top_n)
     all_picks = []
@@ -1611,7 +1611,7 @@ def calc_relative_strength(code, index_code="000001", days=60):
     """
     try:
         # 延迟导入避免循环依赖（cache 会 import fetcher）
-        from .cache import cached_kline as _ck
+        from ..cache import cached_kline as _ck
 
         stock_kline = _ck(code, days=days)
         if stock_kline.empty or len(stock_kline) < days * 0.8:
@@ -1668,7 +1668,7 @@ def get_sector_rotation(days=5):
     try:
         import pandas as pd
 
-        from .history_db import get_market_summary
+        from ..history_db import get_market_summary
         from .sectors_fallback import get_sector_for_code
 
         # 从全市场扫描结果中统计板块均分
