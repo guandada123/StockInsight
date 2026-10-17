@@ -71,8 +71,8 @@ def _ensure_warmup():
         return
     try:
         _get_sina_session().get("http://hq.sinajs.cn/list=sz000001", timeout=3)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_ensure_warmup: 新浪会话预热失败 (%s: %s)", type(e).__name__, e)
     _SESSION_WARMED = True
 
 
@@ -338,8 +338,8 @@ def _em_request(path, params, max_attempts=5, delay=1.5):
         if r is not None and r.status_code == 200:
             try:
                 return r.json()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("_em_request: 响应 JSON 解析失败 (%s: %s)", type(e).__name__, e)
         time.sleep(0.5)  # 切换主机间隔
     return None
 
@@ -366,8 +366,8 @@ def _load_stock_name_map():
         if cached is not None:
             _STOCK_NAME_MAP = cached
             return _STOCK_NAME_MAP
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_load_stock_name_map: 名称表缓存读取失败 (%s: %s)", type(e).__name__, e)
 
     # 缓存未命中 → akshare拉取
     _STOCK_NAME_MAP = {}
@@ -383,10 +383,10 @@ def _load_stock_name_map():
             from .cache import cache_set
 
             cache_set("stock_name_map", _STOCK_NAME_MAP, ttl=2592000)
-        except Exception:
-            pass
-    except Exception:
-        pass
+        except Exception as e:
+            logger.debug("_load_stock_name_map: 名称表缓存写入失败 (%s: %s)", type(e).__name__, e)
+    except Exception as e:
+        logger.debug("_load_stock_name_map: 名称表构建失败 (%s: %s)", type(e).__name__, e)
     return _STOCK_NAME_MAP
 
 
@@ -494,8 +494,8 @@ def _sina_kline(code, days):
                     for it in items
                 ]
                 return _parse_kline_df(rows, days)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("get_kline: sina 源失败 (%s: %s)", type(e).__name__, e)
     return pd.DataFrame()
 
 
@@ -522,8 +522,8 @@ def _tencent_kline(code, days):
                     for it in klines
                 ]
                 return _parse_kline_df(rows, days)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("get_kline: tencent 源失败 (%s: %s)", type(e).__name__, e)
     return pd.DataFrame()
 
 
@@ -765,8 +765,10 @@ def get_intraday_kline(code, scale=60, count=120):
                 df = pd.DataFrame(rows)
                 df["日期"] = pd.to_datetime(df["日期"])
                 return df.sort_values("日期").reset_index(drop=True)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(
+                "get_intraday_kline: 全部来源失败 code=%s (%s: %s)", code, type(e).__name__, e
+            )
     return pd.DataFrame()
 
 
@@ -834,8 +836,8 @@ def get_kline(code, days=120):
             df = _sina_kline(code, days)
             if not df.empty:
                 return df
-    except Exception:
-        pass  # 健康检测不可用，走默认容灾链
+    except Exception as e:
+        logger.debug("get_kline: 健康检测不可用，走默认容灾链 (%s: %s)", type(e).__name__, e)
 
     # ── DataSourceChain 主容灾链（熔断器保护）──
     # 新浪→腾讯→Baostock→AData→Tushare
@@ -846,8 +848,10 @@ def get_kline(code, days=120):
         df = chain.fetch_kline(code, days)
         if not df.empty:
             return df
-    except Exception:
-        pass  # Chain 不可用，走兜底
+    except Exception as e:
+        logger.warning(
+            "get_kline: Chain 不可用且兜底失败 code=%s (%s: %s)", code, type(e).__name__, e
+        )
 
     # ── 兜底源：yquoter → TickFlow（无熔断，最后防线）──
     df = _yquoter_kline(code, days)
@@ -1034,10 +1038,10 @@ def get_fundamentals(code):
                     result["市盈率"] = round(price / result["每股收益"], 2)
                     if result["每股净资产"] and result["每股净资产"] > 0:
                         result["市净率"] = round(price / result["每股净资产"], 2)
-            except Exception:
-                pass
-    except Exception:
-        pass
+            except Exception as e:
+                logger.debug("get_fundamentals: 指标派生计算失败 (%s: %s)", type(e).__name__, e)
+    except Exception as e:
+        logger.warning("get_fundamentals: 全部来源失败 code=%s (%s: %s)", code, type(e).__name__, e)
 
     return result
 
@@ -1110,8 +1114,8 @@ def get_fund_flow(code, days=20):
                     )
                 if records:
                     return pd.DataFrame(records)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("get_fund_flow: 数据源失败 (%s: %s)", type(e).__name__, e)
 
     # 备源：Tushare moneyflow（东方财富挂时自动降级）
     try:
@@ -1135,8 +1139,8 @@ def get_fund_flow(code, days=20):
                     }
                 )
             return pd.DataFrame(records)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("get_fund_flow: 全部来源失败 code=%s (%s: %s)", code, type(e).__name__, e)
 
     return pd.DataFrame()
 
@@ -1187,8 +1191,10 @@ def get_national_team_holdings(code):
                             if name not in result["holders"]:
                                 result["holders"].append(name)
                             break
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(
+            "get_national_team_holdings: 全部来源失败 code=%s (%s: %s)", code, type(e).__name__, e
+        )
     return result
 
 
@@ -1589,8 +1595,8 @@ def get_dragon_tiger_board():
         df = ak.stock_lhb_detail_em(date=datetime.now().strftime("%Y%m%d"))
         if df is not None and not df.empty:
             return df
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("get_dragon_tiger_board: 龙虎榜数据获取失败 (%s: %s)", type(e).__name__, e)
     return pd.DataFrame()
 
 
