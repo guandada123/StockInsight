@@ -749,8 +749,8 @@ def cmd_scan(args):
                 _save_checkpoint_single(code)
         except FutureTimeout:
             budget_hit = True
-            for f in futures:
-                f.cancel()
+            for fut in futures:
+                fut.cancel()
             executor.shutdown(wait=False, cancel_futures=True)
             print(
                 f"  ⏰ 扫描总预算 {scan_budget:.0f}s 耗尽，已取消未开始任务 "
