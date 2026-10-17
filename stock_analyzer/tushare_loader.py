@@ -17,6 +17,8 @@ import pandas as pd
 
 from stock_analyzer.env import get_env
 
+from .db_utils import open_wal_conn
+
 logger = logging.getLogger("tushare_loader")
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -59,10 +61,8 @@ def get_tushare_pro():
 
 
 def _get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA synchronous=NORMAL")
-    return conn
+    """打开 stock_cache.db 连接（WAL + synchronous=NORMAL，见 db_utils）"""
+    return open_wal_conn(DB_PATH)
 
 
 # ═══════════════════════════════════════════

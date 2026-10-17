@@ -25,6 +25,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from .db_utils import open_wal_conn
+
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(PROJECT_ROOT, "stock_cache.db")
 
@@ -173,9 +175,8 @@ class FactorExpressionEngine:
 
 
 def _get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA journal_mode=WAL")
-    return conn
+    """打开 stock_cache.db 连接（WAL + synchronous=NORMAL，见 db_utils；历史上缺 synchronous，本次统一）"""
+    return open_wal_conn(DB_PATH)
 
 
 def init_factor_table():

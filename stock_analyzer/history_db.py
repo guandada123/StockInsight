@@ -12,13 +12,12 @@ from datetime import datetime
 import pandas as pd
 
 from .config import DB_PATH
+from .db_utils import open_wal_conn
 
 
 def _get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA synchronous=NORMAL")
-    return conn
+    """打开 stock_cache.db 连接（WAL + synchronous=NORMAL，见 db_utils）"""
+    return open_wal_conn(DB_PATH)
 
 
 def init_history_db():
