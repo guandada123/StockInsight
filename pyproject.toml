@@ -49,8 +49,13 @@ dev = [
 [tool.mypy]
 python_version = "3.11"
 # ═══════════════════════════════════════════════════════════
-# 阻塞模式（代替之前的 --strict=false）
-# 目标：mypy 必须在 CI/pre-commit 中 PASS
+# 目标模式：mypy 在 CI 中 PASS（阻塞）
+# ⚠️ 现状（2026-10-17 核实）：CI 的 mypy 步骤为**非阻塞**（|| warning），
+#    因全量尚有 48 处存量错误（集中在 13 个测试/数据层文件）。
+#    已知问题：CI 命令曾同时传 backend/ 与 backend/services/ 导致
+#    `Duplicate module named "backend.services"`，类型检查从未真正跑过
+#    （已修复：去掉冗余路径，现可产出有效结果）。
+#    → 待 Phase A 收紧清零存量后，将 CI 步骤改为阻塞。
 # 主配置启用高价值检查，module overrides 保留现有代码兼容性
 # ═══════════════════════════════════════════════════════════
 

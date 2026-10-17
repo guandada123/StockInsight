@@ -89,11 +89,18 @@ jobs:
           cache: pip
           cache-dependency-path: "requirements*.txt"
       - name: Install ruff
-        run: pip install ruff
+        # 2026-10-17 钉死版本（与本地验证口径一致）：浮动版本会随上游发版
+        # 静默改变门禁口径（默认规则集/格式化器行为都会变）。
+        run: pip install "ruff==0.15.17"
       - name: Ruff lint
-        run: ruff check backend/ backend/services/ stock_analyzer/ --config ${{ env.RUFF_CONFIG }}
+        # 2026-10-17 改为全仓：原只查 backend/ backend/services/ stock_analyzer/，
+        # **cli.py 不在覆盖范围** —— 而 P0-1（退出码）/扫描循环/失败率护栏等
+        # 本轮最大的改动全在 cli.py，CI 的 ruff 从未看过它。
+        # backend/services/ 是 backend/ 的子集，原命令重复传入会自相矛盾。
+        # 本地已验证：ruff check . / ruff format --check . 全绿（149 文件）。
+        run: ruff check . --config ${{ env.RUFF_CONFIG }}
       - name: Ruff format check
-        run: ruff format --check backend/ backend/services/ stock_analyzer/ --config ${{ env.RUFF_CONFIG }}
+        run: ruff format --check . --config ${{ env.RUFF_CONFIG }}
 
   # ────────────────────────────
   # Backend: Unit Tests
@@ -141,8 +148,17 @@ jobs:
           pip install mypy
           pip install -r <(grep -v '^yquoter' requirements.txt) || echo "::warning::私有包安装失败，mypy 会忽略缺失导入"
       - name: Type check
+        # 2026-10-17 修两处既有瑕疵（本地复现）：
+        # ① 原命令同时传 backend/ 与 backend/services/ → mypy 报
+        #    `Duplicate module named "backend.services"`，**errors prevented
+        #    further checking**，等于这一步从未真正跑过类型检查；
+        #    backend/services/ 本就是 backend/ 的子集，去掉冗余路径。
+        # ② 该步骤为非阻塞（|| warning）—— pyproject [tool.mypy] 注释声称
+        #    "mypy 必须在 CI/pre-commit 中 PASS"，与现实不符。当前全量尚有
+        #    48 处存量错误（集中在 13 个测试/数据层文件），待 Phase A 收紧
+        #    完成后再改为阻塞；先让这一步**真正产出有效结果**。
         run: |
-          mypy stock_analyzer/ backend/ backend/services/ \
+          mypy stock_analyzer/ backend/ \
             --ignore-missing-imports \
             --check-untyped-defs \
             --warn-return-any \
