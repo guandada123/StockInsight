@@ -150,7 +150,9 @@ def test_cmd_scan_returns_1_when_all_codes_fail():
         mock.patch.object(cli_commands, "_save_checkpoint_single"),
         mock.patch.object(cli_commands, "_clear_checkpoint"),
         mock.patch.object(cli_commands, "_cleanup_old_logs", return_value=[]),
-        mock.patch.object(cli_commands.sys, "exit", side_effect=SystemExit) as m_exit,
+        mock.patch.object(
+            cli.sys, "exit", side_effect=SystemExit
+        ) as m_exit,  # sys.exit 由 cli.main 统一调用
     ):
         with pytest.raises(SystemExit):
             cli.main()
