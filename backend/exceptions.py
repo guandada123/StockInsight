@@ -19,7 +19,7 @@
 
 import logging
 import uuid
-from typing import Any
+from typing import Any, cast
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -149,6 +149,6 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     注意：通用 Exception 不在此注册，由 trace_id_middleware 兜底。
     """
-    app.add_exception_handler(StarletteHTTPException, _http_exception_handler)
-    app.add_exception_handler(RequestValidationError, _validation_exception_handler)
+    app.add_exception_handler(StarletteHTTPException, cast(Any, _http_exception_handler))
+    app.add_exception_handler(RequestValidationError, cast(Any, _validation_exception_handler))
     # Exception handler 故意不注册 — 由 trace_id_middleware 兜底避免 BaseHTTPMiddleware re-raise 问题

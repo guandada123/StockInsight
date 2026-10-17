@@ -60,7 +60,7 @@ class TestErrorResponseStructure:
         """_error_response 返回带 code/message/detail/trace_id 的 JSONResponse"""
         resp = _error_response(400, "bad request", trace_id="abc")
         assert resp.status_code == 400
-        body = resp.body.decode()
+        body = bytes(resp.body).decode()
         import json
 
         parsed = json.loads(body)
@@ -77,7 +77,7 @@ class TestErrorResponseStructure:
         assert resp.status_code == 422
         import json
 
-        parsed = json.loads(resp.body.decode())
+        parsed = json.loads(bytes(resp.body).decode())
         assert parsed["detail"] == [{"field": "name", "msg": "required"}]
 
 

@@ -3,12 +3,35 @@
 从 report_generators.py 拆分而来，包含市场概述和选股逻辑说明的 HTML 生成函数。
 """
 
+from typing import Any, TypedDict
+
 import pandas as pd
 
 from .report_html_utils import (
     _color_for_value,
     _fmt_num,
 )
+
+
+class _SectorAgg(TypedDict):
+    """板块聚合统计（all_sectors 的值类型，mypy 2026-10-17 收紧引入）。"""
+
+    count: int
+    scores: list[float]
+    selected: int
+
+
+class _SectorSel(TypedDict):
+    """选中板块统计（selected_sector_data 的值类型）。"""
+
+    count: int
+    selected: int
+    avg_score: float
+
+
+# all_sectors.get(sector, ...) 的缺省值：TypedDict(total=True) 不接受裸 {}，
+# 用显式空聚合替代（语义等价：count=0 / selected=0 / scores=[]）。
+_EMPTY_SECTOR_AGG: _SectorAgg = {"count": 0, "scores": [], "selected": 0}
 
 # ══════════════════════════════════════════════════════
 # 辅助：生成市场概述文字
@@ -156,7 +179,7 @@ def _build_selection_rationale(
     }
 
     # ── 全市场板块分布（所有扫描的股票） ──
-    all_sectors = {}
+    all_sectors: dict[str, _SectorAgg] = {}
     for _, row in df.iterrows():
         code = str(row.get("代码", ""))
         score = row.get("综合评分", 0)
@@ -209,7 +232,7 @@ def _build_selection_rationale(
         sector_all_html += f'<div style="font-size:11px;color:#999;text-align:center;margin-top:4px;">...及其他 {len(sorted_sectors) - 15} 个板块</div>'
 
     # ── 选中股票的板块数据 ──
-    selected_sector_data = {}
+    selected_sector_data: dict[str, _SectorSel] = {}
     for s_name, s_info in sorted_sectors:
         if s_info["selected"] > 0:
             avg_s = sum(s_info["scores"]) / len(s_info["scores"]) if s_info["scores"] else 0
@@ -219,9 +242,9 @@ def _build_selection_rationale(
                 "avg_score": avg_s,
             }
 
-    sector_ranks = []
-    for s_name, s_info in selected_sector_data.items():
-        sector_ranks.append((s_name, s_info["avg_score"], {}, s_info["count"]))
+    sector_ranks: list[tuple[str, float, dict[str, Any], int]] = []
+    for s_name, sel_info in selected_sector_data.items():
+        sector_ranks.append((s_name, sel_info["avg_score"], {}, sel_info["count"]))
     sector_ranks.sort(key=lambda x: -x[1])
 
     # ── 选中板块标签 ──
@@ -371,8 +394,12 @@ def _build_selection_rationale(
         style = ts.get("style", "")
         confidence = ts.get("style_confidence", "")
 
-        sector_total_count = all_sectors.get(sector, {}).get("count", 0) if sector else 0
-        sector_selected_count = all_sectors.get(sector, {}).get("selected", 0) if sector else 0
+        sector_total_count = (
+            all_sectors.get(sector, _EMPTY_SECTOR_AGG).get("count", 0) if sector else 0
+        )
+        sector_selected_count = (
+            all_sectors.get(sector, _EMPTY_SECTOR_AGG).get("selected", 0) if sector else 0
+        )
 
         qs = detail.get("quant_score", {})
         factor_scores = qs.get("factor_scores", {})
@@ -386,9 +413,9 @@ def _build_selection_rationale(
         worst_cn = factor_names_cn.get(worst_factor_k, "")
 
         sector_avg = all_avg
-        for s_name, info in selected_sector_data.items():
+        for s_name, sel_info in selected_sector_data.items():
             if s_name in sector:
-                sector_avg = info["avg_score"]
+                sector_avg = sel_info["avg_score"]
                 break
 
         style_tag = f"，交易风格偏{style}" if style else ""

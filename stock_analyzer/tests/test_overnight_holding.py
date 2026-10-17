@@ -98,7 +98,7 @@ class TestGetFloatShare(unittest.TestCase):
     def test_estimate_from_kline(self):
         """K线估算成功"""
         df = _make_kline(30)
-        cache = {}
+        cache: dict[str, float] = {}
         result = oh._get_float_share("600001", df, cache)
         # 结果应大于0
         self.assertGreater(result, 0)
@@ -110,7 +110,7 @@ class TestGetFloatShare(unittest.TestCase):
         # 给一个空成交额的df，让K线估算失败
         df = _make_kline(10)
         df["成交额"] = 0
-        cache = {}
+        cache: dict[str, float] = {}
         result = oh._get_float_share("600001", df, cache)
         self.assertEqual(result, 5e8)
         mock_baostock.assert_called_once_with("600001")

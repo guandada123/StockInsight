@@ -61,7 +61,7 @@ def _query_calendar_table(d: str) -> bool | None:
             conn.close()
         if cur is None:
             return None  # 越界（表范围外）→ 交由 fallback
-        return cur[0] == 1
+        return bool(cur[0] == 1)
     except sqlite3.Error:
         return None
 

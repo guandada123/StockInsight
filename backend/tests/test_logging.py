@@ -11,6 +11,7 @@ StockInsight Backend — 日志配置测试
 
 import json
 import logging
+import logging.handlers
 import os
 import tempfile
 
@@ -177,7 +178,9 @@ class TestSetupLogging:
                 if "RotatingFileHandler" in h.__class__.__name__:
                     file_handler = h
                     break
-            assert file_handler is not None, "没有找到 file handler"
+            assert isinstance(file_handler, logging.handlers.TimedRotatingFileHandler), (
+                "没有找到 file handler"
+            )
 
             # TimedRotatingFileHandler 使用日期后缀（%Y-%m-%d），
             # delay=True 时 doRollover 不会自动创建新文件。

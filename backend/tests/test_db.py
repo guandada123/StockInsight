@@ -4,6 +4,7 @@ import asyncio
 import importlib
 import os
 import sys
+from typing import cast
 from unittest import mock
 
 import pytest
@@ -15,6 +16,12 @@ sys.modules["aiosqlite"] = _mock_aiosqlite
 from backend import db
 
 pytestmark = pytest.mark.asyncio
+
+# mypy 静态解析的是真实 aiosqlite.connect 签名，而运行期 connect 已被
+# MagicMock/AsyncMock 替换（见 reset_and_mock fixture）——所有 Mock 属性
+# 访问（return_value/call_count/assert_*）统一走这个指向 module mock 的别名。
+# db.aiosqlite 本身从不被重赋值，别名不会失效。
+_aiosqlite_mock: mock.MagicMock = cast(mock.MagicMock, db.aiosqlite)
 
 
 # ── 测试辅助 ────────────────────────────────────
@@ -48,13 +55,13 @@ def reset_and_mock():
     conn = _make_mock_conn()
     db.aiosqlite.connect = mock.AsyncMock(return_value=conn)
     yield
-    db.aiosqlite.connect.reset_mock()
+    _aiosqlite_mock.connect.reset_mock()
 
 
 @pytest.fixture
-def mock_conn():
+def mock_conn() -> mock.MagicMock:
     """返回当前 mock connection（测试内可进一步定制）"""
-    return db.aiosqlite.connect.return_value
+    return cast(mock.MagicMock, _aiosqlite_mock.connect.return_value)
 
 
 # ════════════════════════════════════════════
@@ -72,7 +79,7 @@ class TestInitDb:
         assert db._initialized is True
         assert db._pool is not None
         assert db._pool.maxsize == 5
-        db.aiosqlite.connect.assert_called_once()
+        _aiosqlite_mock.connect.assert_called_once()
         mock_conn.execute.assert_any_call("PRAGMA journal_mode=WAL")
         mock_conn.execute.assert_any_call("PRAGMA synchronous=NORMAL")
         mock_conn.close.assert_called_once()
@@ -83,7 +90,7 @@ class TestInitDb:
         await db._init_db()
         await db._init_db()
 
-        assert db.aiosqlite.connect.call_count == 1
+        assert _aiosqlite_mock.connect.call_count == 1
 
     async def test_init_custom_pool_size(self):
         """环境变量控制池大小"""
@@ -119,8 +126,9 @@ class TestCreateConnection:
         """新建连接执行优化 pragma"""
         result = await db._create_connection()
 
-        assert result is mock_conn
-        db.aiosqlite.connect.assert_called_once()
+        # Mock 未定义 __eq__，== 即恒等比较；避免 is 断言把 Any 参数收窄成 Connection 类型
+        assert result == mock_conn
+        _aiosqlite_mock.connect.assert_called_once()
         mock_conn.execute.assert_any_call("PRAGMA journal_mode=WAL")
         mock_conn.execute.assert_any_call("PRAGMA synchronous=NORMAL")
         mock_conn.execute.assert_any_call("PRAGMA cache_size=-8000")
@@ -160,7 +168,7 @@ class TestAsyncDbConnection:
 
         # _init_db 调了一次 connect + 首次 get_connection 又调了一次 _create_connection
         # 第二次 get_connection 从池中复用，不再调用 connect
-        assert db.aiosqlite.connect.call_count == 2  # init + _create_connection
+        assert _aiosqlite_mock.connect.call_count == 2  # init + _create_connection
 
     async def test_exception_discards_connection(self, mock_conn):
         """异常退出时丢弃连接（不归还池）"""
@@ -202,7 +210,7 @@ class TestAsyncDbConnection:
             pass
 
         # init 一次 + 第一次创建连接，第二次复用池
-        assert db.aiosqlite.connect.call_count == 2
+        assert _aiosqlite_mock.connect.call_count == 2
 
 
 # ════════════════════════════════════════════

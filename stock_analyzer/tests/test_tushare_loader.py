@@ -325,6 +325,7 @@ class TestGetMoneyflowCache(unittest.TestCase):
         mock_get_conn.return_value = conn
 
         df = tl.get_moneyflow_cache("000001")
+        assert df is not None  # 收窄供 mypy（assertIsNotNone 不收窄）
         self.assertIsNotNone(df)
         self.assertEqual(len(df), 1)
         self.assertIn("主力净流入", df.columns)
@@ -405,6 +406,7 @@ class TestJobManagement(unittest.TestCase):
             self.assertEqual(len(job_id), 8)
 
             status = tl.get_job_status(job_id)
+            assert status is not None  # 收窄供 mypy
             self.assertIsNotNone(status)
             self.assertEqual(status["type"], "trade_calendar")
 

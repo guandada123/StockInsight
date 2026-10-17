@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # Analysis result cache (in-memory, 5-minute TTL)
 _ANALYSIS_CACHE: dict[str, dict[str, Any]] = {}
 _ANALYSIS_CACHE_LOCK = threading.Lock()
-_CACHE_TTL = 300  # seconds
+_CACHE_TTL: float = 300  # seconds（注解为 float：测试会以 0.01 等小数覆盖做 TTL 过期用例）
 
 
 def cached_analysis(code: str, full: bool = True) -> dict[str, Any]:

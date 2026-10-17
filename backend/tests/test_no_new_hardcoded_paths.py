@@ -19,6 +19,7 @@ import json
 import re
 import subprocess
 from pathlib import Path
+from typing import cast
 
 REPO = Path(__file__).resolve().parent.parent
 BASELINE = Path(__file__).resolve().parent / "hardcoded_paths_baseline.json"
@@ -67,7 +68,7 @@ def scan() -> dict[str, int]:
 
 
 def load_baseline() -> dict[str, int]:
-    return json.loads(BASELINE.read_text(encoding="utf-8"))["files"]
+    return cast(dict[str, int], json.loads(BASELINE.read_text(encoding="utf-8"))["files"])
 
 
 def test_no_new_hardcoded_paths():

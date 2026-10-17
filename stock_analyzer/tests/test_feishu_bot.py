@@ -71,14 +71,15 @@ class TestPost(unittest.TestCase):
     @patch("stock_analyzer.feishu_bot.urllib.request.urlopen")
     def test_http_error(self, mock_urlopen):
         """HTTPError 处理"""
+        import email.message
         import urllib.error
 
         mock_urlopen.side_effect = urllib.error.HTTPError(
             "https://example.com",
             403,
             "Forbidden",
-            {},
-            None,  # type: ignore[arg-type]
+            email.message.Message(),
+            None,
         )
         result = _post("https://example.com", {})
         self.assertFalse(result["ok"])

@@ -36,7 +36,7 @@ def _write(d, name: str, data: dict) -> None:
 
 
 def _read(d, name: str) -> dict:
-    return json.loads((d / f"{name}.json").read_text(encoding="utf-8"))
+    return json.loads((d / f"{name}.json").read_text(encoding="utf-8"))  # type: ignore[no-any-return]
 
 
 # ════════════════════════════════════════════════════

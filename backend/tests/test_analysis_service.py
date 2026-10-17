@@ -31,7 +31,7 @@ def _make_kline():
             "最高": np.random.uniform(11, 13, 100),
             "最低": np.random.uniform(9, 11, 100),
             "收盘": np.random.uniform(10, 12, 100),
-            "成交量": np.random.randint(1e6, 1e8, 100),
+            "成交量": np.random.randint(1_000_000, 100_000_000, 100),
             "DIF": np.random.uniform(-0.5, 0.5, 100),
             "DEA": np.random.uniform(-0.3, 0.3, 100),
             "MACD": np.random.uniform(-0.2, 0.2, 100),
