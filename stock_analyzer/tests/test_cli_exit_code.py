@@ -74,3 +74,82 @@ def test_audit_exit_code_contract_matches_implementation():
     except (OSError, TypeError):
         pytest.skip("无法读取 cmd_audit 源码")
     assert src_has_return, "cmd_audit 不再返回 0/1 退出码，请同步更新退出码契约文档"
+
+
+# ══════════════════════════════════════════════════════════════
+# 失败率护栏（2026-10-17，_fail_on_skip_ratio）
+# ══════════════════════════════════════════════════════════════
+
+
+def test_fail_on_skip_ratio_thresholds():
+    """≥阈值比例未完成 → 判失败；阈值可用 SCAN_FAIL_RATIO 覆盖，>1 显式禁用。"""
+    import os
+
+    cases = [
+        # (环境值, skipped, total, 期望)
+        ("0.9", 4100, 4466, True),  # 91.8% → 失败
+        ("0.9", 100, 4466, False),  # 2.2% → 正常
+        ("0.9", 4466, 4466, True),  # 100% → 失败
+        ("0.9", 0, 0, False),  # 空池 → 不判失败（bool(total) 守卫）
+        ("0.9", 4020, 4466, True),  # 恰好 90%（>=）
+        ("0.9", 4019, 4466, False),  # 差 1 只未到阈值
+        ("1.5", 4466, 4466, False),  # >1 → 显式禁用
+        ("abc", 4100, 4466, True),  # 非数字 → 回退默认 0.9
+    ]
+    for env_val, skipped, total, expected in cases:
+        with mock.patch.dict(os.environ, {"SCAN_FAIL_RATIO": env_val}):
+            got = cli._fail_on_skip_ratio(skipped, total)
+        assert got is expected, (
+            f"SCAN_FAIL_RATIO={env_val}, {skipped}/{total}: 期望 {expected}，实得 {got}"
+        )
+
+
+def test_fail_on_skip_ratio_default_when_env_missing():
+    """未设置环境变量 → 默认阈值 0.9。"""
+    import os
+
+    env = {k: v for k, v in os.environ.items() if k != "SCAN_FAIL_RATIO"}
+    with mock.patch.dict(os.environ, env, clear=True):
+        assert cli._fail_on_skip_ratio(4100, 4466) is True
+        assert cli._fail_on_skip_ratio(100, 4466) is False
+
+
+def test_cmd_scan_returns_1_when_all_codes_fail():
+    """集成：全部标的分析失败 → main() 以退出码 1 结束（「退出码非 0」判据可用）。
+
+    全程 mock，零网络请求；不落盘（--no-save + mock checkpoint）。
+    """
+    import os
+
+    import stock_analyzer.screener as screener_mod
+    import stock_analyzer.trade_day as trade_day_mod
+
+    argv = [
+        "cli.py",
+        "scan",
+        "--mode",
+        "mainboard",
+        "--top-n",
+        "1",
+        "--min-score",
+        "0",
+        "--no-save",
+    ]
+    with (
+        mock.patch.object(sys, "argv", argv),
+        mock.patch.dict(os.environ, {"SCAN_FAIL_RATIO": "0.9"}),
+        mock.patch.object(trade_day_mod, "is_trading_day", return_value=True),
+        mock.patch.object(
+            screener_mod, "load_all_a_shares", return_value=["600000", "000001", "300001"]
+        ),
+        mock.patch.object(screener_mod, "quick_filter", side_effect=lambda c: c),
+        mock.patch.object(cli, "deep_analyze", side_effect=RuntimeError("模拟取数全挂")),
+        mock.patch.object(cli, "_save_checkpoint_single"),
+        mock.patch.object(cli, "_clear_checkpoint"),
+        mock.patch.object(cli, "_cleanup_old_logs", return_value=[]),
+        mock.patch.object(cli.sys, "exit", side_effect=SystemExit) as m_exit,
+    ):
+        with pytest.raises(SystemExit):
+            cli.main()
+
+    m_exit.assert_called_once_with(1)

@@ -763,6 +763,16 @@ def cmd_scan(args):
     if budget_hit:
         print(f"  ⚠️ 本轮为预算截断结果（{completed}/{total}），达标数偏低属预期，勿据此判定市场。")
 
+    # 失败率护栏（2026-10-17，P1-b 收口）
+    # 依据：「达标数为 0」既可能是真失败也可能是合法行情（大跌日），
+    #       不能据它判失败（会造成误告警，违反「告警价值=症状准×药方对」）；
+    #       但「绝大多数标的连分析都没完成」一定是失败。
+    # 口径：skipped/total ≥ 阈值（默认 0.9）→ 返回 1，让自动化
+    #       「退出码非 0 = 异常」判定真正可用（P0-1 修复后管道已通）。
+    if _fail_on_skip_ratio(skipped, total):
+        print(f"  ❌ 失败/跳过 {skipped}/{total}（达到阈值），按失败退出（exit 1）")
+        return 1
+
     # 排序输出
     results.sort(key=lambda x: x["qs_composite"], reverse=True)
     top = results[: args.top_n]
@@ -1702,6 +1712,23 @@ def _scan_writable_dir():
 
 _SCAN_DIR = _scan_writable_dir()
 _CHECKPOINT_FILE = os.path.join(_SCAN_DIR, ".scan_progress")
+
+
+def _fail_on_skip_ratio(skipped: int, total: int) -> bool:
+    """失败率护栏（2026-10-17）：≥阈值比例的标的未完成分析 → 判失败。
+
+    口径说明（详见 cmd_scan 内注释与 代码审查修复报告_20261017.md §8.2/§10）：
+      · 不用「达标数=0」判失败 —— 那可能是合法行情（大跌日），会误告警；
+      · 用「未完成比例」—— ≥90% 连分析都没完成只可能是系统性故障。
+    配置：环境变量 SCAN_FAIL_RATIO，默认 0.9；设为 >1 显式禁用（回到旧恒 0 行为）。
+    """
+    try:
+        threshold = float(os.environ.get("SCAN_FAIL_RATIO", "0.9"))
+    except ValueError:
+        threshold = 0.9
+    if threshold > 1:  # 显式禁用开关
+        return False
+    return bool(total) and skipped >= total * threshold
 
 
 def _save_checkpoint_single(code):
