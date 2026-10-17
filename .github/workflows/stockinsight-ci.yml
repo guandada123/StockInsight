@@ -145,7 +145,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install mypy
+          # 2026-10-17 钉死：mypy 2.4.0 为本地验证通过版本，浮动版会静默改变检查口径
+          pip install "mypy==2.4.0"
           pip install -r <(grep -v '^yquoter' requirements.txt) || echo "::warning::私有包安装失败，mypy 会忽略缺失导入"
       - name: Type check
         # 2026-10-17 修两处既有瑕疵（本地复现）：

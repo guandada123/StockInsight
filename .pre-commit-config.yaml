@@ -22,7 +22,10 @@ repos:
 
   # Python: ruff (lint + format)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.0
+    # 2026-10-17 从 v0.11.0 升到 v0.15.17：与 CI 钉定版本及本地验证口径对齐，
+    # 消除「pre-commit 绿但 CI 口径不同」的漂移。当前全仓树已同时在
+    # v0.11.0（历次提交钩子）与 0.15.17（本地全量 check/format）验证通过。
+    rev: v0.15.17
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
