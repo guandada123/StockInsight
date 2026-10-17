@@ -91,8 +91,10 @@ disallow_any_generics = false
 # 阶段 A：check_untyped_defs 对这些文件过于严格
 # 阶段 B：逐步移除，仅保留真正需要宽松的模块
 [[tool.mypy.overrides]]
+# 2026-10-17 拆分后 fetcher 实现分布于 _* 子模块，豁免随迁（Phase B 收紧时一并处理）
 module = [
     "stock_analyzer.fetcher",
+    "stock_analyzer.fetcher.*",
 ]
 check_untyped_defs = false
 

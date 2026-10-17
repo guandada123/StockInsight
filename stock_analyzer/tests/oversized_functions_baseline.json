@@ -14,6 +14,6 @@
   "stock_analyzer/portfolio.py": 1,
   "stock_analyzer/feishu_bot.py": 1,
   "stock_analyzer/report_cards.py": 1,
-  "stock_analyzer/fetcher/__init__.py": 1,
-  "cli.py": 7
+  "cli.py": 7,
+  "stock_analyzer/fetcher/_news.py": 1
 }
