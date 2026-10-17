@@ -1,0 +1,19 @@
+{
+  "backend/db.py": 1,
+  "stock_analyzer/report_narratives.py": 5,
+  "stock_analyzer/chip_factors.py": 1,
+  "stock_analyzer/advanced.py": 10,
+  "stock_analyzer/ultimate_report.py": 1,
+  "stock_analyzer/screener.py": 1,
+  "stock_analyzer/analyzer.py": 2,
+  "stock_analyzer/enhanced_screener.py": 6,
+  "stock_analyzer/self_audit.py": 2,
+  "stock_analyzer/business_quality.py": 4,
+  "stock_analyzer/short_term.py": 1,
+  "stock_analyzer/report_sections.py": 1,
+  "stock_analyzer/sector_info.py": 1,
+  "stock_analyzer/data_sources.py": 2,
+  "stock_analyzer/quant.py": 1,
+  "stock_analyzer/feishu_bot.py": 3,
+  "cli.py": 5
+}

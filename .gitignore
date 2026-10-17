@@ -44,3 +44,6 @@ venv/
 # P1-12 门禁基线必须入库（CI 也要读它）—— 上面 *.json 通配有例外
 !backend/tests/hardcoded_paths_baseline.json
 .deps/
+
+# 测试基线 JSON 需入库（门禁判据），不被全局 *.json 规则忽略
+!stock_analyzer/tests/*.json
