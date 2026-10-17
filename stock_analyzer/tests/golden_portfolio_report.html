@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>组合报告 - 测试组合</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    background: #f0f2f5; color: #333; padding: 20px;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+  .header {
+    background: linear-gradient(135deg, #1a73e8, #1557b0);
+    color: #fff; padding: 28px 32px; border-radius: 12px;
+    margin-bottom: 24px; box-shadow: 0 4px 20px rgba(26,115,232,0.25);
+  }
+  .header h1 { font-size: 24px; font-weight: 600; }
+  .header .meta { font-size: 13px; opacity: 0.85; margin-top: 6px; }
+
+  .card {
+    background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 20px 24px; margin-bottom: 20px; overflow: hidden;
+  }
+  .card-title {
+    font-size: 16px; font-weight: 600; color: #1a73e8;
+    margin-bottom: 16px; padding-bottom: 10px;
+    border-bottom: 2px solid #e8edf3;
+  }
+  .card-subtitle {
+    font-size: 13px; color: #888; margin-top: -10px; margin-bottom: 16px; line-height: 1.6;
+  }
+
+  /* 概览卡片网格 */
+  .stat-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px; margin-bottom: 20px;
+  }
+  .stat-card {
+    background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 18px 16px; text-align: center;
+  }
+  .stat-card .label { font-size: 12px; color: #888; margin-bottom: 4px; }
+  .stat-card .value { font-size: 22px; font-weight: 700; color: #1a73e8; }
+  .stat-card .value.green { color: #2e7d32; }
+  .stat-card .value.red { color: #d32f2f; }
+
+  /* 表格 */
+  .table-wrap {
+    overflow-x: auto; margin: 0 -4px;
+  }
+  table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+    min-width: 680px;
+  }
+  thead th {
+    background: #1a73e8; color: #fff; padding: 10px 8px;
+    text-align: center; font-weight: 600; white-space: nowrap;
+    position: sticky; top: 0; z-index: 1;
+  }
+  tbody td {
+    padding: 9px 8px; text-align: center; border-bottom: 1px solid #eee;
+    white-space: nowrap;
+  }
+  tbody tr:hover { background: #f5f8ff; }
+  .rating-badge {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 12px; font-weight: 600;
+  }
+
+  /* 图表容器 */
+  .chart-row {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 20px; margin-bottom: 20px;
+  }
+  .chart-box {
+    background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 16px; position: relative;
+  }
+  .chart-box .chart-title {
+    font-size: 14px; font-weight: 600; color: #333;
+    margin-bottom: 10px; text-align: center;
+  }
+  .chart-box canvas { width: 100% !important; height: auto !important; max-height: 360px; }
+
+  /* 个股详情卡片 */
+  .stock-detail-card {
+    border: 1px solid #e8edf3;
+    border-radius: 10px; margin-bottom: 16px; overflow: hidden;
+  }
+  .sd-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; background: #f8faff;
+    border-bottom: 1px solid #e8edf3;
+    flex-wrap: wrap;
+  }
+  .sd-code { font-size: 15px; font-weight: 700; color: #1a73e8; }
+  .sd-name { font-size: 14px; color: #555; }
+  .sd-price { font-size: 16px; font-weight: 700; margin-left: auto; }
+  .sd-change { font-size: 13px; font-weight: 600; }
+  .sd-score { font-size: 14px; font-weight: 700; }
+  .sd-body { padding: 14px 16px; }
+  .sd-section { margin-bottom: 12px; }
+  .sd-section:last-child { margin-bottom: 0; }
+  .sd-section-title {
+    font-size: 12px; font-weight: 600; color: #1a73e8;
+    margin-bottom: 8px; padding-bottom: 4px;
+    border-bottom: 1px dashed #e8edf3;
+  }
+  .sd-info-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 6px;
+  }
+  .sd-info-item {
+    padding: 4px 8px; background: #f8faff; border-radius: 6px;
+    display: flex; flex-direction: column;
+  }
+  .sd-label { font-size: 11px; color: #888; }
+  .sd-value { font-size: 13px; font-weight: 600; color: #333; }
+  .sd-value.sd-bullish { color: #d32f2f; }
+  .sd-value.sd-bearish { color: #2e7d32; }
+  .sd-value.sd-warning { color: #d32f2f; }
+  .sd-value.sd-oversold { color: #2e7d32; }
+  .sd-tech-comment, .sd-sl-comment {
+    font-size: 12px; color: #666; margin-top: 6px;
+    padding: 6px 10px; background: #fafafa; border-radius: 6px;
+    line-height: 1.6;
+  }
+  .sd-levels-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 6px;
+  }
+  .sd-sector {
+    font-size: 11px; color: #fff; background: #1a73e8; padding: 2px 8px;
+    border-radius: 10px; font-weight: 500;
+  }
+  .sd-style-badge {
+    font-size: 11px; color: #fff; padding: 2px 10px; border-radius: 10px;
+    font-weight: 600;
+  }
+  .nt-badge {
+    font-size: 11px; color: #b8860b; background: #fff8e1; padding: 2px 10px; border-radius: 10px;
+    font-weight: 600; border: 1px solid #f0d060; cursor: help;
+  }
+  .sd-news-list {
+    display: flex; flex-direction: column; gap: 8px; margin-top: 4px;
+  }
+  .news-item {
+    padding: 8px 10px; background: #f8f9ff; border-radius: 6px;
+    border-left: 3px solid #1a73e8;
+  }
+  .news-title { font-size: 13px; color: #333; line-height: 1.5; }
+  .news-meta { font-size: 11px; color: #999; margin-top: 3px; }
+  .sd-ts-grid {
+    display: grid; gap: 10px; margin-bottom: 8px;
+  }
+  .sd-ts-item {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .sd-ts-label {
+    display: flex; justify-content: space-between; font-size: 13px;
+  }
+  .sd-ts-score { font-weight: 700; font-size: 15px; }
+  .sd-ts-bar {
+    height: 8px; background: #eee; border-radius: 4px; overflow: hidden;
+  }
+  .sd-ts-bar-fill {
+    height: 100%; border-radius: 4px; transition: width 0.3s ease;
+  }
+  .sd-ts-confidence {
+    font-size: 12px; color: #666; margin-bottom: 6px;
+  }
+  .sd-ts-basis {
+    font-size: 12px; color: #444; line-height: 1.7; margin-bottom: 4px;
+    padding: 6px 10px; background: #f8faff; border-radius: 6px;
+  }
+
+  /* 操作建议 */
+  .sd-advice-grid {
+    display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px;
+  }
+  .sd-advice-item {
+    flex: 1; min-width: 220px; border: 1px solid #e8e8e8;
+    border-radius: 8px; overflow: hidden; background: #fff;
+  }
+  .sd-advice-header {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 10px; font-size: 13px; font-weight: 600;
+  }
+  .sd-advice-icon { font-size: 15px; }
+  .sd-advice-score {
+    margin-left: auto; font-size: 11px; font-weight: 400;
+    background: #f5f5f5; padding: 1px 8px; border-radius: 10px;
+  }
+  .sd-advice-body {
+    padding: 8px 10px 10px;
+  }
+  .sd-advice-conclusion {
+    font-size: 13px; line-height: 1.7; color: #333;
+  }
+  .sd-advice-note {
+    font-size: 12px; line-height: 1.6; color: #666;
+    margin-top: 6px; padding: 6px 8px; background: #fafafa;
+    border-radius: 4px; border-left: 2px solid #ddd;
+  }
+  .sd-level-item {
+    padding: 6px 8px; background: #f8faff; border-radius: 6px;
+    text-align: center;
+  }
+  .sd-level-label { font-size: 11px; color: #888; display: block; }
+  .sd-level-value { font-size: 13px; font-weight: 600; color: #333; }
+
+  /* 术语悬停提示 */
+  .term-t {
+    cursor: help; border-bottom: 1px dashed #1a73e8; position: relative;
+    display: inline-block;
+  }
+  .term-t-popup {
+    visibility: hidden; opacity: 0; transition: opacity 0.2s, visibility 0.2s;
+    position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: #333; color: #fff; font-size: 12px; line-height: 1.5;
+    padding: 8px 12px; border-radius: 8px; width: 240px; z-index: 100;
+    text-align: left; font-weight: 400; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    pointer-events: none;
+  }
+  .term-t-popup::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 6px solid transparent; border-top-color: #333;
+  }
+  .term-t:hover .term-t-popup {
+    visibility: visible; opacity: 1;
+  }
+  .sd-info-item:hover { box-shadow: 0 1px 4px rgba(26,115,232,0.15); transition: box-shadow 0.15s; }
+
+  /* 空状态 */
+  .empty-state {
+    text-align: center; padding: 48px 24px; color: #999;
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+
+  /* 免责声明 */
+  .disclaimer {
+    background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 18px 24px; margin-top: 20px;
+  }
+  .disclaimer p {
+    font-size: 12px; color: #999; line-height: 1.8; margin: 0;
+  }
+
+  /* 市场概述 */
+  .market-overview {
+    background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 18px 24px; margin-bottom: 20px; line-height: 1.8;
+  }
+  .market-overview h3 { font-size: 15px; color: #1a73e8; margin-bottom: 8px; }
+  .market-overview p { font-size: 13px; color: #555; }
+
+  /* 术语表 */
+  .glossary-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px; margin-top: 8px;
+  }
+  .glossary-item {
+    padding: 10px 12px; background: #f8faff; border-radius: 8px;
+    border-left: 3px solid #1a73e8; transition: background 0.15s;
+  }
+  .glossary-item:hover { background: #eef3fc; }
+  .glossary-term {
+    font-size: 13px; font-weight: 700; color: #1a73e8;
+    display: block; margin-bottom: 3px;
+  }
+  .glossary-def {
+    font-size: 12px; color: #555; line-height: 1.6; display: block;
+  }
+
+  /* 叙述文字 */
+  .sd-narrative {
+    padding: 14px 16px; background: #fafcff; border-radius: 8px;
+    margin-bottom: 14px; border: 1px solid #e8edf3;
+  }
+  .narrative-block p {
+    font-size: 13px; line-height: 1.9; color: #444; margin-bottom: 8px;
+  }
+  .narrative-block p:last-child { margin-bottom: 0; }
+  .n-subtitle {
+    font-size: 13px; font-weight: 700; color: #1a73e8;
+    margin-bottom: 4px; margin-top: 10px;
+  }
+  .n-subtitle:first-child { margin-top: 0; }
+
+  /* 核心观点高亮 */
+  .key-finding {
+    padding: 12px 16px; border-radius: 8px; margin: 10px 0;
+    font-size: 13px; line-height: 1.8;
+  }
+  .key-finding.positive { background: #e8f5e9; border-left: 4px solid #2e7d32; color: #1b5e20; }
+  .key-finding.negative { background: #ffebee; border-left: 4px solid #c62828; color: #b71c1c; }
+  .key-finding.neutral { background: #fff8e1; border-left: 4px solid #f9a825; color: #795548; }
+  .kf-label { font-weight: 700; display: block; margin-bottom: 2px; font-size: 12px; }
+
+  /* 速览统计 */
+  .glance-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 10px; margin-bottom: 16px;
+  }
+  .glance-item {
+    background: #fff; border-radius: 8px; padding: 12px 10px;
+    text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .glance-value { font-size: 20px; font-weight: 700; color: #1a73e8; }
+  .glance-value.green { color: #2e7d32; }
+  .glance-value.red { color: #d32f2f; }
+  .glance-label { font-size: 11px; color: #888; margin-top: 2px; }
+
+  /* 评分模型展示 */
+  .model-factor-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px; margin: 12px 0;
+  }
+  .model-factor {
+    padding: 10px 12px; background: #f8faff; border-radius: 8px;
+    border-top: 3px solid #1a73e8;
+  }
+  .model-factor .mf-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;
+  }
+  .model-factor .mf-name { font-size: 13px; font-weight: 700; color: #333; }
+  .model-factor .mf-weight { font-size: 11px; color: #1a73e8; font-weight: 600; }
+  .model-factor .mf-desc { font-size: 12px; color: #666; line-height: 1.6; }
+  .mf-bar { height: 4px; background: #e8edf3; border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .mf-bar-fill { height: 100%; border-radius: 2px; }
+
+  @media (max-width: 640px) {
+    body { padding: 12px; }
+    .header { padding: 18px 16px; }
+    .card { padding: 14px 16px; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-row { grid-template-columns: 1fr; }
+    .sd-header { gap: 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>测试组合 - 投资组合报告</h1>
+    <div class="meta">生成时间：2026-10-18 12:00:00 &nbsp;|&nbsp; 持股数量：3 只</div>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="label">总市值</div>
+      <div class="value">108,000.00</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">总收益</div>
+      <div class="value green">+8.00%</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">组合波动率</div>
+      <div class="value">12.50%</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">夏普比率</div>
+      <div class="value">1.35</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">持股数</div>
+      <div class="value">3</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">组合评估</div>
+    <p style="font-size:13px;color:#555;line-height:1.8;">• 夏普比率大于1，风险调整后收益表现优秀</p>
+    <p style="font-size:13px;color:#555;line-height:1.8;">• 组合波动率较低(12.5%)，风格偏稳健</p>
+    <div style="margin-top:12px;padding:10px 14px;background:#fff8e1;border-radius:8px;">
+      <p style="font-size:13px;font-weight:600;color:#f57f17;">调仓建议</p>
+      <p style="font-size:12px;color:#555;line-height:1.6;">• 银行仓位偏高，建议减配 5%</p>
+    </div>
+  </div>
+
+  <div class="chart-row">
+    <div class="chart-box">
+      <div class="chart-title">评级分布</div>
+      <canvas id="ratingChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">因子评分对比</div>
+      <canvas id="factorChart"></canvas>
+    </div>
+  </div>
+<script>
+(function() {
+  new Chart(document.getElementById('ratingChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ["Strong Buy", "Buy", "Hold", "Sell", "Strong Sell"],
+      datasets: [{
+        data: [0, 2, 1, 0, 0],
+        backgroundColor: ['#2e7d32','#66bb6a','#f9a825','#ef6c00','#c62828'],
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } } }
+    }
+  });
+  var fctx = document.getElementById('factorChart');
+  if (fctx && [{"label": "600000", "data": [80, 85, 78, 62, 40]}, {"label": "000001", "data": [80, 85, 78, 62, 40]}, {"label": "300750", "data": [80, 85, 78, 62, 40]}].length > 0) {
+    var colors = ['rgba(26,115,232,0.8)','rgba(219,68,55,0.8)','rgba(15,157,88,0.8)','rgba(255,193,7,0.8)','rgba(156,39,176,0.8)'];
+    new Chart(fctx, {
+      type: 'bar',
+      data: {
+        labels: ["动量分", "技术分", "基本面分", "量能分", "风险分"],
+        datasets: [{"label": "600000", "data": [80, 85, 78, 62, 40]}, {"label": "000001", "data": [80, 85, 78, 62, 40]}, {"label": "300750", "data": [80, 85, 78, 62, 40]}].map(function(ds, i) {
+          return { label: ds.label, data: ds.data, backgroundColor: colors[i % colors.length], borderRadius: 4 };
+        })
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } } },
+        scales: { y: { beginAtZero: true, max: 100, ticks: { stepSize: 20 } } }
+      }
+    });
+  }
+})();
+</script>
+  <div class="card">
+    <div class="card-title">持仓明细</div>
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>代码</th>
+          <th>名称</th>
+          <th>仓位(%)</th>
+          <th>成本价</th>
+          <th>现价</th>
+          <th>收益率(%)</th>
+          <th>贡献度(%)</th>
+          <th>评分</th>
+          <th>评级</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>600000</strong></td>
+          <td style="font-size:12px;color:#888">浦发银行</td>
+          <td>40.00</td>
+          <td>10.00</td>
+          <td>10.50</td>
+          <td style="color:#d32f2f;font-weight:600">+5.0%</td>
+          <td style="color:#d32f2f">2.00</td>
+          <td style="color:#2e7d32">82.50</td>
+          <td><span class="rating-badge" style="color:#66bb6a;background:#f1f8e9">Buy</span></td>
+        </tr>
+        <tr>
+          <td><strong>000001</strong></td>
+          <td style="font-size:12px;color:#888">平安银行</td>
+          <td>35.00</td>
+          <td>12.00</td>
+          <td>11.80</td>
+          <td style="color:#2e7d32;font-weight:600">-1.7%</td>
+          <td style="color:#2e7d32">-0.60</td>
+          <td style="color:#66bb6a">78.00</td>
+          <td><span class="rating-badge" style="color:#66bb6a;background:#f1f8e9">Buy</span></td>
+        </tr>
+        <tr>
+          <td><strong>300750</strong></td>
+          <td style="font-size:12px;color:#888">宁德时代</td>
+          <td>25.00</td>
+          <td>200.00</td>
+          <td>210.00</td>
+          <td style="color:#d32f2f;font-weight:600">+5.0%</td>
+          <td style="color:#d32f2f">1.20</td>
+          <td style="color:#66bb6a">74.00</td>
+          <td><span class="rating-badge" style="color:#f9a825;background:#fff8e1">Hold</span></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">持仓个股深度分析</div>
+    <div class="card-subtitle">每只股票的支撑位/压力位、止损止盈参考、技术面状态和风险指标</div>
+
+    <div class="stock-detail-card">
+      <div class="sd-header">
+        <span class="sd-code">600000</span>
+        <span class="sd-name">浦发银行</span>
+        <span class="sd-sector">银行、金融</span>
+        <span class="sd-price" style="color:#666666">10.50</span>
+        <span class="sd-change" style="color:#666666">%</span>
+        <span class="rating-badge" style="color:#66bb6a;background:#f1f8e9">Buy</span>
+        <span class="sd-score" style="color:#2e7d32">82.5/100</span>
+        <span class="sd-style-badge" style="background:#666">稳健</span>
+        
+      </div>
+      <div class="sd-body">
+        <div class="sd-narrative">
+<div class="narrative-block">
+<div class="n-subtitle">基本面分析</div>
+<p>该股基本面评分为78分，整体质地较好，财务健康度较高。</p>
+</div>
+<div class="narrative-block">
+<div class="n-subtitle">技术面分析</div>
+<p>技术数据暂缺，无法进行技术面分析。</p>
+</div>
+<div class="narrative-block">
+<div class="n-subtitle">风险评估</div>
+<p>风险数据暂缺，无法提供详细风险评估。</p>
+</div>
+<div class="narrative-block">
+<div class="n-subtitle">操作建议</div>
+<p>数据不足，无法提供操作建议。</p>
+</div>
+</div>
+        <div class="sd-section">
+          <div class="sd-section-title">技术面</div>
+          <div class="sd-info-grid">
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">MACD<span class="term-t-popup">异同移动平均线，趋势跟踪指标。DIF上穿DEA为金叉(看涨)，下穿为死叉(看跌)。柱状图反映多空力量对比。</span></span></span><span class="sd-value "></span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">RSI<span class="term-t-popup">相对强弱指标，0-100。&gt;70超买区域，可能回调；&lt;30超卖区域，可能反弹。50为强弱分界线。</span></span></span><span class="sd-value "> - </span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">KDJ<span class="term-t-popup">随机指标，K线为快速确认线，D线为慢速主干线。K上穿D为金叉，下穿为死叉。</span></span></span><span class="sd-value"></span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">均线<span class="term-t-popup">移动平均线，反映一定周期内的平均持仓成本。常用MA5/MA10/MA20/MA60，多头排列指短期均线在长期之上。</span></span></span><span class="sd-value sd-ma">-</span></div>
+          </div>
+          <div class="sd-tech-comment">技术指标中性</div>
+        </div>
+
+        <div class="sd-section">
+          <div class="sd-section-title">支撑 · 压力 · 止损 · 止盈</div>
+          <div class="sd-levels-grid">
+            <div class="sd-level-item"><span class="sd-level-label"><span class="term-t">支撑位<span class="term-t-popup">股价下跌时可能获得买盘支撑的价格位，是技术分析中的重要参考价位。</span></span></span><span class="sd-level-value">-</span></div>
+            <div class="sd-level-item"><span class="sd-level-label"><span class="term-t">压力位<span class="term-t-popup">股价上涨时可能遭遇卖盘压制的价格位，突破压力位通常被视为强势信号。</span></span></span><span class="sd-level-value">-</span></div>
+            <div class="sd-level-item"><span class="sd-level-label">均线支撑</span><span class="sd-level-value">-</span></div>
+            <div class="sd-level-item"><span class="sd-level-label">止损参考</span><span class="sd-level-value" style="color:#2e7d32"></span></div>
+            <div class="sd-level-item"><span class="sd-level-label">止盈参考</span><span class="sd-level-value" style="color:#d32f2f"></span></div>
+            <div class="sd-level-item"><span class="sd-level-label"><span class="term-t">ATR<span class="term-t-popup">平均真实波幅(Average True Range)，衡量股价波动幅度。ATR越大说明波动越剧烈，风险越高。</span></span></span><span class="sd-level-value">- (-%)</span></div>
+          </div>
+          
+        </div>
+
+        <div class="sd-section">
+          <div class="sd-section-title">资金流向</div>
+          <div class="sd-levels-grid">
+            <div class="sd-level-item"><span class="sd-level-label">主力净占比</span><span class="sd-level-value" style="color:#333"></span></div>
+            <div class="sd-level-item"><span class="sd-level-label">主力净额</span><span class="sd-level-value">-</span></div>
+            <div class="sd-level-item"><span class="sd-level-label">超大单净占比</span><span class="sd-level-value"></span></div>
+            <div class="sd-level-item"><span class="sd-level-label">数据日期</span><span class="sd-level-value">-</span></div>
+          </div>
+          <div class="sd-sl-comment" style="font-size:11px;color:#666;margin-top:4px;">
+            <span class="term-t">主力资金<span class="term-t-popup">超大单(≥100万元)和大单(20~100万元)合计，反映机构和大资金动向。正值=净流入(看涨信号)，负值=净流出(看跌信号)。</span></span>
+            ｜
+            <span class="term-t">国家队<span class="term-t-popup">证金公司、汇金公司、社保基金、养老金的合计持股。出现在十大流通股东中代表有国家资金背书。</span></span>
+          </div>
+        </div>
+        </div>
+
+        <div class="sd-section">
+          <div class="sd-section-title">风险指标</div>
+          <div class="sd-info-grid">
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">夏普比率<span class="term-t-popup">衡量风险调整后收益。(收益率-无风险利率)/波动率。&gt;1良好，&gt;2优秀，&lt;0表示收益未能覆盖风险。</span></span></span><span class="sd-value"></span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">最大回撤<span class="term-t-popup">历史最高点到最低点的最大跌幅，衡量策略的抗风险能力。回撤越小说明风控越好。</span></span></span><span class="sd-value" style="color:#d32f2f">%</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">VaR<span class="term-t-popup">在险价值(Value at Risk)，95%置信度下最大可能损失。如VaR=-2%表示有95%的把握单日损失不超过2%。</span></span>(95%)</span><span class="sd-value">%</span></div>
+            <div class="sd-info-item"><span class="sd-label">信号</span><span class="sd-value "></span></div>
+          </div>
+        </div>
+
+        <div class="sd-section">
+          <div class="sd-section-title">量化因子评分 <span style="font-size:11px;color:#999;font-weight:400;">（参考：≥80优秀 / 60-79良好 / 40-59一般 / 20-39较差 / <20很差）</span></div>
+          <div class="sd-info-grid">
+            <div class="sd-info-item"><span class="sd-label">综合评分</span><span class="sd-value" style="color:#2e7d32">82.5 → Buy</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">动量分<span class="term-t-popup">基于短期(5日/20日/60日)涨跌幅计算的动量强度评分，得分越高说明近期上涨势头越强。</span></span></span><span class="sd-value" style="color:#2e7d32">80</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">技术分<span class="term-t-popup">综合MACD、RSI、KDJ、均线排列等技术指标的计算得分，反映技术面整体状态。</span></span></span><span class="sd-value" style="color:#2e7d32">85</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">基本面分<span class="term-t-popup">基于ROE、营收增长、净利润增长、毛利率等财务指标的综合评分。</span></span></span><span class="sd-value" style="color:#66bb6a">78</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">量能分<span class="term-t-popup">基于成交量变化、量价配合度计算的评分，反映资金参与活跃程度。</span></span></span><span class="sd-value" style="color:#66bb6a">62</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">风险分<span class="term-t-popup">基于ATR占比、回撤幅度计算的评分，得分越高说明风险控制越好、波动越温和。</span></span></span><span class="sd-value" style="color:#f9a825">40</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">舆情分<span class="term-t-popup">基于个股新闻和微博舆情数据计算的市场情绪评分。&gt;60正面舆情，&lt;40负面舆情，50为中性。反映市场对个股的关注度和情绪倾向。</span></span></span><span class="sd-value" style="color:#f9a825">50</span></div>
+          </div>
+        </div>
+
+        
+
+        <div class="sd-section">
+          <div class="sd-section-title">短线 / 长线 适宜度分析</div>
+          <div class="sd-ts-grid">
+            <div class="sd-ts-item">
+              <div class="sd-ts-label">
+                <span>短线评分</span>
+                <span class="sd-ts-score" style="color:#c62828">0</span>
+              </div>
+              <div class="sd-ts-bar"><div class="sd-ts-bar-fill" style="width:0%;background:#c62828"></div></div>
+            </div>
+            <div class="sd-ts-item">
+              <div class="sd-ts-label">
+                <span>长线评分</span>
+                <span class="sd-ts-score" style="color:#c62828">0</span>
+              </div>
+              <div class="sd-ts-bar"><div class="sd-ts-bar-fill" style="width:0%;background:#c62828"></div></div>
+            </div>
+          </div>
+          <div class="sd-ts-confidence">判断置信度：高</div>
+          
+          
+        </div>
+
+        <div class="sd-section">
+<div class="sd-section-title">操作建议</div>
+
+      <div class="sd-op-grid">
+        <div class="sd-op-card" style="border-left:4px solid #e65100">
+          <div class="sd-op-title">短线策略</div>
+          <div class="sd-op-score">适宜度 50/100</div>
+          <div class="sd-op-text">短线机会一般</div>
+        </div>
+        <div class="sd-op-card" style="border-left:4px solid #1565c0">
+          <div class="sd-op-title">长线策略</div>
+          <div class="sd-op-score">适宜度 50/100</div>
+          <div class="sd-op-text">长线持有需观察</div>
+        </div>
+        <div class="sd-op-card" style="border-left:4px solid #f9a825">
+          <div class="sd-op-title">综合结论</div>
+          <div class="sd-op-score" style="color:#f9a825">0看多 / 0看空</div>
+          <div class="sd-op-text">综合来看，多空信号接近，建议保持中性</div>
+        </div>
+      </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;font-size:12px;color:#666">
+      <div>
+        
+      </div>
+      <div>
+        
+      </div>
+    </div>
+</div>
+</div>
+
+      </div>
+    </div>
+
+    <div class="stock-detail-card">
+      <div class="sd-header">
+        <span class="sd-code">000001</span>
+        <span class="sd-name">平安银行</span>
+        <span class="sd-sector">银行</span>
+        <span class="sd-price" style="color:#666666">11.80</span>
+        <span class="sd-change" style="color:#666666">%</span>
+        <span class="rating-badge" style="color:#66bb6a;background:#f1f8e9">Buy</span>
+        <span class="sd-score" style="color:#66bb6a">78.0/100</span>
+        <span class="sd-style-badge" style="background:#666">稳健</span>
+        
+      </div>
+      <div class="sd-body">
+        <div class="sd-narrative">
+<div class="narrative-block">
+<div class="n-subtitle">基本面分析</div>
+<p>该股基本面评分为78分，整体质地较好，财务健康度较高。</p>
+</div>
+<div class="narrative-block">
+<div class="n-subtitle">技术面分析</div>
+<p>技术数据暂缺，无法进行技术面分析。</p>
+</div>
+<div class="narrative-block">
+<div class="n-subtitle">风险评估</div>
+<p>风险数据暂缺，无法提供详细风险评估。</p>
+</div>
+<div class="narrative-block">
+<div class="n-subtitle">操作建议</div>
+<p>数据不足，无法提供操作建议。</p>
+</div>
+</div>
+        <div class="sd-section">
+          <div class="sd-section-title">技术面</div>
+          <div class="sd-info-grid">
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">MACD<span class="term-t-popup">异同移动平均线，趋势跟踪指标。DIF上穿DEA为金叉(看涨)，下穿为死叉(看跌)。柱状图反映多空力量对比。</span></span></span><span class="sd-value "></span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">RSI<span class="term-t-popup">相对强弱指标，0-100。&gt;70超买区域，可能回调；&lt;30超卖区域，可能反弹。50为强弱分界线。</span></span></span><span class="sd-value "> - </span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">KDJ<span class="term-t-popup">随机指标，K线为快速确认线，D线为慢速主干线。K上穿D为金叉，下穿为死叉。</span></span></span><span class="sd-value"></span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">均线<span class="term-t-popup">移动平均线，反映一定周期内的平均持仓成本。常用MA5/MA10/MA20/MA60，多头排列指短期均线在长期之上。</span></span></span><span class="sd-value sd-ma">-</span></div>
+          </div>
+          <div class="sd-tech-comment">技术指标中性</div>
+        </div>
+
+        <div class="sd-section">
+          <div class="sd-section-title">支撑 · 压力 · 止损 · 止盈</div>
+          <div class="sd-levels-grid">
+            <div class="sd-level-item"><span class="sd-level-label"><span class="term-t">支撑位<span class="term-t-popup">股价下跌时可能获得买盘支撑的价格位，是技术分析中的重要参考价位。</span></span></span><span class="sd-level-value">-</span></div>
+            <div class="sd-level-item"><span class="sd-level-label"><span class="term-t">压力位<span class="term-t-popup">股价上涨时可能遭遇卖盘压制的价格位，突破压力位通常被视为强势信号。</span></span></span><span class="sd-level-value">-</span></div>
+            <div class="sd-level-item"><span class="sd-level-label">均线支撑</span><span class="sd-level-value">-</span></div>
+            <div class="sd-level-item"><span class="sd-level-label">止损参考</span><span class="sd-level-value" style="color:#2e7d32"></span></div>
+            <div class="sd-level-item"><span class="sd-level-label">止盈参考</span><span class="sd-level-value" style="color:#d32f2f"></span></div>
+            <div class="sd-level-item"><span class="sd-level-label"><span class="term-t">ATR<span class="term-t-popup">平均真实波幅(Average True Range)，衡量股价波动幅度。ATR越大说明波动越剧烈，风险越高。</span></span></span><span class="sd-level-value">- (-%)</span></div>
+          </div>
+          
+        </div>
+
+        <div class="sd-section">
+          <div class="sd-section-title">资金流向</div>
+          <div class="sd-levels-grid">
+            <div class="sd-level-item"><span class="sd-level-label">主力净占比</span><span class="sd-level-value" style="color:#333"></span></div>
+            <div class="sd-level-item"><span class="sd-level-label">主力净额</span><span class="sd-level-value">-</span></div>
+            <div class="sd-level-item"><span class="sd-level-label">超大单净占比</span><span class="sd-level-value"></span></div>
+            <div class="sd-level-item"><span class="sd-level-label">数据日期</span><span class="sd-level-value">-</span></div>
+          </div>
+          <div class="sd-sl-comment" style="font-size:11px;color:#666;margin-top:4px;">
+            <span class="term-t">主力资金<span class="term-t-popup">超大单(≥100万元)和大单(20~100万元)合计，反映机构和大资金动向。正值=净流入(看涨信号)，负值=净流出(看跌信号)。</span></span>
+            ｜
+            <span class="term-t">国家队<span class="term-t-popup">证金公司、汇金公司、社保基金、养老金的合计持股。出现在十大流通股东中代表有国家资金背书。</span></span>
+          </div>
+        </div>
+        </div>
+
+        <div class="sd-section">
+          <div class="sd-section-title">风险指标</div>
+          <div class="sd-info-grid">
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">夏普比率<span class="term-t-popup">衡量风险调整后收益。(收益率-无风险利率)/波动率。&gt;1良好，&gt;2优秀，&lt;0表示收益未能覆盖风险。</span></span></span><span class="sd-value"></span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">最大回撤<span class="term-t-popup">历史最高点到最低点的最大跌幅，衡量策略的抗风险能力。回撤越小说明风控越好。</span></span></span><span class="sd-value" style="color:#d32f2f">%</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">VaR<span class="term-t-popup">在险价值(Value at Risk)，95%置信度下最大可能损失。如VaR=-2%表示有95%的把握单日损失不超过2%。</span></span>(95%)</span><span class="sd-value">%</span></div>
+            <div class="sd-info-item"><span class="sd-label">信号</span><span class="sd-value "></span></div>
+          </div>
+        </div>
+
+        <div class="sd-section">
+          <div class="sd-section-title">量化因子评分 <span style="font-size:11px;color:#999;font-weight:400;">（参考：≥80优秀 / 60-79良好 / 40-59一般 / 20-39较差 / <20很差）</span></div>
+          <div class="sd-info-grid">
+            <div class="sd-info-item"><span class="sd-label">综合评分</span><span class="sd-value" style="color:#66bb6a">78.0 → Buy</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">动量分<span class="term-t-popup">基于短期(5日/20日/60日)涨跌幅计算的动量强度评分，得分越高说明近期上涨势头越强。</span></span></span><span class="sd-value" style="color:#2e7d32">80</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">技术分<span class="term-t-popup">综合MACD、RSI、KDJ、均线排列等技术指标的计算得分，反映技术面整体状态。</span></span></span><span class="sd-value" style="color:#2e7d32">85</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">基本面分<span class="term-t-popup">基于ROE、营收增长、净利润增长、毛利率等财务指标的综合评分。</span></span></span><span class="sd-value" style="color:#66bb6a">78</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">量能分<span class="term-t-popup">基于成交量变化、量价配合度计算的评分，反映资金参与活跃程度。</span></span></span><span class="sd-value" style="color:#66bb6a">62</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">风险分<span class="term-t-popup">基于ATR占比、回撤幅度计算的评分，得分越高说明风险控制越好、波动越温和。</span></span></span><span class="sd-value" style="color:#f9a825">40</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">舆情分<span class="term-t-popup">基于个股新闻和微博舆情数据计算的市场情绪评分。&gt;60正面舆情，&lt;40负面舆情，50为中性。反映市场对个股的关注度和情绪倾向。</span></span></span><span class="sd-value" style="color:#f9a825">50</span></div>
+          </div>
+        </div>
+
+        
+
+        <div class="sd-section">
+          <div class="sd-section-title">短线 / 长线 适宜度分析</div>
+          <div class="sd-ts-grid">
+            <div class="sd-ts-item">
+              <div class="sd-ts-label">
+                <span>短线评分</span>
+                <span class="sd-ts-score" style="color:#c62828">0</span>
+              </div>
+              <div class="sd-ts-bar"><div class="sd-ts-bar-fill" style="width:0%;background:#c62828"></div></div>
+            </div>
+            <div class="sd-ts-item">
+              <div class="sd-ts-label">
+                <span>长线评分</span>
+                <span class="sd-ts-score" style="color:#c62828">0</span>
+              </div>
+              <div class="sd-ts-bar"><div class="sd-ts-bar-fill" style="width:0%;background:#c62828"></div></div>
+            </div>
+          </div>
+          <div class="sd-ts-confidence">判断置信度：高</div>
+          
+          
+        </div>
+
+        <div class="sd-section">
+<div class="sd-section-title">操作建议</div>
+
+      <div class="sd-op-grid">
+        <div class="sd-op-card" style="border-left:4px solid #e65100">
+          <div class="sd-op-title">短线策略</div>
+          <div class="sd-op-score">适宜度 50/100</div>
+          <div class="sd-op-text">短线机会一般</div>
+        </div>
+        <div class="sd-op-card" style="border-left:4px solid #1565c0">
+          <div class="sd-op-title">长线策略</div>
+          <div class="sd-op-score">适宜度 50/100</div>
+          <div class="sd-op-text">长线持有需观察</div>
+        </div>
+        <div class="sd-op-card" style="border-left:4px solid #f9a825">
+          <div class="sd-op-title">综合结论</div>
+          <div class="sd-op-score" style="color:#f9a825">0看多 / 0看空</div>
+          <div class="sd-op-text">综合来看，多空信号接近，建议保持中性</div>
+        </div>
+      </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;font-size:12px;color:#666">
+      <div>
+        
+      </div>
+      <div>
+        
+      </div>
+    </div>
+</div>
+</div>
+
+      </div>
+    </div>
+
+    <div class="stock-detail-card">
+      <div class="sd-header">
+        <span class="sd-code">300750</span>
+        <span class="sd-name">宁德时代</span>
+        <span class="sd-sector">电池、新能源</span>
+        <span class="sd-price" style="color:#666666">210.00</span>
+        <span class="sd-change" style="color:#666666">%</span>
+        <span class="rating-badge" style="color:#f9a825;background:#fff8e1">Hold</span>
+        <span class="sd-score" style="color:#66bb6a">74.0/100</span>
+        <span class="sd-style-badge" style="background:#666">稳健</span>
+        
+      </div>
+      <div class="sd-body">
+        <div class="sd-narrative">
+<div class="narrative-block">
+<div class="n-subtitle">基本面分析</div>
+<p>该股基本面评分为78分，整体质地较好，财务健康度较高。</p>
+</div>
+<div class="narrative-block">
+<div class="n-subtitle">技术面分析</div>
+<p>技术数据暂缺，无法进行技术面分析。</p>
+</div>
+<div class="narrative-block">
+<div class="n-subtitle">风险评估</div>
+<p>风险数据暂缺，无法提供详细风险评估。</p>
+</div>
+<div class="narrative-block">
+<div class="n-subtitle">操作建议</div>
+<p>数据不足，无法提供操作建议。</p>
+</div>
+</div>
+        <div class="sd-section">
+          <div class="sd-section-title">技术面</div>
+          <div class="sd-info-grid">
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">MACD<span class="term-t-popup">异同移动平均线，趋势跟踪指标。DIF上穿DEA为金叉(看涨)，下穿为死叉(看跌)。柱状图反映多空力量对比。</span></span></span><span class="sd-value "></span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">RSI<span class="term-t-popup">相对强弱指标，0-100。&gt;70超买区域，可能回调；&lt;30超卖区域，可能反弹。50为强弱分界线。</span></span></span><span class="sd-value "> - </span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">KDJ<span class="term-t-popup">随机指标，K线为快速确认线，D线为慢速主干线。K上穿D为金叉，下穿为死叉。</span></span></span><span class="sd-value"></span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">均线<span class="term-t-popup">移动平均线，反映一定周期内的平均持仓成本。常用MA5/MA10/MA20/MA60，多头排列指短期均线在长期之上。</span></span></span><span class="sd-value sd-ma">-</span></div>
+          </div>
+          <div class="sd-tech-comment">技术指标中性</div>
+        </div>
+
+        <div class="sd-section">
+          <div class="sd-section-title">支撑 · 压力 · 止损 · 止盈</div>
+          <div class="sd-levels-grid">
+            <div class="sd-level-item"><span class="sd-level-label"><span class="term-t">支撑位<span class="term-t-popup">股价下跌时可能获得买盘支撑的价格位，是技术分析中的重要参考价位。</span></span></span><span class="sd-level-value">-</span></div>
+            <div class="sd-level-item"><span class="sd-level-label"><span class="term-t">压力位<span class="term-t-popup">股价上涨时可能遭遇卖盘压制的价格位，突破压力位通常被视为强势信号。</span></span></span><span class="sd-level-value">-</span></div>
+            <div class="sd-level-item"><span class="sd-level-label">均线支撑</span><span class="sd-level-value">-</span></div>
+            <div class="sd-level-item"><span class="sd-level-label">止损参考</span><span class="sd-level-value" style="color:#2e7d32"></span></div>
+            <div class="sd-level-item"><span class="sd-level-label">止盈参考</span><span class="sd-level-value" style="color:#d32f2f"></span></div>
+            <div class="sd-level-item"><span class="sd-level-label"><span class="term-t">ATR<span class="term-t-popup">平均真实波幅(Average True Range)，衡量股价波动幅度。ATR越大说明波动越剧烈，风险越高。</span></span></span><span class="sd-level-value">- (-%)</span></div>
+          </div>
+          
+        </div>
+
+        <div class="sd-section">
+          <div class="sd-section-title">资金流向</div>
+          <div class="sd-levels-grid">
+            <div class="sd-level-item"><span class="sd-level-label">主力净占比</span><span class="sd-level-value" style="color:#333"></span></div>
+            <div class="sd-level-item"><span class="sd-level-label">主力净额</span><span class="sd-level-value">-</span></div>
+            <div class="sd-level-item"><span class="sd-level-label">超大单净占比</span><span class="sd-level-value"></span></div>
+            <div class="sd-level-item"><span class="sd-level-label">数据日期</span><span class="sd-level-value">-</span></div>
+          </div>
+          <div class="sd-sl-comment" style="font-size:11px;color:#666;margin-top:4px;">
+            <span class="term-t">主力资金<span class="term-t-popup">超大单(≥100万元)和大单(20~100万元)合计，反映机构和大资金动向。正值=净流入(看涨信号)，负值=净流出(看跌信号)。</span></span>
+            ｜
+            <span class="term-t">国家队<span class="term-t-popup">证金公司、汇金公司、社保基金、养老金的合计持股。出现在十大流通股东中代表有国家资金背书。</span></span>
+          </div>
+        </div>
+        </div>
+
+        <div class="sd-section">
+          <div class="sd-section-title">风险指标</div>
+          <div class="sd-info-grid">
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">夏普比率<span class="term-t-popup">衡量风险调整后收益。(收益率-无风险利率)/波动率。&gt;1良好，&gt;2优秀，&lt;0表示收益未能覆盖风险。</span></span></span><span class="sd-value"></span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">最大回撤<span class="term-t-popup">历史最高点到最低点的最大跌幅，衡量策略的抗风险能力。回撤越小说明风控越好。</span></span></span><span class="sd-value" style="color:#d32f2f">%</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">VaR<span class="term-t-popup">在险价值(Value at Risk)，95%置信度下最大可能损失。如VaR=-2%表示有95%的把握单日损失不超过2%。</span></span>(95%)</span><span class="sd-value">%</span></div>
+            <div class="sd-info-item"><span class="sd-label">信号</span><span class="sd-value "></span></div>
+          </div>
+        </div>
+
+        <div class="sd-section">
+          <div class="sd-section-title">量化因子评分 <span style="font-size:11px;color:#999;font-weight:400;">（参考：≥80优秀 / 60-79良好 / 40-59一般 / 20-39较差 / <20很差）</span></div>
+          <div class="sd-info-grid">
+            <div class="sd-info-item"><span class="sd-label">综合评分</span><span class="sd-value" style="color:#66bb6a">74.0 → Hold</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">动量分<span class="term-t-popup">基于短期(5日/20日/60日)涨跌幅计算的动量强度评分，得分越高说明近期上涨势头越强。</span></span></span><span class="sd-value" style="color:#2e7d32">80</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">技术分<span class="term-t-popup">综合MACD、RSI、KDJ、均线排列等技术指标的计算得分，反映技术面整体状态。</span></span></span><span class="sd-value" style="color:#2e7d32">85</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">基本面分<span class="term-t-popup">基于ROE、营收增长、净利润增长、毛利率等财务指标的综合评分。</span></span></span><span class="sd-value" style="color:#66bb6a">78</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">量能分<span class="term-t-popup">基于成交量变化、量价配合度计算的评分，反映资金参与活跃程度。</span></span></span><span class="sd-value" style="color:#66bb6a">62</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">风险分<span class="term-t-popup">基于ATR占比、回撤幅度计算的评分，得分越高说明风险控制越好、波动越温和。</span></span></span><span class="sd-value" style="color:#f9a825">40</span></div>
+            <div class="sd-info-item"><span class="sd-label"><span class="term-t">舆情分<span class="term-t-popup">基于个股新闻和微博舆情数据计算的市场情绪评分。&gt;60正面舆情，&lt;40负面舆情，50为中性。反映市场对个股的关注度和情绪倾向。</span></span></span><span class="sd-value" style="color:#f9a825">50</span></div>
+          </div>
+        </div>
+
+        
+
+        <div class="sd-section">
+          <div class="sd-section-title">短线 / 长线 适宜度分析</div>
+          <div class="sd-ts-grid">
+            <div class="sd-ts-item">
+              <div class="sd-ts-label">
+                <span>短线评分</span>
+                <span class="sd-ts-score" style="color:#c62828">0</span>
+              </div>
+              <div class="sd-ts-bar"><div class="sd-ts-bar-fill" style="width:0%;background:#c62828"></div></div>
+            </div>
+            <div class="sd-ts-item">
+              <div class="sd-ts-label">
+                <span>长线评分</span>
+                <span class="sd-ts-score" style="color:#c62828">0</span>
+              </div>
+              <div class="sd-ts-bar"><div class="sd-ts-bar-fill" style="width:0%;background:#c62828"></div></div>
+            </div>
+          </div>
+          <div class="sd-ts-confidence">判断置信度：高</div>
+          
+          
+        </div>
+
+        <div class="sd-section">
+<div class="sd-section-title">操作建议</div>
+
+      <div class="sd-op-grid">
+        <div class="sd-op-card" style="border-left:4px solid #e65100">
+          <div class="sd-op-title">短线策略</div>
+          <div class="sd-op-score">适宜度 50/100</div>
+          <div class="sd-op-text">短线机会一般</div>
+        </div>
+        <div class="sd-op-card" style="border-left:4px solid #1565c0">
+          <div class="sd-op-title">长线策略</div>
+          <div class="sd-op-score">适宜度 50/100</div>
+          <div class="sd-op-text">长线持有需观察</div>
+        </div>
+        <div class="sd-op-card" style="border-left:4px solid #f9a825">
+          <div class="sd-op-title">综合结论</div>
+          <div class="sd-op-score" style="color:#f9a825">0看多 / 0看空</div>
+          <div class="sd-op-text">综合来看，多空信号接近，建议保持中性</div>
+        </div>
+      </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;font-size:12px;color:#666">
+      <div>
+        
+      </div>
+      <div>
+        
+      </div>
+    </div>
+</div>
+</div>
+
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">专业术语说明</div>
+    <div class="card-subtitle">报告中使用的专业术语解释</div>
+    <div class="glossary-grid">
+      <div class="glossary-item">
+        <span class="glossary-term">MACD</span>
+        <span class="glossary-def">异同移动平均线，趋势跟踪指标。DIF上穿DEA为金叉(看涨)，下穿为死叉(看跌)。柱状图反映多空力量对比。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">RSI</span>
+        <span class="glossary-def">相对强弱指标，0-100。&gt;70超买区域，可能回调；&lt;30超卖区域，可能反弹。50为强弱分界线。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">KDJ</span>
+        <span class="glossary-def">随机指标，K线为快速确认线，D线为慢速主干线。K上穿D为金叉，下穿为死叉。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">均线</span>
+        <span class="glossary-def">移动平均线，反映一定周期内的平均持仓成本。常用MA5/MA10/MA20/MA60，多头排列指短期均线在长期之上。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">夏普比率</span>
+        <span class="glossary-def">衡量风险调整后收益。(收益率-无风险利率)/波动率。&gt;1良好，&gt;2优秀，&lt;0表示收益未能覆盖风险。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">最大回撤</span>
+        <span class="glossary-def">历史最高点到最低点的最大跌幅，衡量策略的抗风险能力。回撤越小说明风控越好。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">VaR</span>
+        <span class="glossary-def">在险价值(Value at Risk)，95%置信度下最大可能损失。如VaR=-2%表示有95%的把握单日损失不超过2%。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">ATR</span>
+        <span class="glossary-def">平均真实波幅(Average True Range)，衡量股价波动幅度。ATR越大说明波动越剧烈，风险越高。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">支撑位</span>
+        <span class="glossary-def">股价下跌时可能获得买盘支撑的价格位，是技术分析中的重要参考价位。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">压力位</span>
+        <span class="glossary-def">股价上涨时可能遭遇卖盘压制的价格位，突破压力位通常被视为强势信号。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">动量分</span>
+        <span class="glossary-def">基于短期(5日/20日/60日)涨跌幅计算的动量强度评分，得分越高说明近期上涨势头越强。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">技术分</span>
+        <span class="glossary-def">综合MACD、RSI、KDJ、均线排列等技术指标的计算得分，反映技术面整体状态。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">基本面分</span>
+        <span class="glossary-def">基于ROE、营收增长、净利润增长、毛利率等财务指标的综合评分。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">量能分</span>
+        <span class="glossary-def">基于成交量变化、量价配合度计算的评分，反映资金参与活跃程度。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">风险分</span>
+        <span class="glossary-def">基于ATR占比、回撤幅度计算的评分，得分越高说明风险控制越好、波动越温和。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">舆情分</span>
+        <span class="glossary-def">基于个股新闻和微博舆情数据计算的市场情绪评分。&gt;60正面舆情，&lt;40负面舆情，50为中性。反映市场对个股的关注度和情绪倾向。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">金叉</span>
+        <span class="glossary-def">快线向上穿越慢线的技术形态，通常视为买入或看涨信号。如MACD金叉、KDJ金叉等。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">死叉</span>
+        <span class="glossary-def">快线向下穿越慢线的技术形态，通常视为卖出或看跌信号。如MACD死叉、KDJ死叉等。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">多头排列</span>
+        <span class="glossary-def">短期均线&gt;中期均线&gt;长期均线，且股价在所有均线之上，是典型的上升趋势特征。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">空头排列</span>
+        <span class="glossary-def">短期均线&lt;中期均线&lt;长期均线，且股价在所有均线之下，是典型的下降趋势特征。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">量价配合</span>
+        <span class="glossary-def">成交量和价格变化的协同关系。量升价涨为健康上涨，量缩价涨或量升价跌为背离信号。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">止损</span>
+        <span class="glossary-def">预先设定的卖出价位，当股价跌破该价位时卖出以控制亏损幅度，是风险管理的基本手段。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">止盈</span>
+        <span class="glossary-def">预先设定的卖出价位，当股价涨到该价位时卖出以锁定利润。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">年化收益率</span>
+        <span class="glossary-def">将投资收益换算为一年的收益率，便于不同期限的投资业绩比较。基于252个交易日计算。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">布林带</span>
+        <span class="glossary-def">由中轨(20日均线)、上轨(中轨+2倍标准差)和下轨(中轨-2倍标准差)组成，股价触及上下轨时可能出现反转。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">ADX</span>
+        <span class="glossary-def">平均趋向指数(Average Directional Index)，衡量趋势强度。ADX&gt;25表示趋势确立，&lt;20表示震荡市场。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">仓位管理</span>
+        <span class="glossary-def">根据风险承受能力和市场情况，合理分配每只股票的资金占比，是控制整体投资风险的重要手段。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">CVaR</span>
+        <span class="glossary-def">条件在险价值(Conditional VaR)，衡量超过VaR的极端损失的平均值，比VaR更全面地反映尾部风险。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">Calmar比率</span>
+        <span class="glossary-def">年化收益率与最大回撤的比值，衡量策略在极端情况下的表现。比率越高说明回撤控制越好。</span>
+      </div>
+      <div class="glossary-item">
+        <span class="glossary-term">索提诺比率</span>
+        <span class="glossary-def">夏普比率的改进版，仅用下行波动率计算，更准确地衡量下行风险调整后收益。</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    <p><strong>免责声明：</strong>
+    本报告由 AI 自动生成，数据来源于公开市场信息，仅供参考，不构成任何投资建议或投资承诺。
+    投资有风险，入市需谨慎。过往表现不代表未来收益。<br>
+    报告生成时间：2026-10-18 12:00:00 &nbsp;|&nbsp; AI 工具：Claude Code</p>
+  </div>
+</div>
+</body>
+</html>

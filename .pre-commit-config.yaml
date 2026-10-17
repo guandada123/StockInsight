@@ -7,8 +7,12 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
+      # 黄金快照（golden_*.html）必须逐字节保真，禁止被空白类钩子改写
+      # —— 它们是与真实输出逐字节比对的行为基准（见 C4/C6 拆分）
       - id: trailing-whitespace
+        exclude: ^stock_analyzer/tests/golden_.*\.html$
       - id: end-of-file-fixer
+        exclude: ^stock_analyzer/tests/golden_.*\.html$
       - id: check-yaml
         args: [--allow-multiple-documents]
       - id: check-toml
