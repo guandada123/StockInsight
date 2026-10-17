@@ -5,6 +5,10 @@ import sqlite3
 import threading
 from typing import Any
 
+from .logging_config import get_logger
+
+logger = get_logger("sector_info")
+
 _DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "stock_cache.db"
 )
@@ -28,8 +32,8 @@ def _query(code: str) -> tuple[Any, ...] | None:
             if row:
                 _CACHE[code] = (row[0], row[1])
                 return _CACHE[code]
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_query 失败 (%s: %s)", type(e).__name__, e)
     with _CACHE_LOCK:
         _CACHE[code] = None
     return None

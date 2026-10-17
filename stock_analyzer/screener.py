@@ -17,7 +17,10 @@ import pandas as pd
 from .analysis import full_technical_analysis
 from .cache import cached_fundamentals, cached_kline, cached_weibo_sentiment
 from .fetcher import sina_real_time
+from .logging_config import get_logger
 from .quant import composite_quant_score
+
+logger = get_logger("screener")
 
 # ── 默认股票池（沪深300 + 中证500 代表）─────────────
 DEFAULT_POOL = {
@@ -79,8 +82,8 @@ def load_all_a_shares(force_refresh=False):
         try:
             with open(_STOCK_LIST_CACHE, encoding="utf-8") as f:
                 return json.load(f)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("load_all_a_shares 失败 (%s: %s)", type(e).__name__, e)
 
     # 从 akshare 拉取
     try:

@@ -3,6 +3,10 @@
 从 report_html.py 拆分而来，包含所有分析叙述文字的 HTML 生成函数。
 """
 
+from .logging_config import get_logger
+
+logger = get_logger("report_narratives")
+
 
 def _build_fundamental_narrative(detail: dict) -> str:
     """根据基本面数据生成中文叙述文字"""
@@ -244,8 +248,8 @@ def _build_technical_narrative(detail: dict) -> str:
                     parts.append(
                         f"<p>近5日涨跌{r5:.1f}%，近20日涨跌{r20:.1f}%，走势相对平稳，无明显趋势性信号。"
                     )
-            except (TypeError, ValueError):
-                pass
+            except (TypeError, ValueError) as e:
+                logger.debug("_build_technical_narrative 失败 (%s: %s)", type(e).__name__, e)
     else:
         parts.append("<p>技术数据暂缺，无法进行技术面分析。</p>")
 
@@ -285,8 +289,8 @@ def _build_risk_narrative(detail: dict) -> str:
                     parts.append(
                         f"<p><strong>风险调整后收益</strong>为负。夏普比率为{s:.2f}（<0），收益未能覆盖所承担的风险，当前风险收益特征不太理想。"
                     )
-            except (TypeError, ValueError):
-                pass
+            except (TypeError, ValueError) as e:
+                logger.debug("_build_risk_narrative 失败 (%s: %s)", type(e).__name__, e)
 
         # 最大回撤
         max_dd = risk.get("max_drawdown_pct")
@@ -313,8 +317,8 @@ def _build_risk_narrative(detail: dict) -> str:
                     parts.append(
                         f"<p><strong>下行风险</strong>较大。历史最大回撤{dd:.1f}%，属于高波动品种，更适合风险承受能力较强的投资者。"
                     )
-            except (TypeError, ValueError):
-                pass
+            except (TypeError, ValueError) as e:
+                logger.debug("_build_risk_narrative 失败 (%s: %s)", type(e).__name__, e)
 
         # VaR
         var_val = risk.get("VaR_95_pct")
@@ -337,8 +341,8 @@ def _build_risk_narrative(detail: dict) -> str:
                     parts.append(
                         f"<p><strong>尾部风险</strong>较高。单日VaR达到{var_abs:.1f}%，极端行情下波动剧烈，需严格控制仓位。"
                     )
-            except (TypeError, ValueError):
-                pass
+            except (TypeError, ValueError) as e:
+                logger.debug("_build_risk_narrative 失败 (%s: %s)", type(e).__name__, e)
 
         # 波动率
         vol = risk.get("annualized_volatility_pct")
@@ -357,8 +361,8 @@ def _build_risk_narrative(detail: dict) -> str:
                     parts.append(
                         f"<p><strong>波动特征</strong>偏剧烈。年化波动率{v:.1f}%，价格波动频繁，交易时需注意仓位管理。"
                     )
-            except (TypeError, ValueError):
-                pass
+            except (TypeError, ValueError) as e:
+                logger.debug("_build_risk_narrative 失败 (%s: %s)", type(e).__name__, e)
 
         # 止损止盈参考
         sl = stop.get("止损参考价") if stop else None

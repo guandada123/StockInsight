@@ -27,9 +27,12 @@ import pandas as pd
 from .analysis import full_technical_analysis, get_technical_summary
 from .cache import cached_fundamentals, cached_kline, cached_weibo_sentiment
 from .fetcher import get_sectors, sina_real_time
+from .logging_config import get_logger
 from .quant import composite_quant_score, evaluate_trading_style
 from .screener import SCAN_BOARD_PREFIXES
 from .short_term import calc_combo_signals, calc_multi_timeframe_resonance, short_term_score
+
+logger = get_logger("enhanced_screener")
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(PROJECT_ROOT, "stock_cache.db")
@@ -68,15 +71,15 @@ def _get_sector_stocks(sector_name):
             data = pickle.loads(row[0])  # nosec — 从本地 SQLite 读取，非不可信数据
             if isinstance(data, dict) and "stocks" in data:
                 return data["stocks"]
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_get_sector_stocks 失败 (%s: %s)", type(e).__name__, e)
     # Fallback: 从 sectors_fallback 获取
     try:
         from .sectors_fallback import get_sector_for_code
 
         return list(get_sector_for_code("000001"))  # dummy
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("_get_sector_stocks 失败 (%s: %s)", type(e).__name__, e)
     return []
 
 
@@ -208,8 +211,8 @@ def pass2_deep_analyze(candidates, top_n=30, use_ml=True, use_custom_factors=Tru
         if sdf is not None and not sdf.empty and "name" in sdf.columns:
             sentiment_map = dict(zip(sdf["name"], sdf["rate"]))
         print(f"  舆情覆盖: {len(sentiment_map)} 只")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("pass2_deep_analyze 失败 (%s: %s)", type(e).__name__, e)
 
     # 自定义因子
     custom_factor_ids = []
@@ -221,8 +224,8 @@ def pass2_deep_analyze(candidates, top_n=30, use_ml=True, use_custom_factors=Tru
             custom_factor_ids = [f["id"] for f in custom_factors]
             if custom_factor_ids:
                 print(f"  自定义因子: {len(custom_factor_ids)} 个 ({', '.join(custom_factor_ids)})")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("pass2_deep_analyze 失败 (%s: %s)", type(e).__name__, e)
 
     results = []
     total = len(candidates)
@@ -325,8 +328,8 @@ def pass2_deep_analyze(candidates, top_n=30, use_ml=True, use_custom_factors=Tru
                     for f in cf:
                         if f.get("value") is not None:
                             row[f"cf_{f['factor_id']}"] = f["value"]
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("analyze_one 失败 (code=%s, %s: %s)", code, type(e).__name__, e)
 
             return row
         except Exception:
@@ -492,8 +495,8 @@ def _save_to_daily_scores(df, top_sectors=None):
                         row.get("风险分"),
                     ),
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("_save_to_daily_scores 失败 (%s: %s)", type(e).__name__, e)
         conn.commit()
         conn.close()
         print(f"  已写入 daily_scores: {len(df)} 条 ({today})")

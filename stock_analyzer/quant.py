@@ -15,6 +15,9 @@ from .config import (
     TRADING_DAYS_PER_YEAR,
     VAR_CONFIDENCE,
 )
+from .logging_config import get_logger
+
+logger = get_logger("quant")
 
 # ═══════════════════════════════════════════════════════════════
 # 1. 风险指标
@@ -905,8 +908,8 @@ def generate_all_signals(df):
     ]:
         try:
             all_signals.extend(detector(df))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("generate_all_signals 失败 (%s: %s)", type(e).__name__, e)
 
     bullish = [s for s in all_signals if s["direction"] == "bullish"]
     bearish = [s for s in all_signals if s["direction"] == "bearish"]

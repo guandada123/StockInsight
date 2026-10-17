@@ -158,8 +158,8 @@ def ultimate_analysis(code: str):
         if ff is not None and not ff.empty and "主力净流入-净额" in ff.columns:
             total_flow = round(ff["主力净流入-净额"].sum() / 1e8, 2)
             flow_ok = True
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("ultimate_analysis 失败 (%s: %s)", type(e).__name__, e)
     print(
         f"  主力: {'近5日' + f'{total_flow:+.2f}亿' if flow_ok else '无数据'} | 今日: {'流入' if total_flow > 0 else '流出' if total_flow < 0 else '无数据'}"
     )

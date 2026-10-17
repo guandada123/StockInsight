@@ -7,6 +7,10 @@ import math
 
 import numpy as np
 
+from .logging_config import get_logger
+
+logger = get_logger("analyzer")
+
 
 def _merge_realtime_kline(kline, code):
     """将新浪实时行情合并到K线DataFrame末尾"""
@@ -41,8 +45,8 @@ def _merge_realtime_kline(kline, code):
                         ]
                     )
                     return pd.concat([kline, new_row], ignore_index=True)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("_merge_realtime_kline 失败 (%s: %s)", type(e).__name__, e)
     return kline
 
 
@@ -54,8 +58,8 @@ def _check_national_team(code):
         nt = cached_national_team_holdings(code)
         if nt and isinstance(nt, dict) and nt.get("has_national_team"):
             return True, nt.get("holders", [])
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("_check_national_team 失败 (%s: %s)", type(e).__name__, e)
     return False, []
 
 

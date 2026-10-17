@@ -21,6 +21,10 @@ import sys
 import time
 from datetime import datetime
 
+from stock_analyzer.logging_config import get_logger
+
+logger = get_logger("cli")
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # 强制 stdout 为 UTF-8（Windows/受限环境默认编码会把中文打成乱码）。
 # 修复(2026-10-17)：原为 `sys.stdout = io.TextIOWrapper(sys.stdout.buffer, ...)`
@@ -30,10 +34,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # 改用 reconfigure 原地改编码，不新建对象、不接管 buffer 所有权。
 try:
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
-except (AttributeError, ValueError):
-    # 非 TextIOWrapper（如测试捕获对象）或不允许重配置 → 保持原样，
+except (AttributeError, ValueError) as e:
+    logger.debug("模块预热 失败 (%s: %s)", type(e).__name__, e)
     # 编码问题由外层环境（PYTHONIOENCODING）兜底
-    pass
 
 # 延迟导入重型模块（pandas/numpy仅在需要时加载，节省CLI --help等轻量操作启动时间）
 _pd = None
@@ -322,8 +325,8 @@ def deep_analyze(code, days=365, skip_nt=False):
                         ]
                     )
                     kline = pd.concat([kline, new_row], ignore_index=True)
-    except Exception:
-        pass  # 实时数据拉不到就用缓存，不阻塞分析
+    except Exception as e:
+        logger.warning("deep_analyze 失败 (%s: %s)", type(e).__name__, e)
 
     kline = full_technical_analysis(kline)
     tech = get_technical_summary(kline)
@@ -380,8 +383,8 @@ def deep_analyze(code, days=365, skip_nt=False):
             if nt and isinstance(nt, dict):
                 has_nt = nt.get("has_national_team", False)
                 nt_holders = nt.get("holders", [])
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("deep_analyze 失败 (%s: %s)", type(e).__name__, e)
 
     return {
         "code": code,
@@ -1069,8 +1072,8 @@ def _print_full_analysis(code, days=365, fast=False):
         if mg:
             total_mg = sum(v.get("融资余额(亿)", 0) for v in mg.values())
             print(f"  两市融资余额: {total_mg:.0f}亿")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_print_full_analysis 失败 (%s: %s)", type(e).__name__, e)
 
     # L5: 策略回测（复用 kline）
     sep("L5 策略回测")
@@ -1148,8 +1151,8 @@ def _print_full_analysis(code, days=365, fast=False):
             print(f"  PMI: {ind.get('制造业PMI', 'N/A')}  |  M2: {ind.get('M2同比%', 'N/A')}%")
             print(f"  信号: {' | '.join(macro.get('信号', []))}")
             print(f"  整体: {macro.get('整体', 'N/A')}")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_print_full_analysis 失败 (%s: %s)", type(e).__name__, e)
 
     print(f"\n{'=' * W}")
 

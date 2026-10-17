@@ -96,8 +96,8 @@ class _AsyncDbConnection:
                 # 连接可能处于异常状态，丢弃不归还
                 try:
                     await self.conn.close()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("__aexit__ 失败 (%s: %s)", type(e).__name__, e)
                 self.conn = None
             else:
                 if _pool is None:

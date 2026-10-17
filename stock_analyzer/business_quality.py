@@ -14,6 +14,10 @@
   result = full_business_quality('601138')
 """
 
+from .logging_config import get_logger
+
+logger = get_logger("business_quality")
+
 
 def get_company_profile(code):
     """Q1: 公司靠什么赚钱 — 主营业务与商业模式
@@ -506,8 +510,8 @@ def get_upcoming_events(code):
                             "title": str(row.get("公告标题", ""))[:80],
                         }
                     )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("get_upcoming_events 失败 (%s: %s)", type(e).__name__, e)
 
         # 分红信息
         try:
@@ -524,8 +528,8 @@ def get_upcoming_events(code):
                             "title": f"每股派息{row.get('每股派息', '?')}元",
                         }
                     )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("get_upcoming_events 失败 (%s: %s)", type(e).__name__, e)
 
         if not events:
             return {"events": [], "assessment": "暂无近期重大事件数据"}
@@ -674,8 +678,8 @@ def _safe_get(df, col, default=""):
         if col in df.columns:
             val = df[col].values[0]
             return str(val) if val is not None else default
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_safe_get 失败 (%s: %s)", type(e).__name__, e)
     return default
 
 
@@ -685,6 +689,6 @@ def _safe_float(row, col, default=0.0):
         if col in row.index:
             val = row[col]
             return float(val) if val is not None and not isinstance(val, str) else default
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_safe_float 失败 (%s: %s)", type(e).__name__, e)
     return default

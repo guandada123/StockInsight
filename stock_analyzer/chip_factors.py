@@ -4,6 +4,10 @@
 数据源：akshare 十大流通股东 + 股东人数变化
 """
 
+from .logging_config import get_logger
+
+logger = get_logger("chip_factors")
+
 
 def calc_chip_concentration(code):
     """计算筹码集中度因子
@@ -67,8 +71,8 @@ def calc_chip_concentration(code):
             "筹码集中度评分": score,
             "数据可用": True,
         }
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("calc_chip_concentration 失败 (%s: %s)", type(e).__name__, e)
 
     return result
 

@@ -207,8 +207,8 @@ class FileRateLimiter:
             if os.path.exists(self._state_file) and os.path.getsize(self._state_file) > 0:
                 with open(self._state_file, encoding="utf-8") as f:
                     return json.load(f)  # type: ignore[no-any-return]
-        except (json.JSONDecodeError, OSError):
-            pass
+        except (json.JSONDecodeError, OSError) as e:
+            logger.debug("_read_timestamps 失败 (%s: %s)", type(e).__name__, e)
         return []
 
     def _write_timestamps(self, timestamps: list[float]):
@@ -216,8 +216,8 @@ class FileRateLimiter:
         try:
             with open(self._state_file, "w", encoding="utf-8") as f:
                 json.dump(timestamps, f)
-        except OSError:
-            pass
+        except OSError as e:
+            logger.warning("_write_timestamps 失败 (%s: %s)", type(e).__name__, e)
 
     def check_and_wait(self) -> None:
         """检查速率限制，必要时阻塞等待。

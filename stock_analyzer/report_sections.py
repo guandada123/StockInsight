@@ -7,10 +7,13 @@ from typing import Any, TypedDict
 
 import pandas as pd
 
+from .logging_config import get_logger
 from .report_html_utils import (
     _color_for_value,
     _fmt_num,
 )
+
+logger = get_logger("report_sections")
 
 
 class _SectorAgg(TypedDict):
@@ -481,8 +484,8 @@ def _build_selection_rationale(
             try:
                 roe_v = float(roe) * 100 if roe < 1 else float(roe)
                 detail_html += f"基本面ROE为{roe_v:.1f}%。"
-            except (TypeError, ValueError):
-                pass
+            except (TypeError, ValueError) as e:
+                logger.debug("_build_selection_rationale 失败 (%s: %s)", type(e).__name__, e)
         detail_html += "</div></div>"
         detail_sections.append(detail_html)
 

@@ -17,6 +17,9 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 from .cache import _MEM_CACHE, _perm_load, _perm_save
+from .logging_config import get_logger
+
+logger = get_logger("advanced")
 
 
 def _cached_perm(table, key, fetch_fn, ttl_seconds):
@@ -66,8 +69,8 @@ def get_lhb_detail(date=None):
         df = ak.stock_lhb_detail_em(date=date)
         if df is not None and not df.empty:
             return df
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("get_lhb_detail 失败 (%s: %s)", type(e).__name__, e)
     return pd.DataFrame()
 
 
@@ -180,8 +183,8 @@ def get_margin_stock_detail(code, days=30):
         if df is not None and not df.empty:
             stock = df[df["标的代码"].astype(str).str.zfill(6) == str(code).zfill(6)]
             return stock
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("get_margin_stock_detail 失败 (code=%s, %s: %s)", code, type(e).__name__, e)
     return pd.DataFrame()
 
 
@@ -204,8 +207,8 @@ def get_margin_summary():
                 },
             }
             return result
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("get_margin_summary 失败 (%s: %s)", type(e).__name__, e)
     return {}
 
 
@@ -248,8 +251,8 @@ def insider_signal(code):
             elif total < 0:
                 signal = "净减持"
             return {"signal": signal, "net_shares": int(total), "records": len(df)}
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("insider_signal 失败 (code=%s, %s: %s)", code, type(e).__name__, e)
     return {"signal": signal, "net_shares": 0}
 
 
@@ -307,24 +310,24 @@ def get_financial_deep(code):
             bs = ak.stock_balance_sheet_by_report_em(symbol=code)
             if bs is not None and not bs.empty:
                 result["资产负债表"] = bs.head(4)  # 最近4个报告期
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("get_financial_deep 失败 (%s: %s)", type(e).__name__, e)
 
         # 利润表
         try:
             income = ak.stock_profit_sheet_by_report_em(symbol=code)
             if income is not None and not income.empty:
                 result["利润表"] = income.head(4)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("get_financial_deep 失败 (%s: %s)", type(e).__name__, e)
 
         # 财务摘要
         try:
             abstract = ak.stock_financial_abstract(symbol=code)
             if abstract is not None and not abstract.empty:
                 result["财务摘要"] = abstract.head(4)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("get_financial_deep 失败 (code=%s, %s: %s)", code, type(e).__name__, e)
 
         return result
     except Exception:
@@ -361,16 +364,18 @@ def analyze_profit_quality(code):
             prev_rev = _safe_float(income.iloc[-1].get("营业总收入", 0))
             if prev_rev > 0:
                 analysis["营收增长%"] = round((latest_rev / prev_rev - 1) * 100, 1)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("analyze_profit_quality 失败 (code=%s, %s: %s)", code, type(e).__name__, e)
 
     # 现金流质量
     bs = deep.get("资产负债表")
     if bs is not None and not bs.empty:
         try:
             analysis["资产负债率%"] = _safe_float(bs.iloc[0].get("资产负债率", 0))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(
+                "analyze_profit_quality 失败 (code=%s, %s: %s)", code, type(e).__name__, e
+            )
 
     analysis["评价"] = _profit_quality_rating(analysis)
     return analysis
@@ -506,8 +511,8 @@ def _fetch_macro_indicators():
             result["M2同比%"] = None
 
         result["更新时间"] = datetime.now().isoformat()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("_fetch_macro_indicators 失败 (%s: %s)", type(e).__name__, e)
 
     return result
 

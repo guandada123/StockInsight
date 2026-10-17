@@ -11,6 +11,10 @@
   7. 短线综合评分
 """
 
+from .logging_config import get_logger
+
+logger = get_logger("short_term")
+
 
 def calc_turnover_signal(kline):
     """换手率信号
@@ -286,8 +290,8 @@ def short_term_score(kline, code=None):
         try:
             mr = calc_multi_timeframe_resonance(code)
             resonance_score = max((mr["共振强度"] + 60) / 120 * 100, 0)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("short_term_score 失败 (%s: %s)", type(e).__name__, e)
 
     # 位置：距20日均线
     ma20 = float(kline["收盘"].tail(20).mean())

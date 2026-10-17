@@ -13,6 +13,10 @@ from datetime import datetime
 
 from stock_analyzer.env import get_env
 
+from .logging_config import get_logger
+
+logger = get_logger("feishu_bot")
+
 
 def _webhook_url():
     """获取 Webhook URL，优先环境变量（.env 由 config.py 自动加载）"""
@@ -79,8 +83,8 @@ def send_market_brief(webhook_url=None):
             limit_up = len(df[df.get("涨跌幅", 0) >= 9.8]) if not df.empty else 0
             limit_down = len(df[df.get("涨跌幅", -100) <= -9.8]) if not df.empty else 0
             lines.append(f"涨停 {limit_up} 只 | 跌停 {limit_down} 只")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("send_market_brief 失败 (%s: %s)", type(e).__name__, e)
 
         now = datetime.now().strftime("%H:%M")
         title = f"大盘简报 {now}"
@@ -297,15 +301,15 @@ def push_daily_picks(webhook_url=None):
                 ai = predict_ensemble(kline, {})
                 ai_dir = ai.get("ensemble_direction", "?")
                 ai_conf = ai.get("ensemble_confidence", 0)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("push_daily_picks 失败 (%s: %s)", type(e).__name__, e)
 
             # 板块
             sector = ""
             try:
                 sector = get_stock_sector_full(code)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("push_daily_picks 失败 (%s: %s)", type(e).__name__, e)
 
             # 止损止盈
             entry_low = round(price * 0.97, 2)

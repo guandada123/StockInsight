@@ -11,6 +11,10 @@
 
 import time
 
+from .logging_config import get_logger
+
+logger = get_logger("self_audit")
+
 # ── 审计结果收集 ──
 
 
@@ -541,8 +545,8 @@ def audit_storage_benchmark(report):
                 )
             else:
                 report.ok("存储格式", "cache.py 无parquet引用")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("audit_storage_benchmark 失败 (%s: %s)", type(e).__name__, e)
 
     except Exception as e:
         report.fail("审计8", f"存储格式基准异常: {e}")
@@ -568,8 +572,8 @@ def run_audit(auto_fix=True, verbose=True):
                 action = rule.get("action")
                 if callable(action):
                     action()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("run_audit 失败 (%s: %s)", type(e).__name__, e)
 
     report = AuditReport()
     t0 = time.time()
