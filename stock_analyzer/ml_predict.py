@@ -187,7 +187,9 @@ def predict_direction(df, fundamentals=None, model_type="xgb", lookahead=1):
 
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        y_proba = model.predict_proba(X_test)[:, 1]
+        # np.array 包装：predict_proba 在不同 lightgbm stub 下推断为 list/ndarray，
+        # 二维 getitem 只对 ndarray 合法（运行时本就是 ndarray，此处为零开销 no-op）
+        y_proba = np.array(model.predict_proba(X_test))[:, 1]
 
         # 最新预测
         latest_features = X[-1:].reshape(1, -1)
@@ -304,7 +306,9 @@ def _predict_lgb(df, fundamentals=None):
         )
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        y_proba = model.predict_proba(X_test)[:, 1]
+        # np.array 包装：predict_proba 在不同 lightgbm stub 下推断为 list/ndarray，
+        # 二维 getitem 只对 ndarray 合法（运行时本就是 ndarray，此处为零开销 no-op）
+        y_proba = np.array(model.predict_proba(X_test))[:, 1]
 
         latest = X[-1:].reshape(1, -1)
         proba = model.predict_proba(latest)[0]
