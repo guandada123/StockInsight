@@ -165,21 +165,91 @@ def _build_market_overview(df: pd.DataFrame, stock_details: dict | None = None) 
 def _build_selection_rationale(
     df: pd.DataFrame, stock_details: dict | None = None, total_scanned: int = 4405, top_n: int = 5
 ) -> str:
-    """生成板块分析 + 个股选择依据的完整说明，含全市场板块分布、板块对比、落选分析、个股详解"""
+    """生成板块分析 + 个股选择依据的完整说明（编排器；实现见各 _rationale_* 子函数，2026-10-17 拆分）"""
     total = len(df)
     if not total:
         return ""
 
-    from stock_analyzer.sectors_fallback import get_sector_for_code
+    all_sectors, sorted_sectors, all_avg, sector_all_html = _rationale_market_distribution(
+        df, stock_details, total
+    )
+    selected_sector_data, sector_ranks, sector_tags_html, sector_desc = _rationale_selected_sectors(
+        sorted_sectors, all_avg, total
+    )
+    sector_comparison, exclusion_desc = _rationale_comparison_exclusion(
+        sector_ranks, sorted_sectors, total_scanned, total
+    )
+    model_html = _rationale_scoring_model()
+    top_avg, avg_diff, factor_strengths, pool_avg_factors = _rationale_pool_stats(
+        df, top_n, all_avg
+    )
 
-    factor_cols = ["动量分", "技术分", "基本面分", "量能分", "风险分"]
-    factor_display = {
-        "动量分": "动量",
-        "技术分": "技术",
-        "基本面分": "基本面",
-        "量能分": "量能",
-        "风险分": "风险",
-    }
+    detail_sections = []
+    stock_highlights = []
+    for idx, (_, row) in enumerate(df.head(top_n).iterrows()):
+        detail_html, highlight = _rationale_one_stock(
+            idx, row, stock_details, all_avg, all_sectors, selected_sector_data, pool_avg_factors
+        )
+        detail_sections.append(detail_html)
+        stock_highlights.append(highlight)
+
+    # ── 组合成文 ──
+    parts = [
+        '  <div class="card">',
+        '    <div class="card-title">选股逻辑说明</div>',
+        '    <div class="card-subtitle">从板块分布到个股选择的完整逻辑</div>',
+        # 一、全市场板块分布
+        '    <div class="sd-section-title">一、全市场板块分布</div>',
+        f'    <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:8px;">'
+        f"本次共扫描 <strong>{total}</strong> 只股票，"
+        f"覆盖 <strong>{len(sorted_sectors)}</strong> 个板块。"
+        f"下表展示各个板块的数量分布和平均评分"
+        f'（<span style="color:#1a73e8;font-weight:600;">蓝色</span>'
+        f"标记为有个股入选的板块）：</p>",
+        f'    <div style="margin:8px 0 12px 0;">{sector_all_html}</div>',
+        # 二、板块选择分析
+        '    <div class="sd-section-title" style="margin-top:14px;">二、板块选择分析</div>',
+        f'    <p style="font-size:13px;color:#333;line-height:1.9;margin-bottom:6px;">{sector_desc}</p>',
+        f'    <div style="margin:6px 0 10px 0;">{sector_tags_html}</div>',
+        f'    <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:6px;">{sector_comparison}</p>',
+        f'    <p style="font-size:13px;color:#888;line-height:1.8;margin-bottom:0;">{exclusion_desc}</p>',
+        # 三、多因子评分模型
+        '    <div class="sd-section-title" style="margin-top:14px;">三、多因子评分模型说明</div>',
+        f'    <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:8px;">'
+        f"本系统通过五个维度对每只股票进行综合评分，"
+        f"最终选出评分最高的 <strong>{total}</strong> 只。"
+        f"各维度的权重和含义如下："
+        f"</p>",
+        f"    {model_html}",
+        f'    <p style="font-size:13px;color:#555;line-height:1.8;margin-top:8px;">'
+        f"入选股票平均分 {top_avg:.1f}，"
+        f"{'高于' if avg_diff >= 0 else '低于'}"
+        f"全部扫描股票均值 {abs(avg_diff):.1f} 分。"
+        f"{'在' + '、'.join(factor_strengths) + '方面表现尤其突出。' if factor_strengths else ''}"
+        f"</p>",
+        # 四、个股详细解析
+        '    <div class="sd-section-title" style="margin-top:14px;">四、个股详细解析</div>',
+        '    <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:8px;">'
+        "以下逐一分析每只入选个股的评分结构、"
+        "因子优势和综合特征：</p>",
+    ]
+    parts.extend(detail_sections)
+
+    # 五、重点个股一览
+    parts.append(
+        '    <div class="sd-section-title" style="margin-top:14px;">五、重点个股一览</div>'
+    )
+    parts.append('    <div class="sd-ts-basis">' + "<br>".join(stock_highlights) + "</div>")
+    parts.append("  </div>")
+
+    return "\n".join(parts)
+
+
+def _rationale_market_distribution(
+    df: pd.DataFrame, stock_details: dict | None, total: int
+) -> tuple[dict[str, "_SectorAgg"], list, float, str]:
+    """全市场板块分布统计与 HTML 条形图（原 _build_selection_rationale 前两段，2026-10-17 拆分）"""
+    from stock_analyzer.sectors_fallback import get_sector_for_code
 
     # ── 全市场板块分布（所有扫描的股票） ──
     all_sectors: dict[str, _SectorAgg] = {}
@@ -233,7 +303,13 @@ def _build_selection_rationale(
     sector_all_html = "".join(sector_bars)
     if len(sorted_sectors) > 15:
         sector_all_html += f'<div style="font-size:11px;color:#999;text-align:center;margin-top:4px;">...及其他 {len(sorted_sectors) - 15} 个板块</div>'
+    return all_sectors, sorted_sectors, all_avg, sector_all_html
 
+
+def _rationale_selected_sectors(
+    sorted_sectors: list, all_avg: float, total: int
+) -> tuple[dict[str, "_SectorSel"], list, str, str]:
+    """选中板块统计、标签与分析文字（原选中板块数据/标签/分析段，2026-10-17 拆分）"""
     # ── 选中股票的板块数据 ──
     selected_sector_data: dict[str, _SectorSel] = {}
     for s_name, s_info in sorted_sectors:
@@ -289,7 +365,13 @@ def _build_selection_rationale(
     else:
         sector_analysis_parts.append("入选股票分散于多个板块，未呈现明显板块集中特征。")
     sector_desc = "".join(sector_analysis_parts)
+    return selected_sector_data, sector_ranks, sector_tags_html, sector_desc
 
+
+def _rationale_comparison_exclusion(
+    sector_ranks: list, sorted_sectors: list, total_scanned: int, total: int
+) -> tuple[str, str]:
+    """板块对比与落选分析（原对比/落选段，2026-10-17 拆分）"""
     # ── 板块对比 ──
     sector_comparison_parts = []
     if len(sector_ranks) >= 2:
@@ -330,7 +412,11 @@ def _build_selection_rationale(
                 f"整体来看，选股结果集中在评分较高的{high_cnt}个板块中，市场呈现结构性分化特征。"
             )
     exclusion_desc = "".join(exclusion_parts)
+    return sector_comparison, exclusion_desc
 
+
+def _rationale_scoring_model() -> str:
+    """多因子评分模型 HTML（原评分模型段，2026-10-17 拆分）"""
     # ── 评分模型 ──
     model_factors = [
         ("动量", "25%", "衡量股价近期上涨或下跌的力度", "#1a73e8"),
@@ -351,11 +437,17 @@ def _build_selection_rationale(
           <div class="mf-bar"><div class="mf-bar-fill" style="width:{f_weight};background:{f_color}"></div></div>
         </div>"""
     model_html += "</div>"
+    return model_html
 
+
+def _rationale_pool_stats(
+    df: pd.DataFrame, top_n: int, all_avg: float
+) -> tuple[float, float, list, dict]:
+    """入选股均分、与全池差值、突出因子、池内因子均值（原因子解读段，2026-10-17 拆分）"""
+    factor_cols = ["动量分", "技术分", "基本面分", "量能分", "风险分"]
     # ── 入选股票因子解读 ──
     top_scores = df["综合评分"].head(top_n) if "综合评分" in df.columns else pd.Series()
     top_avg = top_scores.mean() if len(top_scores) else 0
-    avg_diff = top_avg - all_avg
 
     factor_strengths = []
     key_factor_config = [
@@ -375,8 +467,44 @@ def _build_selection_rationale(
     for c in factor_cols:
         if c in df.columns:
             pool_avg_factors[c] = df[c].mean()
+    avg_diff = top_avg - all_avg
+    return top_avg, avg_diff, factor_strengths, pool_avg_factors
 
-    # ── 个股详细解析 ──
+
+def _rationale_stock_tech_fund(detail: dict, detail_html: str) -> str:
+    """个股技术面与 ROE 追加段（原 one_stock 中段，2026-10-17 二次拆分以满足 120 行门禁）"""
+    tech = detail.get("technical_summary", {})
+    funda = detail.get("fundamentals", {})
+    ma_trend = tech.get("ma_trend", "")
+    if ma_trend:
+        trend_desc = {
+            "bullish_all": "均线多头排列",
+            "bullish": "短期均线偏多",
+            "mixed": "均线方向不一",
+            "bearish": "均线偏弱",
+            "bearish_all": "均线全面空头",
+        }
+        detail_html += f"技术面{trend_desc.get(ma_trend, '')}。"
+    roe = funda.get("roe", None)
+    if roe is not None:
+        try:
+            roe_v = float(roe) * 100 if roe < 1 else float(roe)
+            detail_html += f"基本面ROE为{roe_v:.1f}%。"
+        except (TypeError, ValueError) as e:
+            logger.debug("_build_selection_rationale 失败 (%s: %s)", type(e).__name__, e)
+    return detail_html
+
+
+def _rationale_one_stock(
+    idx: int,
+    row: "pd.Series",
+    stock_details: dict | None,
+    all_avg: float,
+    all_sectors: dict[str, "_SectorAgg"],
+    selected_sector_data: dict[str, "_SectorSel"],
+    pool_avg_factors: dict,
+) -> tuple[str, str]:
+    """单只入选个股的详细解析 HTML 与重点一览条目（原个股循环体，2026-10-17 拆分）"""
     factor_names_cn = {
         "momentum": "动量",
         "technical": "技术",
@@ -384,169 +512,93 @@ def _build_selection_rationale(
         "volume": "量能",
         "risk": "风险",
     }
-    detail_sections = []
-    stock_highlights = []
-    for idx, (_, row) in enumerate(df.head(top_n).iterrows()):
-        code = str(row.get("代码", ""))
-        name = str(row.get("名称", code))
-        score = row.get("综合评分", 0)
-        rating = str(row.get("评级", ""))
-        detail = stock_details.get(code, {}) if stock_details else {}
-        sector = detail.get("sector", "")
-        ts = detail.get("trading_style", {})
-        style = ts.get("style", "")
-        confidence = ts.get("style_confidence", "")
+    code = str(row.get("代码", ""))
+    name = str(row.get("名称", code))
+    score = row.get("综合评分", 0)
+    rating = str(row.get("评级", ""))
+    detail = stock_details.get(code, {}) if stock_details else {}
+    sector = detail.get("sector", "")
+    ts = detail.get("trading_style", {})
+    style = ts.get("style", "")
+    confidence = ts.get("style_confidence", "")
 
-        sector_total_count = (
-            all_sectors.get(sector, _EMPTY_SECTOR_AGG).get("count", 0) if sector else 0
-        )
-        sector_selected_count = (
-            all_sectors.get(sector, _EMPTY_SECTOR_AGG).get("selected", 0) if sector else 0
-        )
-
-        qs = detail.get("quant_score", {})
-        factor_scores = qs.get("factor_scores", {})
-        factor_items = [(k, v.get("score", 0)) for k, v in factor_scores.items()]
-        factor_items.sort(key=lambda x: -x[1])
-        best_factor_k = factor_items[0][0] if factor_items else ""
-        best_factor_v = factor_items[0][1] if factor_items else 0
-        worst_factor_k = factor_items[-1][0] if factor_items else ""
-        worst_factor_v = factor_items[-1][1] if factor_items else 0
-        best_cn = factor_names_cn.get(best_factor_k, "")
-        worst_cn = factor_names_cn.get(worst_factor_k, "")
-
-        sector_avg = all_avg
-        for s_name, sel_info in selected_sector_data.items():
-            if s_name in sector:
-                sector_avg = sel_info["avg_score"]
-                break
-
-        style_tag = f"，交易风格偏{style}" if style else ""
-        sector_info = (
-            f"该板块扫描范围内共{sector_total_count}只，此次选中{sector_selected_count}只"
-            if sector_total_count > 0
-            else ""
-        )
-
-        detail_html = (
-            f'<div style="margin-bottom:10px;padding:10px;background:#f8f9fb;border-radius:8px;">'
-            f'<div style="font-weight:600;font-size:14px;color:#333;">{idx + 1}. {name}（{sector}）</div>'
-            f'<div style="font-size:12px;color:#555;line-height:1.9;margin-top:4px;">'
-        )
-        if sector_info:
-            detail_html += f'<span style="color:#888;">{sector_info}。</span><br>'
-        detail_html += (
-            f"综合评分 <strong>{score}</strong> 分，"
-            f"评级 <strong>{rating}</strong>"
-            f"（{'高于' if score > all_avg else '低于'}"
-            f"扫描均值{abs(score - all_avg):.1f}分"
-            f"，{'高于' if score > sector_avg else '低于'}"
-            f"所在板块均值{abs(score - sector_avg):.1f}分"
-            f"{style_tag}）。"
-            f"最强因子为<strong>{best_cn}</strong>（{best_factor_v:.0f}分）"
-        )
-        if worst_factor_k and worst_factor_v < 60:
-            detail_html += f"，最弱因子为{worst_cn}（{worst_factor_v:.0f}分）"
-        detail_html += "。"
-
-        over_avg_parts = []
-        fcol_map = {
-            "momentum": "动量分",
-            "technical": "技术分",
-            "fundamental": "基本面分",
-            "volume": "量能分",
-            "risk": "风险分",
-        }
-        for k, v in factor_items:
-            cn = factor_names_cn.get(k, "")
-            pool_v = pool_avg_factors.get(fcol_map.get(k, ""), 0)
-            if v >= pool_v + 10:
-                over_avg_parts.append(f"{cn}{v:.0f}分（+{v - pool_v:.0f} vs 均值）")
-            elif v >= pool_v:
-                over_avg_parts.append(f"{cn}{v:.0f}分")
-        if over_avg_parts:
-            detail_html += "相对于扫描池，该股在、".join(over_avg_parts) + "方面具有优势。"
-
-        tech = detail.get("technical_summary", {})
-        funda = detail.get("fundamentals", {})
-        ma_trend = tech.get("ma_trend", "")
-        if ma_trend:
-            trend_desc = {
-                "bullish_all": "均线多头排列",
-                "bullish": "短期均线偏多",
-                "mixed": "均线方向不一",
-                "bearish": "均线偏弱",
-                "bearish_all": "均线全面空头",
-            }
-            detail_html += f"技术面{trend_desc.get(ma_trend, '')}。"
-        roe = funda.get("roe", None)
-        if roe is not None:
-            try:
-                roe_v = float(roe) * 100 if roe < 1 else float(roe)
-                detail_html += f"基本面ROE为{roe_v:.1f}%。"
-            except (TypeError, ValueError) as e:
-                logger.debug("_build_selection_rationale 失败 (%s: %s)", type(e).__name__, e)
-        detail_html += "</div></div>"
-        detail_sections.append(detail_html)
-
-        style_tag2 = f"，适合{style}" if style else ""
-        conf_extra = f"，{confidence}置信度" if confidence else ""
-        best_name = factor_names_cn.get(best_factor_k, "")
-        best_extra = (
-            f"，{best_name}因子最强（{best_factor_v:.0f}分）" if best_factor_v >= 60 else ""
-        )
-        stock_highlights.append(
-            f"<strong>{name}（{sector}）</strong>：综合评分 {score} 分 → {rating}"
-            f"{best_extra}{style_tag2}{conf_extra}"
-        )
-
-    # ── 组合成文 ──
-    parts = [
-        '  <div class="card">',
-        '    <div class="card-title">选股逻辑说明</div>',
-        '    <div class="card-subtitle">从板块分布到个股选择的完整逻辑</div>',
-        # 一、全市场板块分布
-        '    <div class="sd-section-title">一、全市场板块分布</div>',
-        f'    <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:8px;">'
-        f"本次共扫描 <strong>{total}</strong> 只股票，"
-        f"覆盖 <strong>{len(sorted_sectors)}</strong> 个板块。"
-        f"下表展示各个板块的数量分布和平均评分"
-        f'（<span style="color:#1a73e8;font-weight:600;">蓝色</span>'
-        f"标记为有个股入选的板块）：</p>",
-        f'    <div style="margin:8px 0 12px 0;">{sector_all_html}</div>',
-        # 二、板块选择分析
-        '    <div class="sd-section-title" style="margin-top:14px;">二、板块选择分析</div>',
-        f'    <p style="font-size:13px;color:#333;line-height:1.9;margin-bottom:6px;">{sector_desc}</p>',
-        f'    <div style="margin:6px 0 10px 0;">{sector_tags_html}</div>',
-        f'    <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:6px;">{sector_comparison}</p>',
-        f'    <p style="font-size:13px;color:#888;line-height:1.8;margin-bottom:0;">{exclusion_desc}</p>',
-        # 三、多因子评分模型
-        '    <div class="sd-section-title" style="margin-top:14px;">三、多因子评分模型说明</div>',
-        f'    <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:8px;">'
-        f"本系统通过五个维度对每只股票进行综合评分，"
-        f"最终选出评分最高的 <strong>{total}</strong> 只。"
-        f"各维度的权重和含义如下："
-        f"</p>",
-        f"    {model_html}",
-        f'    <p style="font-size:13px;color:#555;line-height:1.8;margin-top:8px;">'
-        f"入选股票平均分 {top_avg:.1f}，"
-        f"{'高于' if avg_diff >= 0 else '低于'}"
-        f"全部扫描股票均值 {abs(avg_diff):.1f} 分。"
-        f"{'在' + '、'.join(factor_strengths) + '方面表现尤其突出。' if factor_strengths else ''}"
-        f"</p>",
-        # 四、个股详细解析
-        '    <div class="sd-section-title" style="margin-top:14px;">四、个股详细解析</div>',
-        '    <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:8px;">'
-        "以下逐一分析每只入选个股的评分结构、"
-        "因子优势和综合特征：</p>",
-    ]
-    parts.extend(detail_sections)
-
-    # 五、重点个股一览
-    parts.append(
-        '    <div class="sd-section-title" style="margin-top:14px;">五、重点个股一览</div>'
+    sector_total_count = all_sectors.get(sector, _EMPTY_SECTOR_AGG).get("count", 0) if sector else 0
+    sector_selected_count = (
+        all_sectors.get(sector, _EMPTY_SECTOR_AGG).get("selected", 0) if sector else 0
     )
-    parts.append('    <div class="sd-ts-basis">' + "<br>".join(stock_highlights) + "</div>")
-    parts.append("  </div>")
 
-    return "\n".join(parts)
+    qs = detail.get("quant_score", {})
+    factor_scores = qs.get("factor_scores", {})
+    factor_items = [(k, v.get("score", 0)) for k, v in factor_scores.items()]
+    factor_items.sort(key=lambda x: -x[1])
+    best_factor_k = factor_items[0][0] if factor_items else ""
+    best_factor_v = factor_items[0][1] if factor_items else 0
+    worst_factor_k = factor_items[-1][0] if factor_items else ""
+    worst_factor_v = factor_items[-1][1] if factor_items else 0
+    best_cn = factor_names_cn.get(best_factor_k, "")
+    worst_cn = factor_names_cn.get(worst_factor_k, "")
+
+    sector_avg = all_avg
+    for s_name, sel_info in selected_sector_data.items():
+        if s_name in sector:
+            sector_avg = sel_info["avg_score"]
+            break
+
+    style_tag = f"，交易风格偏{style}" if style else ""
+    sector_info = (
+        f"该板块扫描范围内共{sector_total_count}只，此次选中{sector_selected_count}只"
+        if sector_total_count > 0
+        else ""
+    )
+
+    detail_html = (
+        f'<div style="margin-bottom:10px;padding:10px;background:#f8f9fb;border-radius:8px;">'
+        f'<div style="font-weight:600;font-size:14px;color:#333;">{idx + 1}. {name}（{sector}）</div>'
+        f'<div style="font-size:12px;color:#555;line-height:1.9;margin-top:4px;">'
+    )
+    if sector_info:
+        detail_html += f'<span style="color:#888;">{sector_info}。</span><br>'
+    detail_html += (
+        f"综合评分 <strong>{score}</strong> 分，"
+        f"评级 <strong>{rating}</strong>"
+        f"（{'高于' if score > all_avg else '低于'}"
+        f"扫描均值{abs(score - all_avg):.1f}分"
+        f"，{'高于' if score > sector_avg else '低于'}"
+        f"所在板块均值{abs(score - sector_avg):.1f}分"
+        f"{style_tag}）。"
+        f"最强因子为<strong>{best_cn}</strong>（{best_factor_v:.0f}分）"
+    )
+    if worst_factor_k and worst_factor_v < 60:
+        detail_html += f"，最弱因子为{worst_cn}（{worst_factor_v:.0f}分）"
+    detail_html += "。"
+
+    over_avg_parts = []
+    fcol_map = {
+        "momentum": "动量分",
+        "technical": "技术分",
+        "fundamental": "基本面分",
+        "volume": "量能分",
+        "risk": "风险分",
+    }
+    for k, v in factor_items:
+        cn = factor_names_cn.get(k, "")
+        pool_v = pool_avg_factors.get(fcol_map.get(k, ""), 0)
+        if v >= pool_v + 10:
+            over_avg_parts.append(f"{cn}{v:.0f}分（+{v - pool_v:.0f} vs 均值）")
+        elif v >= pool_v:
+            over_avg_parts.append(f"{cn}{v:.0f}分")
+    if over_avg_parts:
+        detail_html += "相对于扫描池，该股在、".join(over_avg_parts) + "方面具有优势。"
+
+    detail_html = _rationale_stock_tech_fund(detail, detail_html)
+    detail_html += "</div></div>"
+
+    style_tag2 = f"，适合{style}" if style else ""
+    conf_extra = f"，{confidence}置信度" if confidence else ""
+    best_name = factor_names_cn.get(best_factor_k, "")
+    best_extra = f"，{best_name}因子最强（{best_factor_v:.0f}分）" if best_factor_v >= 60 else ""
+    highlight = (
+        f"<strong>{name}（{sector}）</strong>：综合评分 {score} 分 → {rating}"
+        f"{best_extra}{style_tag2}{conf_extra}"
+    )
+    return detail_html, highlight

@@ -8,7 +8,6 @@
   "stock_analyzer/enhanced_screener.py": 1,
   "stock_analyzer/report_generators.py": 3,
   "stock_analyzer/sector_report.py": 1,
-  "stock_analyzer/report_sections.py": 1,
   "stock_analyzer/quant.py": 1,
   "stock_analyzer/nl_report.py": 1,
   "stock_analyzer/portfolio.py": 1,
