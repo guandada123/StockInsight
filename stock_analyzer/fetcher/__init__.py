@@ -16,6 +16,7 @@
 from enum import Enum
 
 
+# 注意：与 data_sources.py:43 的 Freshness 副本互相关联（对方注释反向引用本处），勿单方删除
 class Freshness(Enum):
     FRESH = "fresh"  # 实时获取
     CACHED = "cached"  # 缓存命中
@@ -53,27 +54,7 @@ def _circuit_report(api_name, success):
     _CIRCUIT_STATE[api_name] = state
 
 
-def get_freshness_label(data, tag):
-    """给数据打新鲜度标签"""
-    if isinstance(data, dict):
-        data["_freshness"] = tag.value if isinstance(tag, Freshness) else tag
-    return data
-
-
 # ── 延迟预热（首次调用 25s → 预热后 0.02s）──
-_SESSION_WARMED = False
-
-
-def _ensure_warmup():
-    """预热 requests Session + 连接池，避免首次调用卡 25 秒"""
-    global _SESSION_WARMED
-    if _SESSION_WARMED:
-        return
-    try:
-        _get_sina_session().get("http://hq.sinajs.cn/list=sz000001", timeout=3)
-    except Exception as e:
-        logger.debug("_ensure_warmup: 新浪会话预热失败 (%s: %s)", type(e).__name__, e)
-    _SESSION_WARMED = True
 
 
 import functools
@@ -214,7 +195,6 @@ def _retry_request(method, url, max_retries=1, base_delay=0.5, timeout=5, sessio
 
 _SINA_REQUEST_TIMES: list[float] = []  # 降级模式：记录最近120秒内请求的时间戳
 _SINA_RATE_LIMIT = 130  # 安全阈值（实际约150次/120s）
-_SINA_COOLDOWN = 120  # 冷却时间（秒）
 
 # 文件锁速率限制器（懒加载）
 _FILE_RATE_LIMITER = None
