@@ -15,7 +15,9 @@ env:
   NODE_VERSION: "22"
   RUFF_CONFIG: ruff.toml
   # 2026-10-10 CI 口径实测 82.75%，门禁由 70 抬至 75（留 ≥7 点缓冲）
-  COV_FAIL_UNDER: 75
+  # 2026-10-18: 75->84（CI 实测 87.32%@pandas3.0.6 / 87.16%@pandas2.3.3，
+  # 留 3.2 点缓冲吸收依赖升级带来的行数波动；复核点: 每次 pandas/numpy 大版本升级后回看实际值）
+  COV_FAIL_UNDER: 84
 
 jobs:
   # ────────────────────────────
