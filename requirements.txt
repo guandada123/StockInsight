@@ -1,11 +1,12 @@
 # ═══════════════════════════════════════════════════════════
 # requirements.txt — 顶层依赖声明（手动维护源文件）
-# 全量锁定版本见 requirements.lock（自动生成，勿编辑）
-# 更新 lock: pip freeze > requirements.lock
+# 全量锁定版本见 requirements.lock（pip-compile 自动生成，勿编辑）
+# 更新 lock: pip-compile requirements.txt requirements-dev.txt -o requirements.lock
 # ═══════════════════════════════════════════════════════════
 
 # 核心依赖
-pandas>=2.0
+# pandas 3.0 为破坏性大版本（COW 默认/字符串 dtype 变更），<3 上限待迁移验证后放开
+pandas>=2.0,<3
 numpy>=1.24
 requests>=2.28
 scipy>=1.10
