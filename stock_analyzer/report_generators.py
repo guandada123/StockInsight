@@ -429,11 +429,22 @@ def generate_portfolio_report(
   </div>""")
 
     # ── 概览卡片 ──────────────────────────────────
-    ret_color = "green" if total_ret >= 0 else "red"
-    ret_sign = "+" if total_ret >= 0 else ""
-    sharpe_str = f"{sharpe_val:.2f}" if sharpe_val is not None else "-"
 
-    # 组合评价文字
+    portfolio_commentary = _portfolio_commentary(sharpe_val, vol, total_ret)
+    _portfolio_stat_grid(parts, total_val, total_ret, vol, sharpe_val, stock_count)
+    _portfolio_assessment_card(parts, analysis, portfolio_commentary)
+    _portfolio_charts(parts, stocks, stock_details)
+    _portfolio_holdings_table(parts, stocks)
+    _portfolio_detail_cards(parts, stocks, stock_details)
+    parts.append(_glossary_card())
+
+    parts.append(_PAGE_FOOTER.format(gen_time=gen_time))
+
+    return _write_report_file(parts, output_path, "组合")
+
+
+def _portfolio_commentary(sharpe_val, vol, total_ret) -> list[str]:
+    """组合评估文字：夏普/波动率/累计收益三段评语"""
     portfolio_commentary = []
     if sharpe_val is not None:
         if sharpe_val >= 1:
@@ -456,7 +467,14 @@ def generate_portfolio_report(
         portfolio_commentary.append(f"组合累计收益{total_ret:.1f}%，表现良好")
     elif total_ret < 0:
         portfolio_commentary.append(f"组合累计亏损{abs(total_ret):.1f}%，需审视持仓")
+    return portfolio_commentary
 
+
+def _portfolio_stat_grid(parts, total_val, total_ret, vol, sharpe_val, stock_count) -> None:
+    """概览卡片：总市值/总收益/波动率/夏普/持股数"""
+    ret_color = "green" if total_ret >= 0 else "red"
+    ret_sign = "+" if total_ret >= 0 else ""
+    sharpe_str = f"{sharpe_val:.2f}" if sharpe_val is not None else "-"
     parts.append(f"""  <div class="stat-grid">
     <div class="stat-card">
       <div class="label">总市值</div>
@@ -480,7 +498,9 @@ def generate_portfolio_report(
     </div>
   </div>""")
 
-    # 组合评价卡片
+
+def _portfolio_assessment_card(parts, analysis, portfolio_commentary) -> None:
+    """组合评估卡片（评语列表 + 调仓建议）"""
     parts.append("""  <div class="card">
     <div class="card-title">组合评估</div>""")
     if portfolio_commentary:
@@ -498,7 +518,9 @@ def generate_portfolio_report(
         parts.append("    </div>")
     parts.append("  </div>")
 
-    # ── 图表区域：评级分布 + 因子对比 ──────────────────────────
+
+def _portfolio_charts(parts, stocks, stock_details) -> None:
+    """图表区域：评级分布 + 因子对比（仅 stocks 非空时渲染）"""
     if stocks:
         rating_order = ["Strong Buy", "Buy", "Hold", "Sell", "Strong Sell"]
         rating_counts = dict.fromkeys(rating_order, 0)
@@ -576,7 +598,9 @@ def generate_portfolio_report(
 }})();
 </script>""")
 
-    # ── 持仓明细表
+
+def _portfolio_holdings_table(parts, stocks) -> None:
+    """持仓明细表"""
     parts.append("""  <div class="card">
     <div class="card-title">持仓明细</div>
     <div class="table-wrap">
@@ -634,7 +658,9 @@ def generate_portfolio_report(
     </div>
   </div>""")
 
-    # ── 个股分析详情 ──────────────────────────────
+
+def _portfolio_detail_cards(parts, stocks, stock_details) -> None:
+    """个股分析详情卡片（仅 stock_details 非空时渲染）"""
     if stock_details and stocks:
         parts.append("""  <div class="card">
     <div class="card-title">持仓个股深度分析</div>
@@ -648,31 +674,6 @@ def generate_portfolio_report(
             detail["price"] = s.get("现价", "")
             parts.append(_stock_detail_card(code, detail))
         parts.append("  </div>")
-
-    # ── 术语表 ──────────────────────────────────────
-    parts.append("""  <div class="card">
-    <div class="card-title">专业术语说明</div>
-    <div class="card-subtitle">报告中使用的专业术语解释</div>
-    <div class="glossary-grid">""")
-    for term, defn in TERM_DEFS.items():
-        esc_defn = defn.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        parts.append(f"""      <div class="glossary-item">
-        <span class="glossary-term">{term}</span>
-        <span class="glossary-def">{esc_defn}</span>
-      </div>""")
-    parts.append("""    </div>
-  </div>""")
-
-    # ── 页脚 ──────────────────────────────────────
-    parts.append(_PAGE_FOOTER.format(gen_time=gen_time))
-
-    # ── 写出文件 ──────────────────────────────────
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(parts))
-
-    print(f"组合报告已生成: {output_path}")
-    return output_path
 
 
 # ══════════════════════════════════════════════════════
