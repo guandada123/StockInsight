@@ -139,7 +139,7 @@ narwhals==2.22.1
     # via scikit-learn
 nest-asyncio2==1.7.4
     # via ipykernel
-numpy==2.2.6
+numpy==2.5.4
     # via
     #   -r requirements.txt
     #   contourpy
@@ -158,7 +158,7 @@ packaging==26.2
     #   ipykernel
     #   matplotlib
     #   pytest
-pandas==2.3.3
+pandas==3.0.6
     # via
     #   -r requirements.txt
     #   adata
@@ -238,8 +238,6 @@ python-dotenv==1.2.2
     #   yquoter
 python-multipart==0.0.32
     # via -r requirements.txt
-pytz==2026.2
-    # via pandas
 pywencai==0.13.1
     # via -r requirements.txt
 pyyaml==6.0.3
@@ -325,8 +323,6 @@ typing-inspection==0.4.2
     # via
     #   fastapi
     #   pydantic
-tzdata==2026.2
-    # via pandas
 urllib3==2.8.0
     # via
     #   -c security-constraints.txt
