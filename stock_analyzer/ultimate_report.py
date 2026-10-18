@@ -5,14 +5,44 @@
 """
 
 import logging
+from dataclasses import dataclass, field
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 
-def ultimate_analysis(code: str):
-    W = 60
+@dataclass
+class _UltCtx:
+    """章节间共享的分析上下文（2026-10-18 拆分引入，替代 442 行单函数的局部变量网）"""
 
+    code: str
+    kline: object = None
+    funds: dict = field(default_factory=dict)
+    tech: dict = field(default_factory=dict)
+    name: str = ""
+    price: float = 0.0
+    atr: float = 0.0
+    st: dict = field(default_factory=dict)
+    combo: dict = field(default_factory=dict)
+    mr: dict = field(default_factory=dict)
+    total_flow: float = 0.0
+    flow_ok: bool = False
+    n5: float = 0.0
+    n20: float = 0.0
+    n60: float = 0.0
+    rl: list = field(default_factory=list)
+    qs: object = 50
+    qr: str = ""
+    fs: dict = field(default_factory=dict)
+    ai: dict = field(default_factory=dict)
+    sector_full: str = "未知"
+    sector_rank: int = 0
+    ranked: list = field(default_factory=list)
+
+
+def _ult_header_and_market(code, w):
+    """头部横幅 + 一、大盘环境"""
+    W = w
     # ═══════════════════════════════════
     # 一、大盘环境
     # ═══════════════════════════════════
@@ -42,6 +72,10 @@ def ultimate_analysis(code: str):
     except Exception:
         print("  大盘数据获取失败")
 
+
+def _ult_sector_analysis(code, w):
+    """二、板块分析；返回 (sector_full, sector_rank, ranked)"""
+    W = w
     # ═══════════════════════════════════
     # 二、板块分析
     # ═══════════════════════════════════
@@ -92,15 +126,11 @@ def ultimate_analysis(code: str):
             print("     🔴 板块弱势！个股逆势上涨难度大，建议降仓或观望")
     except Exception as e:
         print(f"  板块分析异常: {e}")
+    return sector_full, sector_rank, ranked
 
-    # ═══════════════════════════════════
-    # 三、七层深度分析 (复用 --full)
-    # ═══════════════════════════════════
-    print(f"\n{'─' * W}")
-    print("  三、个股七层深度分析")
-    print(f"{'─' * W}")
 
-    # 加载数据用于后续预测
+def _ult_load_stock(code):
+    """加载 K线/基本面/实时行情；数据不足返回 None"""
     from stock_analyzer.analysis import full_technical_analysis, get_technical_summary
     from stock_analyzer.cache import cached_fund_flow, cached_fundamentals, cached_kline
     from stock_analyzer.fetcher import sina_real_time
@@ -112,8 +142,7 @@ def ultimate_analysis(code: str):
 
     kline = cached_kline(code, days=365)
     if kline is None or kline.empty or len(kline) < 20:
-        print(f"  {code}: K线数据不足")
-        return
+        return None
     funds = cached_fundamentals(code)
     kline = full_technical_analysis(kline)
     tech = get_technical_summary(kline)
@@ -122,6 +151,18 @@ def ultimate_analysis(code: str):
     price = float(info.get("最新价", 0) or kline["收盘"].iloc[-1])
     atr = float(kline.iloc[-1].get("ATR", price * 0.03))
     name = info.get("名称", code)
+    return _UltCtx(code=code, kline=kline, funds=funds, tech=tech, name=name, price=price, atr=atr)
+
+
+def _ult_l0_short_term(code, ctx):
+    """L0 短线专项 + 主力资金"""
+    kline = ctx.kline
+    from stock_analyzer.cache import cached_fund_flow
+    from stock_analyzer.short_term import (
+        calc_combo_signals,
+        calc_multi_timeframe_resonance,
+        short_term_score,
+    )
 
     # ── L0 短线专项 ──
     st = short_term_score(kline, code)
@@ -163,8 +204,19 @@ def ultimate_analysis(code: str):
     print(
         f"  主力: {'近5日' + f'{total_flow:+.2f}亿' if flow_ok else '无数据'} | 今日: {'流入' if total_flow > 0 else '流出' if total_flow < 0 else '无数据'}"
     )
+    ctx.st = st
+    ctx.combo = combo
+    ctx.mr = mr
+    ctx.total_flow = total_flow
+    ctx.flow_ok = flow_ok
 
-    # ── L1 技术面 ──
+
+def _ult_l1_technical(ctx):
+    """L1 技术面"""
+    kline = ctx.kline
+    tech = ctx.tech
+    price = ctx.price
+    atr = ctx.atr
     from .analysis import calc_stop_levels, calc_support_resistance
 
     sr = calc_support_resistance(kline)
@@ -197,8 +249,16 @@ def ultimate_analysis(code: str):
     print(
         f"  止损: {stop.get('止损参考价', price * 0.93):.2f} | 止盈: {stop.get('止盈参考价', price * 1.07):.2f} | ATR: {atr:.2f}"
     )
+    ctx.n5 = n5
+    ctx.n20 = n20
+    ctx.n60 = n60
+    ctx.rl = rl
 
-    # ── L2 量化评分 ──
+
+def _ult_l2_quant(ctx):
+    """L2 量化评分"""
+    kline = ctx.kline
+    funds = ctx.funds
     from .quant import calc_risk_metrics, composite_quant_score, evaluate_trading_style
 
     quant = composite_quant_score(kline, funds)
@@ -222,9 +282,21 @@ def ultimate_analysis(code: str):
     print(
         f"  夏普: {risk.get('sharpe_ratio', 0):.2f} | 回撤: {risk.get('max_drawdown_pct', 0):.1f}% | 波动率: {risk.get('annualized_volatility_pct', 0):.1f}%"
     )
+    ctx.qs = qs
+    ctx.qr = qr
+    ctx.fs = fs
 
-    # ── L3 基本面 & 国家队 ──
+
+def _ult_l3_fundamental(code, ctx):
+    """L3 基本面 & 国家队"""
     from .cache import cached_national_team_holdings
+
+    funds = ctx.funds
+    fs = ctx.fs
+
+    def gf(k):
+        v = fs.get(k, {})
+        return round(float(v.get("score", 0)), 1) if isinstance(v, dict) else 0
 
     roe = funds.get("ROE", 0) if isinstance(funds, dict) else 0
     nt_holders = []
@@ -243,6 +315,18 @@ def ultimate_analysis(code: str):
     else:
         print("  国家队: 无")
 
+
+def _ult_nl_debate(code, ctx):
+    """NL 多空辩论（含 AI 预测计算）"""
+    kline = ctx.kline
+    funds = ctx.funds
+    tech = ctx.tech
+    price = ctx.price
+    n5 = ctx.n5
+    n20 = ctx.n20
+    rl = ctx.rl
+    total_flow = ctx.total_flow
+    qs = ctx.qs
     # ── NL 多空辩论 ──
     from .nl_report import generate_bull_bear_debate
 
@@ -280,7 +364,12 @@ def ultimate_analysis(code: str):
         f"  🐻 空头({debate['bear']['score']}分): {'; '.join(debate['bear']['points'][:3]) if debate['bear']['points'] else '无'}"
     )
     print(f"  📊 {debate['verdict']} → {debate['action']}")
+    ctx.ai = ai
 
+
+def _ult_l5_backtest(ctx):
+    """L5 策略回测"""
+    kline = ctx.kline
     # ── L5 策略回测 ──
     print("\n  ═══ L5 策略回测 ═══")
     try:
@@ -303,6 +392,10 @@ def ultimate_analysis(code: str):
     except Exception:
         print("  回测数据不足")
 
+
+def _ult_l6_ai(ctx):
+    """L6 AI预测(三模型)"""
+    ai = ctx.ai
     # ── L6 AI预测 ──
     print("\n  ═══ L6 AI预测(三模型) ═══")
     try:
@@ -328,6 +421,9 @@ def ultimate_analysis(code: str):
     except Exception:
         print("  ML预测暂不可用")
 
+
+def _ult_l7_macro():
+    """L7 宏观环境"""
     # ── L7 宏观 ──
     print("\n  ═══ L7 宏观环境 ═══")
     try:
@@ -346,6 +442,25 @@ def ultimate_analysis(code: str):
     except Exception:
         print("  宏观数据暂不可用")
 
+
+def _ult_action_plan(code, ctx, w):
+    """四、综合预测 & 操作建议"""
+    W = w
+    st = ctx.st
+    combo = ctx.combo
+    mr = ctx.mr
+    ai = ctx.ai
+    total_flow = ctx.total_flow
+    flow_ok = ctx.flow_ok
+    price = ctx.price
+    atr = ctx.atr
+    n5 = ctx.n5
+    n20 = ctx.n20
+    qs = ctx.qs
+    qr = ctx.qr
+    name = ctx.name
+    sector_full = ctx.sector_full
+    funds = ctx.funds
     # ═══════════════════════════════════
     # 四、综合预测 & 操作建议
     # ═══════════════════════════════════
@@ -417,6 +532,18 @@ def ultimate_analysis(code: str):
     print(f"  │ {buy_low}-{buy_high:<7} │ {sl_price:<8} │ {tp_price:<8} │ {pred_days:<8} │")
     print("  └────────────┴──────────┴──────────┴──────────┘")
 
+
+def _ult_risks(code, ctx, w):
+    """五、风险提示 + 免责声明尾部"""
+    W = w
+    n5 = ctx.n5
+    n20 = ctx.n20
+    tech = ctx.tech
+    total_flow = ctx.total_flow
+    sector_rank = ctx.sector_rank
+    ranked = ctx.ranked
+    ml_dir = ctx.ai.get("ensemble_direction", "?")
+    combo_str = ctx.combo.get("强度", 0)
     # ═══════════════════════════════════
     # 六、风险提示
     # ═══════════════════════════════════
@@ -452,3 +579,31 @@ def ultimate_analysis(code: str):
     print("  数据来源: 新浪财经(实时行情) | Baostock(行业分类) | 东方财富(板块/资金)")
     print("  免责声明: 以上分析仅供学习研究，不构成投资建议")
     print(f"{'=' * W}\n")
+
+
+def ultimate_analysis(code: str):
+    W = 60
+
+    _ult_header_and_market(code, W)
+    sector_full, sector_rank, ranked = _ult_sector_analysis(code, W)
+    print(f"\n{'─' * W}")
+    print("  三、个股七层深度分析")
+    print(f"{'─' * W}")
+
+    ctx = _ult_load_stock(code)
+    if ctx is None:
+        print(f"  {code}: K线数据不足")
+        return
+    ctx.sector_full = sector_full
+    ctx.sector_rank = sector_rank
+    ctx.ranked = ranked
+    _ult_l0_short_term(code, ctx)
+    _ult_l1_technical(ctx)
+    _ult_l2_quant(ctx)
+    _ult_l3_fundamental(code, ctx)
+    _ult_nl_debate(code, ctx)
+    _ult_l5_backtest(ctx)
+    _ult_l6_ai(ctx)
+    _ult_l7_macro()
+    _ult_action_plan(code, ctx, W)
+    _ult_risks(code, ctx, W)
