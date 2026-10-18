@@ -681,19 +681,8 @@ def _portfolio_detail_cards(parts, stocks, stock_details) -> None:
 # ══════════════════════════════════════════════════════
 
 
-def generate_full_chain_report(
-    top_n: int = 5,
-    output_path: str | None = None,
-    mode: str = "quick",
-) -> str:
-    """一键生成全链路报告：选股 → 分析 → 组合 → 报告
-
-    自动运行选股池、对每只股票进行完整技术分析和量化评分，
-    构建等权重组合，生成包含所有详细分析的综合 HTML 报告。
-    """
-    if output_path is None:
-        output_path = _default_path("fullchain")
-
+def _full_chain_analyze_stocks(pool, top_n) -> tuple[dict, list]:
+    """对选股池前 top_n 只股票逐一完整分析，返回 (stock_details, portfolio_stocks)"""
     import numpy as np
 
     from stock_analyzer.analysis import (
@@ -703,7 +692,6 @@ def generate_full_chain_report(
         get_technical_summary,
     )
     from stock_analyzer.cache import cached_fundamentals, cached_kline, cached_stock_news
-    from stock_analyzer.portfolio import analyze_portfolio, create_portfolio
     from stock_analyzer.quant import (
         calc_risk_metrics,
         composite_quant_score,
@@ -711,30 +699,8 @@ def generate_full_chain_report(
         evaluate_trading_style,
         generate_all_signals,
     )
-    from stock_analyzer.screener import run_screener
     from stock_analyzer.sectors_fallback import get_sector_for_code
 
-    now = datetime.now()
-    gen_time = now.strftime("%Y-%m-%d %H:%M:%S")
-
-    # 1. 选股
-    pool = run_screener(top_n=0, mode=mode)
-
-    if pool.empty:
-        parts = [_PAGE_HEADER.format(title="全链路报告")]
-        parts.append(f"""  <div class="header">
-    <h1>全链路分析报告</h1>
-    <div class="meta">生成时间：{gen_time}</div>
-  </div>""")
-        parts.append("""  <div class="card">
-    <div class="empty-state"><div class="icon">&#9888;</div><p>选股池为空，无法生成报告</p></div>
-  </div>""")
-        parts.append(_PAGE_FOOTER.format(gen_time=gen_time))
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write("\n".join(parts))
-        return output_path
-
-    # 2. 对每只股票做完整分析
     stock_details = {}
     portfolio_stocks = []
 
@@ -795,6 +761,47 @@ def generate_full_chain_report(
             }
 
         portfolio_stocks.append({"code": code, "weight": 1.0 / top_n, "cost": price})
+
+    return stock_details, portfolio_stocks
+
+
+def generate_full_chain_report(
+    top_n: int = 5,
+    output_path: str | None = None,
+    mode: str = "quick",
+) -> str:
+    """一键生成全链路报告：选股 → 分析 → 组合 → 报告
+
+    自动运行选股池、对每只股票进行完整技术分析和量化评分，
+    构建等权重组合，生成包含所有详细分析的综合 HTML 报告。
+    """
+    if output_path is None:
+        output_path = _default_path("fullchain")
+
+    from stock_analyzer.portfolio import analyze_portfolio, create_portfolio
+    from stock_analyzer.screener import run_screener
+
+    now = datetime.now()
+    gen_time = now.strftime("%Y-%m-%d %H:%M:%S")
+
+    # 1. 选股
+    pool = run_screener(top_n=0, mode=mode)
+
+    if pool.empty:
+        parts = [_PAGE_HEADER.format(title="全链路报告")]
+        parts.append(f"""  <div class="header">
+    <h1>全链路分析报告</h1>
+    <div class="meta">生成时间：{gen_time}</div>
+  </div>""")
+        parts.append("""  <div class="card">
+    <div class="empty-state"><div class="icon">&#9888;</div><p>选股池为空，无法生成报告</p></div>
+  </div>""")
+        parts.append(_PAGE_FOOTER.format(gen_time=gen_time))
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(parts))
+        return output_path
+    # 2. 对每只股票做完整分析
+    stock_details, portfolio_stocks = _full_chain_analyze_stocks(pool, top_n)
 
     # 3. 创建组合
     p = create_portfolio("全链路精选组合", portfolio_stocks)

@@ -6,7 +6,6 @@
   "stock_analyzer/overnight_holding.py": 1,
   "stock_analyzer/analyzer.py": 1,
   "stock_analyzer/enhanced_screener.py": 1,
-  "stock_analyzer/report_generators.py": 1,
   "stock_analyzer/quant.py": 1,
   "stock_analyzer/nl_report.py": 1,
   "stock_analyzer/portfolio.py": 1,
