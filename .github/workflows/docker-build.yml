@@ -1,0 +1,57 @@
+# ============================================================
+# Docker Build — 构建冒烟验证（2026-10-18 新增）
+#
+# 背景：Dockerfile 依赖 requirements.lock / package-lock.json / 基础镜像，
+# 这些变更日常 push 不会被任何 job 验证（build.yml 仅 tag 触发），
+# 2026-10-18 实测发现 Dockerfile 仍装浮动 requirements.txt（与 CI 口径
+# 割裂）+ node:20 已 EOL —— 都是日常 push 发现不了的盲区。
+#
+# 策略：仅在影响构建的文件变更时触发（paths 过滤），buildx + gha cache
+# 加速；只 build 不 push（image 由 build.yml 在 tag 时发布）。
+# 本地等价命令：docker compose build --pull
+# ============================================================
+name: Docker Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "requirements.lock"
+      - "requirements.txt"
+      - "requirements-dev.txt"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - "tsconfig.json"
+      - "tsconfig.node.json"
+      - "src/**"
+      - ".github/workflows/docker-build.yml"
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - "requirements.lock"
+      - "requirements.txt"
+      - "package-lock.json"
+  workflow_dispatch:
+
+jobs:
+  docker-build:
+    name: Docker Build (smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image (no push)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          load: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: stockinsight:ci-smoke
