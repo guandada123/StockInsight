@@ -31,7 +31,6 @@ def _cached_perm(table, key, fetch_fn, ttl_seconds):
 
     stored = _perm_load(table, "key", key)
     if stored is not None:
-        conn = __import__("threading").local()
         # Check staleness
         from .cache import _get_conn
 
@@ -173,11 +172,14 @@ def north_flow_signal():
 
 
 def get_margin_stock_detail(code, days=30):
-    """个股融资融券明细"""
+    """个股融资融券明细（单日快照）
+
+    注意：akshare 接口只支持单日查询，`days` 参数当前不参与取数（保留仅为
+    向后兼容调用方签名，2026-10-18 清理死代码时确认原实现同样未生效）。
+    """
     try:
         import akshare as ak
 
-        start_date = (datetime.now() - timedelta(days=days)).strftime("%Y%m%d")
         end_date = datetime.now().strftime("%Y%m%d")
         df = ak.stock_margin_detail_sse(date=end_date)
         if df is not None and not df.empty:
@@ -226,7 +228,6 @@ def get_insider_trades(code=None):
             df = ak.stock_hold_management_detail_em(symbol=code)
         else:
             # 全市场（最近一个月）
-            end_date = datetime.now().strftime("%Y-%m-%d")
             start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
             df = ak.stock_hold_management_detail_em()
             if df is not None and not df.empty and "变动日期" in df.columns:
@@ -287,7 +288,6 @@ def most_visited_stocks(days=30):
 
     # 按调研次数排名
     code_col = "证券代码"
-    name_col = "证券简称" if "证券简称" in df.columns else None
     visit_count = df.groupby(code_col).size().reset_index(name="调研次数")
     visit_count = visit_count.sort_values("调研次数", ascending=False)
     return visit_count.head(20)
