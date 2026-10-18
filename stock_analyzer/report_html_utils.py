@@ -173,3 +173,35 @@ def _score_rank(score, ranges=None):
     if score >= 20:
         return "较差", "20-39分，相对偏弱，需关注"
     return "很差", "<20分，表现不佳，需警惕"
+
+
+def _write_report_file(parts: list[str], output_path: str, label: str) -> str:
+    """写出报告文件（screener/portfolio 共用；2026-10-18 提取）
+
+    两侧原逻辑逐字节一致，仅 print 文案前缀不同（由 label 传入）。
+    """
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(parts))
+
+    print(f"{label}报告已生成: {output_path}")
+    return output_path
+
+
+def _glossary_card() -> str:
+    """专业术语说明卡片（screener/portfolio 共用；2026-10-18 提取，两侧原块逐字节一致）"""
+    parts = [
+        """  <div class="card">
+    <div class="card-title">专业术语说明</div>
+    <div class="card-subtitle">报告中使用的专业术语解释</div>
+    <div class="glossary-grid">"""
+    ]
+    for term, defn in TERM_DEFS.items():
+        esc_defn = defn.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        parts.append(f"""      <div class="glossary-item">
+        <span class="glossary-term">{term}</span>
+        <span class="glossary-def">{esc_defn}</span>
+      </div>""")
+    parts.append("""    </div>
+  </div>""")
+    return "\n".join(parts)

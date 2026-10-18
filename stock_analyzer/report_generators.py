@@ -29,9 +29,11 @@ from .report_html_utils import (
     _default_path,
     _escape_html,
     _fmt_num,
+    _glossary_card,
     _rating_bg_color,
     _rating_color,
     _tip,
+    _write_report_file,
 )
 from .report_sections import _build_market_overview, _build_selection_rationale
 from .report_templates import _PAGE_FOOTER, _PAGE_HEADER
@@ -46,7 +48,7 @@ def generate_screener_report(
     output_path: str | None = None,
     stock_details: dict | None = None,
 ) -> str:
-    """生成选股结果 HTML 报告（含个股详情 + 选股逻辑 + 图表）"""
+    """生成选股结果 HTML 报告（编排器；各段实现见 _screener_* 子函数，2026-10-18 拆分）"""
     if output_path is None:
         output_path = _default_path("screener")
 
@@ -76,7 +78,40 @@ def generate_screener_report(
             parts.append(rationale)
 
     # ── 数据表格 ──────────────────────────────────
-    parts.append("""  <div class="card">
+    parts.append(_screener_table_card(df))
+
+    # ── 个股分析详情（仅显示有完整数据的股票）───────
+    parts.extend(_screener_detail_cards(df, stock_details))
+
+    # ── 雷达图：五维评分，最多前5只 ────────────────
+    if stock_count > 0:
+        parts.append(_screener_radar_section(df))
+    else:
+        parts.append("""  <div class="card">
+    <div class="empty-state">
+      <div class="icon">&#128200;</div>
+      <p>暂无选股结果数据</p>
+    </div>
+  </div>""")
+
+    # ── 评级分布饼图 + 因子对比柱状图 ─────────────
+    if stock_count > 0 and stock_details:
+        parts.append(_screener_rating_factor_charts(df, stock_details))
+
+    # ── 术语表 ──────────────────────────────────────
+    parts.append(_glossary_card())
+
+    # ── 页脚 ──────────────────────────────────────
+    parts.append(_PAGE_FOOTER.format(gen_time=gen_time))
+
+    # ── 写出文件 ──────────────────────────────────
+    return _write_report_file(parts, output_path, "选股")
+
+
+def _screener_table_card(df: pd.DataFrame) -> str:
+    """选股结果明细表卡片"""
+    parts = [
+        """  <div class="card">
     <div class="card-title">选股结果明细</div>
     <div class="card-subtitle">按综合评分降序排列，综合评分 = 动量(25%) + 技术(25%) + 基本面(20%) + 量能(15%) + 风险(15%)</div>
     <div class="table-wrap">
@@ -96,9 +131,8 @@ def generate_screener_report(
           <th>涨跌幅</th>
         </tr>
       </thead>
-      <tbody>""")
-
-    has_seq = "序号" in df.columns
+      <tbody>"""
+    ]
 
     for idx, (_, row) in enumerate(df.iterrows()):
         seq = row.get("序号", idx + 1)
@@ -137,84 +171,91 @@ def generate_screener_report(
     </table>
     </div>
   </div>""")
+    return "\n".join(parts)
 
-    # ── 个股分析详情（仅显示有完整数据的股票）───────
-    if stock_details:
-        detail_codes = [
-            code
-            for code in df["代码"].astype(str).str.zfill(6).tolist()
-            if code in stock_details and stock_details[code].get("quant_score")
-        ]
-        if detail_codes:
-            parts.append("""  <div class="card">
+
+def _screener_detail_cards(df: pd.DataFrame, stock_details: dict | None) -> list[str]:
+    """个股深度分析卡片（仅含完整分析数据的股票）"""
+    parts: list[str] = []
+    if not stock_details:
+        return parts
+    detail_codes = [
+        code
+        for code in df["代码"].astype(str).str.zfill(6).tolist()
+        if code in stock_details and stock_details[code].get("quant_score")
+    ]
+    if detail_codes:
+        parts.append("""  <div class="card">
     <div class="card-title">个股深度分析</div>
     <div class="card-subtitle">仅显示有完整分析数据的股票，含支撑位/压力位、止损止盈参考、技术面状态和风险指标</div>""")
-            for idx, code in enumerate(detail_codes):
-                row = df[df["代码"].astype(str).str.zfill(6) == code].iloc[0]
-                detail = stock_details.get(code, {}).copy()
-                detail["score"] = row.get("综合评分", "")
-                detail["rating"] = str(row.get("评级", ""))
-                detail["price"] = row.get("最新价", "")
-                detail["change"] = row.get("涨跌幅", 0)
-                name = row.get("名称", code)
-                detail.setdefault("name", name)
-                parts.append(_stock_detail_card(code, detail, idx + 1))
-            parts.append("  </div>")
+        for idx, code in enumerate(detail_codes):
+            row = df[df["代码"].astype(str).str.zfill(6) == code].iloc[0]
+            detail = stock_details.get(code, {}).copy()
+            detail["score"] = row.get("综合评分", "")
+            detail["rating"] = str(row.get("评级", ""))
+            detail["price"] = row.get("最新价", "")
+            detail["change"] = row.get("涨跌幅", 0)
+            name = row.get("名称", code)
+            detail.setdefault("name", name)
+            parts.append(_stock_detail_card(code, detail, idx + 1))
+        parts.append("  </div>")
+    return parts
 
-    # ── 雷达图：五维评分，最多前5只 ────────────────
-    if stock_count > 0:
-        top5 = df.head(5)
-        labels_json = json.dumps(
-            ["动量分", "技术分", "基本面分", "量能分", "风险分"], ensure_ascii=False
+
+def _screener_radar_section(df: pd.DataFrame) -> str:
+    """五维评分雷达图卡片 + 渲染脚本（前 5 只）"""
+    top5 = df.head(5)
+    labels_json = json.dumps(
+        ["动量分", "技术分", "基本面分", "量能分", "风险分"], ensure_ascii=False
+    )
+
+    datasets = []
+    for _, row in top5.iterrows():
+        code = str(row.get("代码", ""))
+        mom = float(row.get("动量分", 0) or 0)
+        tech = float(row.get("技术分", 0) or 0)
+        fund = float(row.get("基本面分", 0) or 0)
+        vol = float(row.get("量能分", 0) or 0)
+        risk = float(row.get("风险分", 0) or 0)
+        datasets.append(
+            {
+                "label": code,
+                "data": [mom, tech, fund, vol, risk],
+                "fill": True,
+            }
         )
 
-        datasets = []
-        for _, row in top5.iterrows():
-            code = str(row.get("代码", ""))
-            mom = float(row.get("动量分", 0) or 0)
-            tech = float(row.get("技术分", 0) or 0)
-            fund = float(row.get("基本面分", 0) or 0)
-            vol = float(row.get("量能分", 0) or 0)
-            risk = float(row.get("风险分", 0) or 0)
-            datasets.append(
-                {
-                    "label": code,
-                    "data": [mom, tech, fund, vol, risk],
-                    "fill": True,
-                }
-            )
+    datasets_json = json.dumps(datasets, ensure_ascii=False)
 
-        datasets_json = json.dumps(datasets, ensure_ascii=False)
-
-        parts.append(f"""  <div class="card">
+    card = f"""  <div class="card">
     <div class="card-title">五维评分雷达图（前 {len(top5)} 只）</div>
     <div class="card-subtitle">动量(25%) · 技术(25%) · 基本面(20%) · 量能(15%) · 风险(15%)</div>
     <div class="chart-box">
       <canvas id="radarChart"></canvas>
     </div>
-  </div>""")
+  </div>"""
 
-        palette = [
-            {"bg": "rgba(26,115,232,0.15)", "border": "rgba(26,115,232,0.9)"},
-            {"bg": "rgba(219,68,55,0.15)", "border": "rgba(219,68,55,0.9)"},
-            {"bg": "rgba(15,157,88,0.15)", "border": "rgba(15,157,88,0.9)"},
-            {"bg": "rgba(255,193,7,0.15)", "border": "rgba(255,193,7,0.9)"},
-            {"bg": "rgba(156,39,176,0.15)", "border": "rgba(156,39,176,0.9)"},
-        ]
+    palette = [
+        {"bg": "rgba(26,115,232,0.15)", "border": "rgba(26,115,232,0.9)"},
+        {"bg": "rgba(219,68,55,0.15)", "border": "rgba(219,68,55,0.9)"},
+        {"bg": "rgba(15,157,88,0.15)", "border": "rgba(15,157,88,0.9)"},
+        {"bg": "rgba(255,193,7,0.15)", "border": "rgba(255,193,7,0.9)"},
+        {"bg": "rgba(156,39,176,0.15)", "border": "rgba(156,39,176,0.9)"},
+    ]
 
-        parts.append(
-            """<script>
+    script = (
+        """<script>
   (function() {
     var ctx = document.getElementById('radarChart').getContext('2d');
     var labels = """
-            + labels_json
-            + """;
+        + labels_json
+        + """;
     var rawDatasets = """
-            + datasets_json
-            + """;
+        + datasets_json
+        + """;
     var palette = """
-            + json.dumps(palette, ensure_ascii=False)
-            + """;
+        + json.dumps(palette, ensure_ascii=False)
+        + """;
     var datasets = rawDatasets.map(function(ds, i) {
       var p = palette[i % palette.length];
       return {
@@ -249,58 +290,52 @@ def generate_screener_report(
     });
   })();
 </script>"""
-        )
+    )
+    return card + "\n" + script
 
-    else:
-        parts.append("""  <div class="card">
-    <div class="empty-state">
-      <div class="icon">&#128200;</div>
-      <p>暂无选股结果数据</p>
-    </div>
-  </div>""")
 
-    # ── 评级分布饼图 + 因子对比柱状图 ─────────────
-    if stock_count > 0 and stock_details:
-        rating_order = ["Strong Buy", "Buy", "Hold", "Sell", "Strong Sell"]
-        rating_counts = dict.fromkeys(rating_order, 0)
-        for _, srow in df.iterrows():
-            r = str(srow.get("评级", "")).strip()
-            if r in rating_counts:
-                rating_counts[r] += 1
-            elif "Buy" in r:
-                rating_counts["Buy"] += 1
-            elif "Sell" in r:
-                rating_counts["Sell"] += 1
-        rating_labels_json = json.dumps(rating_order, ensure_ascii=False)
-        rating_data_json = json.dumps([rating_counts[r] for r in rating_order], ensure_ascii=False)
+def _screener_rating_factor_charts(df: pd.DataFrame, stock_details: dict | None) -> str:
+    """评级分布饼图 + 因子对比柱状图（含渲染脚本）"""
+    rating_order = ["Strong Buy", "Buy", "Hold", "Sell", "Strong Sell"]
+    rating_counts = dict.fromkeys(rating_order, 0)
+    for _, srow in df.iterrows():
+        r = str(srow.get("评级", "")).strip()
+        if r in rating_counts:
+            rating_counts[r] += 1
+        elif "Buy" in r:
+            rating_counts["Buy"] += 1
+        elif "Sell" in r:
+            rating_counts["Sell"] += 1
+    rating_labels_json = json.dumps(rating_order, ensure_ascii=False)
+    rating_data_json = json.dumps([rating_counts[r] for r in rating_order], ensure_ascii=False)
 
-        factor_labels = json.dumps(
-            ["动量分", "技术分", "基本面分", "量能分", "风险分"], ensure_ascii=False
-        )
-        stock_ds_list = []
-        top_n_chart = min(10, len(df))
-        for _, srow in df.head(top_n_chart).iterrows():
-            code = str(srow.get("代码", ""))
-            sd = (stock_details or {}).get(code, {})
-            qs = sd.get("quant_score", {})
-            fs = qs.get("factor_scores", {})
+    factor_labels = json.dumps(
+        ["动量分", "技术分", "基本面分", "量能分", "风险分"], ensure_ascii=False
+    )
+    stock_ds_list = []
+    top_n_chart = min(10, len(df))
+    for _, srow in df.head(top_n_chart).iterrows():
+        code = str(srow.get("代码", ""))
+        sd = (stock_details or {}).get(code, {})
+        qs = sd.get("quant_score", {})
+        fs = qs.get("factor_scores", {})
+        vals = [
+            fs.get(k, {}).get("score", 0)
+            for k in ["momentum", "technical", "fundamental", "volume", "risk"]
+        ]
+        if not any(v > 0 for v in vals):
             vals = [
-                fs.get(k, {}).get("score", 0)
-                for k in ["momentum", "technical", "fundamental", "volume", "risk"]
+                float(srow.get("动量分", 0) or 0),
+                float(srow.get("技术分", 0) or 0),
+                float(srow.get("基本面分", 0) or 0),
+                float(srow.get("量能分", 0) or 0),
+                float(srow.get("风险分", 0) or 0),
             ]
-            if not any(v > 0 for v in vals):
-                vals = [
-                    float(srow.get("动量分", 0) or 0),
-                    float(srow.get("技术分", 0) or 0),
-                    float(srow.get("基本面分", 0) or 0),
-                    float(srow.get("量能分", 0) or 0),
-                    float(srow.get("风险分", 0) or 0),
-                ]
-            stock_ds_list.append({"label": code, "data": vals})
-        stock_datasets_json = json.dumps(stock_ds_list, ensure_ascii=False)
-        has_charts = json.dumps(len(stock_ds_list) > 0)
+        stock_ds_list.append({"label": code, "data": vals})
+    stock_datasets_json = json.dumps(stock_ds_list, ensure_ascii=False)
+    has_charts = json.dumps(len(stock_ds_list) > 0)
 
-        parts.append(f"""
+    return f"""
   <div class="chart-row">
     <div class="chart-box">
       <div class="chart-title">评级分布</div>
@@ -353,32 +388,7 @@ def generate_screener_report(
     }});
   }}
 }})();
-</script>""")
-
-    # ── 术语表 ──────────────────────────────────────
-    parts.append("""  <div class="card">
-    <div class="card-title">专业术语说明</div>
-    <div class="card-subtitle">报告中使用的专业术语解释</div>
-    <div class="glossary-grid">""")
-    for term, defn in TERM_DEFS.items():
-        esc_defn = defn.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        parts.append(f"""      <div class="glossary-item">
-        <span class="glossary-term">{term}</span>
-        <span class="glossary-def">{esc_defn}</span>
-      </div>""")
-    parts.append("""    </div>
-  </div>""")
-
-    # ── 页脚 ──────────────────────────────────────
-    parts.append(_PAGE_FOOTER.format(gen_time=gen_time))
-
-    # ── 写出文件 ──────────────────────────────────
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(parts))
-
-    print(f"选股报告已生成: {output_path}")
-    return output_path
+</script>"""
 
 
 # ══════════════════════════════════════════════════════
