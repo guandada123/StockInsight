@@ -118,13 +118,22 @@ python ml_scan.py --top-n 20         # 主板 top20
 
 - 语言：Python 3.x + TypeScript (React) + Rust (Tauri)
 - 数据源：新浪/腾讯/Baostock/东方财富/akshare/Tushare/TickFlow
-- 数据库：SQLite (stock_cache.db ~152MB)
-- 完整技能文档：`C:\Users\47535\.claude\skills\stock-quant-analysis\SKILL.md`
-- 最近重构：fetcher.py → fetcher/ 包、前端组件化、ML缓存、analyzer.py 解耦
+- 数据库：SQLite (stock_cache.db)
+- 依赖口径（2026-10-18）：`requirements.lock` 为 pip-compile 闭包锁，
+  **CI 安装源 / pip-audit 审计源 / Dockerfile 安装源三处同源**；改依赖必须
+  `pip-compile --upgrade-package <pkg>` 重新生成 lock（不加 --upgrade 会保留现有 pin）
+- 最近重构：cli.py → 三层薄入口、fetcher.py → fetcher/ 包（80 行 + 8 子模块）、
+  大函数全拆（全仓 >120 行超标函数 0）、report_generators/ultimate_report 章节化
 
-## 当前状态 (2026-06-18)
+## 当前状态 (2026-10-18)
 
-- 仓库已公开: https://github.com/nguyenchunghieu799-blip/stock-insight
+- 仓库: https://github.com/guandada123/StockInsight
 - MIT LICENSE 开源
-- README.md 已上线
-- fetcher/__init__.py 1495行单体过大，后续可拆分子模块
+- **门禁（全部阻塞）**：ruff 全仓 + ruff format + mypy 2.4.0（151 文件 0 issues）
+  + bandit + pip-audit（lock 零洞）+ pytest 1844 passed + coverage ≥84%（实测 88.72%）
+  + pre-commit（与 CI 同版） + 四道 AST 巡检（silent_swallows / oversized_functions /
+  no_shadowed_tests / no_new_unused_vars，均「只减不增」基线制）
+- **改门禁/基线的纪律**：基线只减不增；清零必须删键；改阻塞门禁后必须等真实 CI
+  跑完才算闭环（本地 3.13 与 CI 3.11 stub 推断可能不同）
+- **archive/**：退役代码与历史杂物归档区，已退出 lint/format/bandit/pytest 范围；
+  恢复用 `git mv`（见 archive/README.md）

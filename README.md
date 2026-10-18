@@ -31,20 +31,34 @@ A股全链路量化投资分析平台 — 146个Python文件 · 54,000+行代码
 ## 测试状态
 
 [![StockInsight CI](https://github.com/guandada123/StockInsight/actions/workflows/stockinsight-ci.yml/badge.svg)](https://github.com/guandada123/StockInsight/actions/workflows/stockinsight-ci.yml)
-![Tests](https://img.shields.io/badge/tests-45%20passing-brightgreen.svg)
-![Coverage](https://img.shields.io/badge/coverage-79.9%25-yellow.svg)
+![Tests](https://img.shields.io/badge/tests-1860%20passing-brightgreen.svg)
+![Coverage](https://img.shields.io/badge/coverage-88.7%25-brightgreen.svg)
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg)
 
-当前测试分布：
-- **后端 (Python)**：45+ 测试，覆盖率 **79.91%**（超 70% 阈值 ✅）
-- **前端 (TypeScript)**：45 测试，6 个测试文件全部通过 ✅
-- **Docker 构建**：多阶段镜像构建通过，镜像大小 2.45GB
+当前测试分布（2026-10-18）：
+- **后端 (Python)**：**1860** 测试通过，覆盖率 **88.72%**（CI 实测；门槛 84%）
+- **前端 (TypeScript)**：6 个测试文件全部通过 ✅
+- **Docker 构建**：多阶段镜像构建通过（CI 冒烟 workflow + 本地 `docker compose build --pull` 双重验证）
+
+### 质量门禁（全部为阻塞式）
+
+| 门禁 | 工具 | 现状 |
+|---|---|---|
+| 静态检查 | ruff（全仓，含 S 安全规则） | 0 问题 |
+| 格式 | ruff format | 全通过 |
+| 类型 | mypy（钉版 2.4.0） | 151 文件 0 issues |
+| 安全扫描 | bandit（MEDIUM+ 阻塞）+ pip-audit（lock 审计） | 0 命中 |
+| 测试 | pytest + coverage ≥ 84% | 1860 passed / 88.9% |
+| 依赖锁定 | pip-compile 闭包 lock（CI/审计/Docker 三处同源） | 零漏洞 |
+| AST 巡检（四道） | silent_swallows / oversized_functions / no_shadowed_tests / no_new_unused_vars | 只减不增基线 |
 
 ## 快速开始
 
 ```bash
-# 安装依赖
-pip install -r requirements.txt
+# 安装依赖（锁文件口径，与 CI / pip-audit / Docker 同源）
+pip install -r requirements.lock
+# 开发/测试工具（pytest / mypy / ruff 等钉版）
+pip install -r requirements-dev.txt
 
 # 开盘前自检（推荐，5秒检测所有数据源）
 python cli.py check --premarket
@@ -165,6 +179,12 @@ python ml_scan.py --mode full        # 全A股
 ├── backend/                  # FastAPI后端 (35+端点)
 ├── src/                      # React前端 (TypeScript + ECharts)
 ├── src-tauri/                # Tauri桌面端 (Rust壳)
+├── archive/                  # 归档区（退役代码/历史杂物，退出 lint/测试范围）
+├── requirements.txt          # 顶层依赖声明（手维护，见 requirements.lock）
+├── requirements.lock         # pip-compile 闭包锁（CI/审计/Docker 三处同源）
+├── requirements-dev.txt      # 测试工具链钉版
+├── security-constraints.txt  # 安全修复下限（pip-audit 驱动）
+├── pytest.ini                # pytest 配置（archive/ 不参与收集）
 ├── run_daily.py              # 每日16:00自动扫描
 ├── run_full_scan.py          # 全市场扫描（8线程，~8min）
 ├── feishu_push.py            # 飞书每日推送
