@@ -5,9 +5,9 @@
 # =============================================================================
 
 # ---------------------------------------------------------------------------
-# Stage 1: 前端构建阶段 (node:20-slim — 轻量 Node.js 镜像)
+# Stage 1: 前端构建阶段 (node:22-slim — Node 20 已 EOL，与 CI NODE_VERSION=22 对齐)
 # ---------------------------------------------------------------------------
-FROM node:20-slim AS frontend-builder
+FROM node:22-slim AS frontend-builder
 
 WORKDIR /build
 
@@ -41,8 +41,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv /venv
 ENV PATH="/venv/bin:$PATH"
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && \
+# 2026-10-18: 安装源切 requirements.lock（与 CI/pip-audit 口径统一，消除 >= 浮动）。
+# lock 生成时排除的私有包 yquoter 在此补装（PyPI 公开可得），保持运行时功能完整。
+COPY requirements.lock requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.lock && \
+    pip install --no-cache-dir "yquoter>=0.4.2" && \
     pip cache purge
 
 # ---------------------------------------------------------------------------
