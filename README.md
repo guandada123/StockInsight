@@ -31,12 +31,12 @@ A股全链路量化投资分析平台 — 146个Python文件 · 54,000+行代码
 ## 测试状态
 
 [![StockInsight CI](https://github.com/guandada123/StockInsight/actions/workflows/stockinsight-ci.yml/badge.svg)](https://github.com/guandada123/StockInsight/actions/workflows/stockinsight-ci.yml)
-![Tests](https://img.shields.io/badge/tests-1860%20passing-brightgreen.svg)
-![Coverage](https://img.shields.io/badge/coverage-89.5%25-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-1885%20passing-brightgreen.svg)
+![Coverage](https://img.shields.io/badge/coverage-89.7%25-brightgreen.svg)
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg)
 
 当前测试分布（2026-10-18）：
-- **后端 (Python)**：**1860** 测试通过，覆盖率 **89.49%**（CI 实测；门槛 86%）
+- **后端 (Python)**：**1885** 测试通过，覆盖率 **89.69%**（CI 实测；门槛 86%）
 - **前端 (TypeScript)**：6 个测试文件全部通过 ✅
 - **Docker 构建**：多阶段镜像构建通过（CI 冒烟 workflow + 本地 `docker compose build --pull` 双重验证）
 
@@ -48,7 +48,7 @@ A股全链路量化投资分析平台 — 146个Python文件 · 54,000+行代码
 | 格式 | ruff format | 全通过 |
 | 类型 | mypy（钉版 2.4.0） | 151 文件 0 issues |
 | 安全扫描 | bandit（MEDIUM+ 阻塞）+ pip-audit（lock 审计） | 0 命中 |
-| 测试 | pytest + coverage ≥ 86% | 1860 passed / 89.49% |
+| 测试 | pytest + coverage ≥ 86% | 1885 passed / 89.69% |
 | 依赖锁定 | pip-compile 闭包 lock（CI/审计/Docker 三处同源） | 零漏洞 |
 | AST 巡检（四道） | silent_swallows / oversized_functions / no_shadowed_tests / no_new_unused_vars | 只减不增基线 |
 
