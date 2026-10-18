@@ -1,10 +1,8 @@
 """reporter.py 单元测试 — DOCX 报告生成模块"""
 
-import os
 import sys
-from datetime import datetime, time
 from typing import Any
-from unittest.mock import MagicMock, PropertyMock, call, patch
+from unittest.mock import MagicMock, call, patch
 
 import pandas as pd
 import pytest

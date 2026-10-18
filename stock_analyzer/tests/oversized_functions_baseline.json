@@ -2,7 +2,6 @@
   "stock_analyzer/report_narratives.py": 2,
   "stock_analyzer/ultimate_report.py": 1,
   "stock_analyzer/screener.py": 1,
-  "stock_analyzer/reporter.py": 1,
   "stock_analyzer/overnight_holding.py": 1,
   "stock_analyzer/analyzer.py": 1,
   "stock_analyzer/enhanced_screener.py": 1,

@@ -136,5 +136,5 @@ exclude_lines = [
 #   B110/B112 try/except/pass|continue(生产广泛良性)、B301/B403 pickle(反序列化项目自有可信缓存)、
 #   B306 mktemp(测试)、B311 random(重试抖动非加密)、B404 subprocess 导入、B603 subprocess 列表式无 shell(安全写法)
 # 保留真实安全护栏：B102(exec)/B113/B501(证书)/B701(jinja2)/B202(tar)/B602(shell=True)/B307(eval)/B608(SQL)/B310(urllib无验证)/B607/B405(xml) 等
-exclude_dirs = ["tests", ".venv", "__pycache__", "node_modules", "build", "dist", ".mypy_cache", ".pytest_cache", ".ruff_cache"]
+exclude_dirs = ["tests", "archive", ".venv", "__pycache__", "node_modules", "build", "dist", ".mypy_cache", ".pytest_cache", ".ruff_cache"]
 skips = ["B101", "B105", "B106", "B108", "B110", "B112", "B301", "B306", "B311", "B403", "B404", "B603"]

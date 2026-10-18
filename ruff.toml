@@ -5,6 +5,10 @@ target-version = "py311"
 line-length = 100
 indent-width = 4
 
+# archive/ 为退役代码与历史杂物归档（2026-10-18）：永久退出 lint/format 视野，
+# 里面的历史文件不保证满足当前规则集（如 S101/S108）。
+extend-exclude = ["archive"]
+
 [lint]
 # 2026-10-17 加固（详见 代码审查修复报告_20261017.md）：
 #   RUF006  dangling-asyncio-task   —— create_task 无强引用会被 GC（曾致优雅关闭/批量扫描可能静默不执行）
