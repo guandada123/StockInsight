@@ -1,7 +1,7 @@
 # pip-compile 约束文件：安全修复下限（2026-10-18 pip-audit 实证）
 # 用途: pip-compile -c security-constraints.txt ...
 # 钉到修复版本（最小升级原则，不跳大版本）；有洞包升级后此处随之调高；全部清零后可删
-anyio==4.14.2
+anyio==4.15.1
 pillow==12.3.0
 soupsieve==2.9.0
 starlette==1.8.0
