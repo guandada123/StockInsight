@@ -2,6 +2,7 @@
 # 用途: pip-compile -c security-constraints.txt ...
 # 钉到修复版本（最小升级原则，不跳大版本）；有洞包升级后此处随之调高；全部清零后可删
 anyio==4.15.1
+certifi==2026.10.19
 pillow==13.0.0
 soupsieve==3.0.3
 starlette==1.8.0

@@ -29,8 +29,9 @@ beautifulsoup4==4.14.3
     #   bs4
 bs4==0.0.2
     # via tushare
-certifi==2026.5.20
+certifi==2026.10.19
     # via
+    #   -c security-constraints.txt
     #   curl-cffi
     #   httpcore
     #   httpx
