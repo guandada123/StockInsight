@@ -47,3 +47,22 @@ venv/
 
 # 测试基线 JSON 需入库（门禁判据），不被全局 *.json 规则忽略
 !stock_analyzer/tests/*.json
+
+# ---- 本机敏感信息隔离（MCP 配置 / 代理 / 凭据 / 私钥）----
+# 这些只存于本机，禁止进入版本库；模板文件用 .example 后缀并显式放行
+.mcp.json
+mcp.json
+.env
+.env.*
+!.env.example
+*.env
+secrets/
+*secret*.json
+*secret*.yaml
+*credential*.json
+*credential*.yaml
+*token*.json
+*.pem
+id_rsa*
+proxy.env
+*proxy*.env
