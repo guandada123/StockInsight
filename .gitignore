@@ -66,3 +66,8 @@ secrets/
 id_rsa*
 proxy.env
 *proxy*.env
+
+# audit_kit 判分器同步副本（生成物，非真源）—— 真源在 ai-autonomy-team/audit/kit/score.py，
+# 由 sync_score.sh 生成并注入来源 commit 头；零运行时消费方，且 CLI print 必然触发各仓 ruff T201，
+# 故不入库（防 git add -A 误提交弄红 CI）。漂移检测 = 重跑 sync_score.sh（幂等）+ 核对头部 SYNCED FROM。
+tools/audit_kit/
