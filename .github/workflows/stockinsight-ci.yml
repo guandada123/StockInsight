@@ -4,6 +4,13 @@
 # ============================================================
 name: StockInsight Pro CI
 
+# 2026-10-28 降本（账号级共享额度）：本仓此前无 concurrency。
+# 同分支连续 push/PR 事件会把每个中间提交的全套 job 都跑完，而只有最新提交的结论有意义。
+# 取消的 run 记为 cancelled（不是 failure），巡检的红灯判据只认 failure，不会制造假红。
+concurrency:
+  group: stockinsight-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
   push:
