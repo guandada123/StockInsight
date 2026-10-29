@@ -6,7 +6,7 @@
 pytest==9.0.3
 pytest-cov==7.1.0
 pytest-asyncio==1.4.0
-coverage==7.16.2
+coverage==7.17.0
 httpx==0.28.1
 # 2026-10-17 钉死：mypy 2.4.0 为本地验证通过版本，浮动版会静默改变检查口径
 mypy==2.4.0
