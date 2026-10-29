@@ -276,7 +276,7 @@ six==1.17.0
     #   html5lib
     #   pyexecjs
     #   python-dateutil
-soupsieve==2.9
+soupsieve==3.0.4
     # via
     #   -c security-constraints.txt
     #   beautifulsoup4
