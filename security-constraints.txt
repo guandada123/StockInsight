@@ -4,6 +4,6 @@
 anyio==4.15.1
 certifi==2026.10.19
 pillow==13.0.0
-soupsieve==3.0.3
+soupsieve==3.0.4
 starlette==1.10.0
 urllib3==2.8.0
