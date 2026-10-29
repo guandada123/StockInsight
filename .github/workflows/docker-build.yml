@@ -9,24 +9,14 @@
 # 策略：仅在影响构建的文件变更时触发（paths 过滤），buildx + gha cache
 # 加速；只 build 不 push（image 由 build.yml 在 tag 时发布）。
 # 本地等价命令：docker compose build --pull
+#
+# 2026-10-29 降本（账号级共享额度）：移除 `on.push.branches:[main]` 触发，
+# push main 仅由 stockinsight-ci.yml 覆盖；本 workflow 保留 pull_request + workflow_dispatch。
+# 目的：每次 push main 从 3 个 workflow 降到 1 个（与 Claw 一致）。可逆：恢复上面的 push 块即可。
 # ============================================================
 name: Docker Build
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "Dockerfile"
-      - "requirements.lock"
-      - "requirements.txt"
-      - "requirements-dev.txt"
-      - "package.json"
-      - "package-lock.json"
-      - "vite.config.ts"
-      - "tsconfig.json"
-      - "tsconfig.node.json"
-      - "src/**"
-      - ".github/workflows/docker-build.yml"
   pull_request:
     paths:
       - "Dockerfile"

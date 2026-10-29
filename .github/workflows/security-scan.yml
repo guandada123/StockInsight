@@ -10,6 +10,10 @@
 #     故改为**阻塞式**：新增 MEDIUM+ 问题即红。
 #   · NODE_VERSION 由 20 对齐到 22（与 stockinsight-ci.yml 一致；Node 20 已 EOL）。
 # ============================================================
+# 2026-10-29 降本（账号级共享额度）：移除 `on.push.branches:[main]` 触发，
+# push main 不再即时跑安全扫描；保留 schedule（每周一）+ pull_request + workflow_dispatch 兜底。
+# 目的：每次 push main 从 3 个 workflow 降到 1 个（与 Claw 一致）。可逆：恢复上面的 push 块即可。
+# ============================================================
 name: Security Scan
 
 # 2026-10-28 降本（账号级共享额度）：本仓此前无 concurrency。
@@ -22,12 +26,6 @@ concurrency:
 on:
   schedule:
     - cron: "0 8 * * 1"  # 每周一 8:00 UTC
-  push:
-    branches: [main]
-    paths:
-      - "**/requirements*.txt"
-      - "requirements.lock"          # 2026-10-13：锁文件变更必须触发（否则门禁抓不到；对照 QTS 10-11 同类修复）
-      - "**/*.py"
   pull_request:
     branches: [main]
   workflow_dispatch:
