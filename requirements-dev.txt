@@ -3,7 +3,7 @@
 # 版本与 CI workflow 中钉版保持一致（mypy/ruff 变更须两处同步）
 # ═══════════════════════════════════════════════════════════
 
-pytest==9.0.3
+pytest==9.1.1
 pytest-cov==7.1.0
 pytest-asyncio==1.4.0
 coverage==7.17.0
