@@ -1,5 +1,13 @@
 # automation-1784555575881 — StockInsight 收盘选股扫描
 
+## 2026-10-31 本次执行
+周六非交易日 → L3 pre-hook Gate 命中（`is_trading_day=false`，gates_failed=1）+ cli.py 自身短路输出
+`⏸️ 非交易日跳过扫描（2026-10-31）`，退出码 0，1s 完成，无结果文件、无 daily_scores。
+DB readback：`date='2026-10-31'` = **0 行**（无周末污染）✅；对照 10-30=0、10-14=221 完好。
+「无 `结果已保存`」+「daily_scores=0」字面满足异常条件但属**非交易日短路**，非故障 → **判定正常，未推送飞书**（非交易日先例一致）。
+L3 post-hook（以真实退出码 0 重跑）：`✅ 正常完成 (duration=1s)`。（首次组合调用因 zsh `PIPESTATUS` 大写捕获为空、post 误标"次要失败"，已校正。）
+下一交易日（2026-11-02 周一）自动恢复扫描。最新结果文件仍为 `logs/scan_mainboard_20261014_1534.json`。
+
 ## 2026-10-14 本次执行
 周三交易日（长假后第 5 个交易日）。L3 pre-hook Gate3 通过（`is_trading_day=true`，gates_failed=0）。宿主侧 `/opt/homebrew/bin/python3.12 cli.py scan --mode mainboard --top-n 20`，**189s**，退出码 0。
 结果 `logs/scan_mainboard_20261014_1534.json`，`已写入 daily_scores: 221 条`；DB readback `date='2026-10-14'`=**221 行** ✅（对照 10-13=244、10-12=246、10-09=240）。
