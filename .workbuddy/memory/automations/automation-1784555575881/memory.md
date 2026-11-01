@@ -1,5 +1,13 @@
 # automation-1784555575881 — StockInsight 收盘选股扫描
 
+## 2026-11-01 本次执行
+周日非交易日 → L3 pre-hook Gate3 命中（`is_trading_day=false`，gates_failed=1）+ cli.py 自身短路输出
+`⏸️ 非交易日跳过扫描（2026-11-01）`，退出码 0，0s 完成，无结果文件、无 daily_scores。
+DB readback：`date='2026-11-01'` = **0 行**（无周末污染）✅；对照 10-30=234 完好。
+「无 `结果已保存`」+「daily_scores=0」字面满足异常条件但属**非交易日短路**，非故障 → **判定正常，未推送飞书**（非交易日先例一致）。
+L3 post-hook：`✅ 正常完成 (duration=0s)`。
+下一交易日（2026-11-02 周一）自动恢复扫描。最新结果文件实为 `logs/scan_mainboard_20261030_1532.json`（10-31 记录中的 `20261014` 已过期，已更正）。
+
 ## 2026-10-31 本次执行
 周六非交易日 → L3 pre-hook Gate 命中（`is_trading_day=false`，gates_failed=1）+ cli.py 自身短路输出
 `⏸️ 非交易日跳过扫描（2026-10-31）`，退出码 0，1s 完成，无结果文件、无 daily_scores。
