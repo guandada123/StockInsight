@@ -1,4 +1,6 @@
 {
   "note": "P1-12 禁新增基线（2026-10-12 建档）",
-  "files": {}
+  "files": {},
+  "code_only": {},
+  "_note_20261103_layers": "2026-11-03 从 Claw 同步两层口径：files=含注释/文档串的总量（硬天花板），code_only=只数运行时字符串字面量（真实风险线）。本仓当前两者实测均为 0、基线均为空表，故两层判据等价；分层用于失败时区分「运行时依赖 vs 仅注释」以及将来开例外时单独度量风险面。⚠️ f-string 在 3.12+ 是 FSTRING_MIDDLE token，统计层已同时收 STRING 与 FSTRING_MIDDLE。"
 }
