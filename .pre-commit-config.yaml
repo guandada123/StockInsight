@@ -20,6 +20,11 @@ repos:
       - id: check-added-large-files
         args: [--maxkb=500]
       - id: check-merge-conflict
+        # 2026-11-03：pre-commit-hooks v5 起该钩子在**非 merge 状态**直接 return 0
+        # （已在 v5.0.0 上实测：含 <<<<<<< 标记的文件默认 exit=0，加此参数才 exit=1）。
+        # 即此前一直是恒真通过。冲突标记不只 merge 产生——手工编辑/cherry-pick/
+        # rebase 都会留，所以必须硬查，不能只在 merge 时查。
+        args: [--assume-in-merge]
       - id: detect-private-key
       - id: mixed-line-ending
         args: [--fix=lf]
