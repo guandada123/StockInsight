@@ -50,8 +50,14 @@ describe("App", () => {
     // "StockInsight Pro" spans multiple DOM nodes — verify the loading screen container
     const loadingContainer = document.querySelector('[style*="height: 100vh"]');
     expect(loadingContainer).toBeInTheDocument();
-    // The pulse animation bar indicates loading state
-    expect(document.querySelector('[style*="animation: pulse"]')).toBeInTheDocument();
+    // The pulse animation bar indicates loading state.
+    // 2026-11-13: jsdom 31（cssstyle）按规范重排 animation 简写为
+    // "animation: 1.5s infinite pulse"，原来的子串匹配 '[style*="animation: pulse"]'
+    // 在升级后恒不命中（dependabot PR #113 的 Frontend Tests 因此变红）。
+    // 改成与简写顺序无关的断言，jsdom 30/31 都成立。
+    const pulseBar = loadingContainer?.querySelector('[style*="animation"]');
+    expect(pulseBar).toBeInTheDocument();
+    expect(pulseBar?.getAttribute("style")).toMatch(/animation:[^;]*\bpulse\b/);
     // Should not show navigation or content yet
     expect(screen.queryByText("仪表盘")).not.toBeInTheDocument();
   });
