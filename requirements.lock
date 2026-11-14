@@ -292,7 +292,7 @@ tabulate==0.10.0
     #   yquoter
 threadpoolctl==3.6.0
     # via scikit-learn
-tornado==6.6
+tornado==6.6.1
     # via
     #   ipykernel
     #   jupyter-client

@@ -45,3 +45,7 @@ uvicorn[standard]>=0.30
 pydantic>=2.0
 python-multipart>=0.0.9
 pyarrow>=10.0
+
+# 安全约束：tornado 6.6 命中 CVE-2026-126347（pip-audit 拦截），锁定 6.6.1 修复；
+# 同时约束 pip-compile 重新生成 lock 时不回退到 6.6。
+tornado==6.6.1
