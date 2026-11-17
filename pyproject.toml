@@ -109,11 +109,13 @@ ignore_errors = true
 
 [tool.coverage.report]
 # ═══════════════════════════════════════════════════════════
-# 覆盖率阈值（阻塞模式）
-# 2026-10-10 CI 口径实测 82.75%（stock_analyzer + backend + backend.services 合并）
-# 门禁抬至 75%（留 ≥7 点缓冲），与 stockinsight-ci.yml 的 COV_FAIL_UNDER 一致
+# 覆盖率阈值 —— 唯一权威在 CI，不在本文件（2026-10-31 修）
+# 原 `fail_under = 75` 与 stockinsight-ci.yml 的 COV_FAIL_UNDER=86 **不一致**，
+# 而注释却写着「与 CI 的 COV_FAIL_UNDER 一致」——属于会说谎的注释。
+# CI 侧从 75→84→86 连续抬升三次都没回头同步本文件；且显式传参时本字段永不生效。
+# 现移除，避免出现「本地按 75 判、CI 按 86 判」的双标准。
+# 需要看/改门禁值：.github/workflows/stockinsight-ci.yml 的 COV_FAIL_UNDER。
 # ═══════════════════════════════════════════════════════════
-fail_under = 75
 precision = 2
 
 # 排除无需测试覆盖的文件
