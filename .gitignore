@@ -33,6 +33,8 @@ mainboard_summary_*.csv
 !tsconfig.node.json
 !portfolios/*.json
 portfolios/test_*.json
+# 2026-11-22：模拟盘持仓明细（代码/成本/股数）不入公开库，只留本机
+portfolios/模拟盘.json
 !alerts.json
 !mainboard_*.json
 venv/
