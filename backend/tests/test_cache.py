@@ -120,16 +120,23 @@ class TestSyncTTLCache:
         assert fn.call_count == 1  # 原函数只调用一次
 
     def test_expired_after_ttl(self):
-        """TTL 过期后重新调用原函数"""
+        """TTL 过期后重新调用原函数
+
+        2026-11-22：改用假时钟。原来用 time.sleep(1.1) 等 ttl=1 过期，
+        全量跑时偶发失败（负载导致同一测试的两次调用时间基准漂移）。
+        假时钟同时省掉 1.1 秒真实等待。
+        """
         fn = _make_sync_fn("first")
         decorated = cache.ttl_cache(ttl=1)(fn)
 
-        decorated()  # 缓存 "first"
-        # 等 TTL 过期
-        time.sleep(1.1)
+        with mock.patch("backend.cache.time") as clock:
+            clock.time.return_value = 1000.0
+            decorated()  # 缓存 "first"，expire = 1001
 
-        fn.return_value = "second"
-        result = decorated()
+            clock.time.return_value = 1001.5  # 越过 TTL
+            fn.return_value = "second"
+            result = decorated()
+
         assert result == "second"
         # 原函数被调用了两次（第一次未命中 + 过期重算）
         assert fn.call_count == 2
@@ -213,18 +220,21 @@ class TestAsyncTTLCache:
         assert fn.await_count == 1  # 命中缓存
 
     async def test_async_expired(self):
-        """异步函数：TTL 过期后重算"""
+        """异步函数：TTL 过期后重算（假时钟，见 test_expired_after_ttl 注释）"""
         fn = mock.AsyncMock(return_value="old")
         fn.__name__ = "async_expire"
         fn.__module__ = "test_cache"
 
         decorated = cache.ttl_cache(ttl=1)(fn)
-        await decorated()  # 缓存 "old"
 
-        time.sleep(1.1)
+        with mock.patch("backend.cache.time") as clock:
+            clock.time.return_value = 2000.0
+            await decorated()  # 缓存 "old"，expire = 2001
 
-        fn.return_value = "new"
-        result = await decorated()
+            clock.time.return_value = 2001.5  # 越过 TTL
+            fn.return_value = "new"
+            result = await decorated()
+
         assert result == "new"
         assert fn.await_count == 2
 
