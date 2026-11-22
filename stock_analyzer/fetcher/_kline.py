@@ -190,44 +190,70 @@ def _adata_kline(code, days):
 
 
 def _tushare_kline(code, days):
-    """TuShare 日K线（第五备选，需注册获取token，支持代理API）
+    """TuShare 日K线（HTTP 直连，不经 tushare SDK）
 
-    配置方式：在 .env 文件中设置 TUSHARE_TOKEN 和 TUSHARE_API_URL（代理地址，可选）
+    2026-11-22 修复（原实现恒返回空）：
+    原代码用 ts.pro_bar()/pro.daily()，SDK 内部会往家目录写缓存文件，而容器里
+    /home/appuser 不存在 → pandas 抛 OSError: Cannot save file into a
+    non-existent directory → 被外层 except Exception 静默吞掉 → 永远返回空表。
+    改为直接 POST api.tushare.pro，零缓存、零家目录依赖，同时把异常写进 debug 日志
+    （原实现吞异常不留痕，是这个 bug 藏了这么久的原因）。
     """
     token = _get_tushare_token()
     if not token:
         return pd.DataFrame()
 
+    symbol = f"{code}.{'SH' if code.startswith('6') else 'SZ'}"
+    end = datetime.now().strftime("%Y%m%d")
+    start = (datetime.now() - timedelta(days=days + 60)).strftime("%Y%m%d")
+
     try:
-        import tushare as ts
-
-        ts.set_token(token)
-        pro = ts.pro_api()
-        api_url = _get_tushare_api_url()
-        if api_url:
-            pro._DataApi__http_url = api_url
-
-        symbol = f"{code}.{'SH' if code.startswith('6') else 'SZ'}"
-        end = datetime.now().strftime("%Y%m%d")
-        start = (datetime.now() - timedelta(days=days + 60)).strftime("%Y%m%d")
-        df = ts.pro_bar(ts_code=symbol, api=pro, start_date=start, end_date=end)
-        if df is None or df.empty or len(df) < 20:
+        r = requests.post(
+            _get_tushare_api_url() or "https://api.tushare.pro",
+            json={
+                "api_name": "daily",
+                "token": token,
+                "params": {"ts_code": symbol, "start_date": start, "end_date": end},
+                "fields": "trade_date,open,high,low,close,vol,amount",
+            },
+            timeout=10,
+        )
+        if r.status_code != 200:
+            logger.debug("_tushare_kline: HTTP %s", r.status_code)
             return pd.DataFrame()
-        df = df.sort_values("trade_date")
-        rows = [
-            {
-                "日期": row["trade_date"],
-                "开盘": float(row["open"]),
-                "收盘": float(row["close"]),
-                "最高": float(row["high"]),
-                "最低": float(row["low"]),
-                "成交量": float(row["vol"]),
-                "成交额": float(row.get("amount", 0) or 0),
-            }
-            for _, row in df.iterrows()
-        ]
+        payload = r.json()
+        if payload.get("code") != 0:
+            logger.debug(
+                "_tushare_kline: api code=%s msg=%s", payload.get("code"), payload.get("msg")
+            )
+            return pd.DataFrame()
+
+        body = payload.get("data") or {}
+        fields = body.get("fields") or []
+        items = body.get("items") or []
+        if not fields or not items:
+            return pd.DataFrame()
+
+        idx = {name: i for i, name in enumerate(fields)}
+        rows = []
+        for item in items:
+            rows.append(
+                {
+                    "日期": item[idx["trade_date"]],
+                    "开盘": float(item[idx["open"]]),
+                    "收盘": float(item[idx["close"]]),
+                    "最高": float(item[idx["high"]]),
+                    "最低": float(item[idx["low"]]),
+                    "成交量": float(item[idx["vol"]]),
+                    "成交额": float(item[idx["amount"]]) * 1000
+                    if idx.get("amount") is not None
+                    else 0,
+                }
+            )
+        rows.sort(key=lambda x: x["日期"])
         return _parse_kline_df(rows, days)
-    except Exception:
+    except Exception as e:
+        logger.debug("_tushare_kline 失败 (%s: %s)", type(e).__name__, e)
         return pd.DataFrame()
 
 
