@@ -189,5 +189,7 @@ def get_market_overview():
             "昨收": yclose,
             "最高": float(parts[4]) if parts[4] else 0,
             "最低": float(parts[5]) if parts[5] else 0,
+            # 2026-11-22：补成交额（元）。此前漏取，导致前端「成交 0 亿」恒为 0。
+            "成交额": float(parts[9]) if parts[9] else 0,
         }
     return results
