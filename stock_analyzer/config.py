@@ -52,7 +52,11 @@ else:
 
 # ── 路径常量 ──────────────────────────────────────
 
-DB_PATH = os.path.join(ROOT_DIR, "stock_cache.db")
+# 2026-11-22：允许用环境变量覆盖缓存库路径。
+# 背景：容器里 /app 是只读挂载（.:/app:ro），SQLite 无法在同目录创建 -wal/-shm，
+# 导致 stock_name_map 缓存永远写不进去 -> 每次进程重启都要用 akshare 重拉
+# 5000+ 股票名称（实测 8.5 秒），这是首页首次打开慢的元凶。
+DB_PATH = os.environ.get("STOCK_CACHE_DB") or os.path.join(ROOT_DIR, "stock_cache.db")
 REPORT_DIR = os.path.join(ROOT_DIR, "reports")
 CHART_DIR = os.path.join(ROOT_DIR, "reports", "charts")
 PORTFOLIO_DIR = os.path.join(ROOT_DIR, "portfolios")

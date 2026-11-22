@@ -16,7 +16,8 @@ import sqlite3
 from datetime import date, datetime
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(PROJECT_ROOT, "stock_cache.db")
+# 2026-11-22：与 config.DB_PATH 保持一致，支持环境变量覆盖（容器内 /app 只读）
+DB_PATH = os.environ.get("STOCK_CACHE_DB") or os.path.join(PROJECT_ROOT, "stock_cache.db")
 
 # ── 2026 A股休市日（内置 fallback，依据上交所官方公告展开）──
 # 区间：元旦 1/1-1/3｜春节 2/15-2/23｜清明 4/4-4/6｜劳动节 5/1-5/5｜

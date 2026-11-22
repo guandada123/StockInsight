@@ -13,6 +13,9 @@ services:
       - .:/app:ro
     environment:
       - TUSHARE_TOKEN=${TUSHARE_TOKEN:-}
+      # 2026-11-22：缓存库放到可写目录。/app 是只读挂载，SQLite 建不了 -wal，
+      # 导致股票名称缓存永远失效、每次重启重拉 akshare（8.5s）。
+      - STOCK_CACHE_DB=/app/logs/stock_cache.db
       # 2026-10-16：限流状态落盘到可写目录（仓库为只读挂载，默认路径会报 OSError 噪音日志）
       - SI_RATE_DUMP_PATH=${SI_RATE_DUMP_PATH:-/app/logs/.rate_limits.json}
     restart: unless-stopped
