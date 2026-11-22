@@ -7,7 +7,10 @@
 - 取数函数 patch `akshare.xxx` → 测正常路径 + 异常兜底路径
 - 缓存 _cached_perm：patch _MEM_CACHE/_perm_load/_perm_save/_get_conn 四件套
   （磁盘缓存泄漏会让测试串味，必须一并隔离）
-- get_macro_indicators 会写真实 stock_cache.db → patch sqlite3.connect 指向 tmp
+- get_macro_indicators 会写真实 stock_cache.db → patch advanced.DB_PATH 指向 tmp
+  （2026-11-22：原先 patch sqlite3.connect 并匹配字面量 "stock_cache.db"，
+  改成单一真源 config.DB_PATH 后该字面量不再出现，测试反而连到真实库——
+  本地因为有历史 macro_cache 表而假绿，CI 上红。改为直接改模块内 DB_PATH。）
 """
 
 from unittest.mock import MagicMock, patch
@@ -496,11 +499,7 @@ class TestMacro:
         conn.commit()
         conn.close()
 
-        real_connect = sqlite3.connect
-        monkeypatch.setattr(
-            "sqlite3.connect",
-            lambda *a, **k: real_connect(db) if a[0] == "stock_cache.db" else real_connect(*a, **k),
-        )
+        monkeypatch.setattr(advanced, "DB_PATH", str(db))
         with patch.object(advanced, "_fetch_macro_indicators") as m:
             r = advanced.get_macro_indicators()
         assert r["制造业PMI"] == 51
@@ -511,11 +510,7 @@ class TestMacro:
         import sqlite3
 
         db = tmp_path / "cache.db"
-        real_connect = sqlite3.connect
-        monkeypatch.setattr(
-            "sqlite3.connect",
-            lambda *a, **k: real_connect(db) if a[0] == "stock_cache.db" else real_connect(*a, **k),
-        )
+        monkeypatch.setattr(advanced, "DB_PATH", str(db))
         with patch.object(
             advanced, "_fetch_macro_indicators", return_value={"制造业PMI": 50.5}
         ) as m:
@@ -523,7 +518,7 @@ class TestMacro:
         assert r["制造业PMI"] == 50.5
         m.assert_called_once()
         # 验证确实写入了库
-        conn = real_connect(db)
+        conn = sqlite3.connect(db)
         row = conn.execute("SELECT value FROM macro_cache WHERE key='macro_indicators'").fetchone()
         conn.close()
         assert row is not None and "50.5" in row[0]
