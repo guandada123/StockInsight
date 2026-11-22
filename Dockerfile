@@ -13,7 +13,10 @@ WORKDIR /build
 
 # 先复制 manifest 文件，利用 Docker 层缓存
 COPY package.json package-lock.json* ./
-RUN npm ci && npm cache clean --force
+# 2026-11-22：加 --include=optional。lock 文件在 macOS 生成，其 optionalDependencies
+# 带 os/cpu 字段，linux 容器里 npm ci 会跳过 lightningcss 的平台包，
+# 导致 vite build 报 "Cannot find module '../lightningcss.linux-arm64-gnu.node'"。
+RUN npm ci --include=optional && npm cache clean --force
 
 # 复制前端源码与构建配置
 COPY vite.config.ts tsconfig.json tsconfig.node.json index.html ./
