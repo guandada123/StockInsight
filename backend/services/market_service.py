@@ -142,11 +142,23 @@ def build_sector_rotation(top_n: int = 30) -> dict[str, Any]:
 
 
 def build_hot_sectors(top_n: int = 10) -> dict[str, Any]:
-    """热门板块（涨跌幅 + 资金流向综合排名）"""
+    """热门板块（涨跌幅 + 资金流向综合排名）
+
+    2026-11-22 修复：get_sectors() 返回 pandas.DataFrame，原实现只处理 dict，
+    导致 isinstance(sectors, dict) 永远为 False、sectors 恒为空列表
+    （现象：首页「板块热点」一直加载中，即便接口 200 也没有数据）。
+    现同时兼容 dict 与 DataFrame 两种返回形态。
+    """
     from stock_analyzer.fetcher import get_sectors
 
     sectors = get_sectors()
-    sector_list = list(sectors.items()) if isinstance(sectors, dict) else []
+    sector_list: list[tuple[str, dict]] = []
+    if isinstance(sectors, dict):
+        sector_list = list(sectors.items())
+    elif hasattr(sectors, "iterrows") and not getattr(sectors, "empty", True):
+        for _, row in sectors.iterrows():
+            rec = row.to_dict()
+            sector_list.append((str(rec.get("板块名称", "")), rec))
     result = []
     ranking = 1
     for name, info in sector_list[: top_n * 2]:

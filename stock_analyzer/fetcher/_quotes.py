@@ -25,6 +25,8 @@ from ._infra import (
     _sina_check_rate,
 )
 
+logger = get_logger("fetcher")
+
 
 def sina_real_time(codes):
     """获取新浪实时行情（加重试+速率限制）
@@ -74,6 +76,76 @@ def sina_real_time(codes):
             "成交额": float(parts[9]) if parts[9] else 0,
         }
     return results
+
+
+def tencent_real_time(codes):
+    """获取腾讯实时行情（2026-11-22 新增，作为新浪的优先源）
+
+    腾讯 qt.gtimg.cn 目前比新浪稳：新浪对 Referer 敏感且有频率限制，
+    腾讯无此约束，返回同样字段。实测 sh600519 返回 88 个 ~ 分隔字段。
+
+    字段索引（0 起）：1 名称 / 2 代码 / 3 最新价 / 4 昨收 / 5 今开 /
+    32 涨跌幅 / 33 最高 / 34 最低 / 37 成交额(万元)
+    """
+    if not codes:
+        return {}
+    symbols = ",".join(f"{'sh' if c.startswith('6') else 'sz'}{c}" for c in codes)
+    r = _retry_request(
+        "GET",
+        f"https://qt.gtimg.cn/q={symbols}",
+        max_retries=1,
+        base_delay=0.3,
+        timeout=8,
+    )
+    success = r is not None and r.status_code == 200
+    _circuit_report("tencent_real_time", success)
+    if not success:
+        return {}
+
+    r.encoding = "gbk"
+    results = {}
+    for line in r.text.strip().split("\n"):
+        m = re.search(r'v_(\w+)="(.*)"', line)
+        if not m:
+            continue
+        parts = m.group(2).split("~")
+        if len(parts) < 38:
+            continue
+        code = parts[2]
+        try:
+            price = float(parts[3] or 0)
+            yclose = float(parts[4] or 0)
+        except ValueError:
+            continue
+        if price <= 0:
+            continue
+        results[code] = {
+            "代码": code,
+            "名称": _correct_stock_name(code, parts[1]),
+            "最新价": price,
+            "涨跌幅": round((price - yclose) / yclose * 100, 2) if yclose else 0,
+            "涨跌额": round(price - yclose, 2),
+            "今开": float(parts[5] or 0),
+            "昨收": yclose,
+            "最高": float(parts[33] or 0),
+            "最低": float(parts[34] or 0),
+            "成交量": float(parts[6] or 0),
+            "成交额": float(parts[37] or 0) * 10000,  # 万元 → 元，对齐新浪口径
+        }
+    return results
+
+
+def get_real_time(codes):
+    """实时行情统一入口：腾讯优先，新浪兜底（2026-11-22 新增）
+
+    东财已不可用，行情主链路改为「腾讯 → 新浪」双源降级。
+    返回结构与原 sina_real_time 一致，调用方无需感知切换。
+    """
+    rt = tencent_real_time(codes)
+    if len(rt) >= max(1, len(codes) // 2):
+        return rt
+    logger.warning("get_real_time: 腾讯源返回不足（%d/%d），降级到新浪", len(rt), len(codes))
+    return sina_real_time(codes)
 
 
 def get_market_overview():

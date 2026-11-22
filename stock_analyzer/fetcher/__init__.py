@@ -51,7 +51,12 @@ from ._news import (
     get_stock_research,
     get_weibo_sentiment,
 )
-from ._quotes import get_market_overview, sina_real_time
+from ._quotes import (
+    get_market_overview,
+    get_real_time,
+    sina_real_time,
+    tencent_real_time,
+)
 from ._sectors import (
     calc_relative_strength,
     get_sector_rotation,

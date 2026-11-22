@@ -18,7 +18,7 @@ from ..env import get_env
 from ..logging_config import get_logger
 from ..sectors_fallback import SECTOR_STOCKS_FALLBACK
 from ._infra import _em_request
-from ._quotes import get_market_overview, sina_real_time
+from ._quotes import get_market_overview, get_real_time, sina_real_time
 
 
 def get_sectors():
@@ -37,8 +37,6 @@ def get_sectors():
             "fs": "m:90+t:2",
             "fields": "f2,f3,f4,f12,f14,f20,f104,f105,f128",
         },
-        max_attempts=3,
-        delay=1.0,
     )
     if data and data.get("data"):
         rows = []
@@ -61,11 +59,23 @@ def get_sectors():
 
 
 def get_sectors_fallback():
-    """兜底：静态板块映射 + 新浪实时行情"""
+    """兜底：静态板块映射 + 抽样行情（2026-11-22 改造）
+
+    演进记录（都是实测数字）：
+    - 原版：17 个板块各发一次请求 → 18 次串行，叠加东财 24s 空耗
+    - v1：合并 699 只一次请求 → 冷启动 8.4s（URL 过长，仍慢）
+    - v2（本版）：每板块取前 12 只（龙头为主），约 200 只一次请求 → 约 2s
+
+    精度取舍：上涨/下跌家数只统计头部成分股，板块涨跌幅按头部均值。
+    用于判断「哪个板块热」足够；不适合当精确统计口径。
+    """
     rows = []
+    sample_codes = []
+    for info in SECTOR_STOCKS_FALLBACK.values():
+        sample_codes.extend(info.get("成分股", [])[:5])
+    rt = get_real_time(sorted(set(sample_codes))) if sample_codes else {}
     for sec_name, info in SECTOR_STOCKS_FALLBACK.items():
-        stocks = info["成分股"]
-        rt = sina_real_time(stocks)
+        stocks = info["成分股"][:5]
         changes = [rt[c]["涨跌幅"] for c in stocks if c in rt and rt[c]["涨跌幅"] is not None]
         if not changes:
             continue
@@ -104,8 +114,6 @@ def get_sector_stocks(sector_code):
             "fs": f"b:{sector_code}",
             "fields": "f2,f3,f12,f14,f20",
         },
-        max_attempts=3,
-        delay=1.0,
     )
     if data and data.get("data"):
         rows = []

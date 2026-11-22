@@ -254,34 +254,42 @@ def _retry_on_failure(max_retries=1, base_delay=1.0, label="", default=None):
     return decorator
 
 
-def _em_request(path, params, max_attempts=5, delay=1.5):
-    """东方财富API：多主机+指数退避重试
+_EM_DEAD_UNTIL = 0.0  # 东财熔断截止时间戳：time.time() 小于它时直接跳过
 
-    优化后：最多3主机×5次=15次尝试（原12×3=36次）
-    每次退避：1.5s→3s→6s→12s→24s（上限30s，含±25%抖动）
+
+def _em_request(path, params, max_attempts=1, delay=0.3):
+    """东方财富API：快速失败 + 熔断（2026-11-22 改造）
+
+    背景：东财已对本机 IP 直接拒连 —— push2 / push2his / 80.push2 三个主机
+    实测 curl 全部返回 000（0.1s RST），属连接层被拒，不是超时。
+
+    原策略「3 主机 × 5 次重试 × 15s 超时 + 指数退避(1.5→3→6→12→24s)」
+    在一次调用上空耗约 24 秒，是 /api/market/hot-sectors 卡「加载中」的直接原因。
+
+    现改为：单主机快速尝试 + 全灭后熔断 10 分钟。熔断期内直接返回 None，
+    调用方立刻走本地兜底（新浪/腾讯），前端等待时间从 24s 降到 1s 内。
     """
-    hosts = [
-        "https://push2.eastmoney.com",
-        "https://push2his.eastmoney.com",
-        "http://80.push2.eastmoney.com",
-    ]
-    session = _get_em_session()
-    for host in hosts:
-        r = _retry_request(
-            "GET",
-            host + path,
-            max_retries=max_attempts,
-            base_delay=delay,
-            timeout=15,
-            session=session,
-            params=params,
-        )
-        if r is not None and r.status_code == 200:
-            try:
-                return r.json()
-            except Exception as e:
-                logger.debug("_em_request: 响应 JSON 解析失败 (%s: %s)", type(e).__name__, e)
-        time.sleep(0.5)  # 切换主机间隔
+    global _EM_DEAD_UNTIL
+    if time.time() < _EM_DEAD_UNTIL:
+        return None
+
+    r = _retry_request(
+        "GET",
+        "https://push2.eastmoney.com" + path,
+        max_retries=max_attempts,
+        base_delay=delay,
+        timeout=3,
+        session=_get_em_session(),
+        params=params,
+    )
+    if r is not None and r.status_code == 200:
+        try:
+            return r.json()
+        except Exception as e:
+            logger.debug("_em_request: 响应 JSON 解析失败 (%s: %s)", type(e).__name__, e)
+
+    _EM_DEAD_UNTIL = time.time() + 600
+    logger.warning("_em_request: 东财不可用，熔断 10 分钟（期间走本地兜底）")
     return None
 
 
