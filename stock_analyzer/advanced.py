@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 from .cache import _MEM_CACHE, _perm_load, _perm_save
+from .config import DB_PATH
 from .logging_config import get_logger
 
 logger = get_logger("advanced")
@@ -446,7 +447,7 @@ def get_macro_indicators():
     # （datetime.fromisoformat 解析失败、json.loads 失败等）都会泄漏连接。
     # 改用 closing() 保证异常路径也释放，语义不变。
     row = None
-    with closing(sqlite3.connect("stock_cache.db")) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn:
         conn.execute(
             "CREATE TABLE IF NOT EXISTS macro_cache (key TEXT PRIMARY KEY, value TEXT, ts TEXT)"
         )
@@ -460,7 +461,7 @@ def get_macro_indicators():
             return json.loads(row[0])
 
     result = _fetch_macro_indicators()
-    with closing(sqlite3.connect("stock_cache.db")) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn:
         conn.execute(
             "INSERT OR REPLACE INTO macro_cache VALUES (?,?,?)",
             ("macro_indicators", json.dumps(result), datetime.now().isoformat()),

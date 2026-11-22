@@ -14,9 +14,8 @@ import os
 import sqlite3
 import time
 
-DB_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "stock_cache.db"
-)
+# 2026-11-22：统一以 config.DB_PATH 为唯一真源（支持 STOCK_CACHE_DB 环境变量）
+from .config import DB_PATH  # noqa: E402
 
 
 def build(progress_cb=None):

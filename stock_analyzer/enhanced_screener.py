@@ -35,7 +35,10 @@ from .short_term import calc_combo_signals, calc_multi_timeframe_resonance, shor
 logger = get_logger("enhanced_screener")
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(PROJECT_ROOT, "stock_cache.db")
+# 2026-11-22：DB_PATH 统一以 config 为唯一真源（支持 STOCK_CACHE_DB 环境变量），
+# 不再各自拼路径 —— 容器里 /app 只读，硬编码会让写入类操作全部失败。
+from .config import DB_PATH  # noqa: E402  (放在路径常量后，避免循环导入)
+
 STOCK_LIST_CACHE = os.path.join(PROJECT_ROOT, "stock_list_cache.json")
 
 SCAN_WORKERS = 8
