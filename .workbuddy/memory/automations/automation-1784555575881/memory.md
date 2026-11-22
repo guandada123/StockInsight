@@ -812,6 +812,13 @@ DB readback 复核：`daily_scores` 表最新日期 = **2026-11-20（143 行）*
 上次有效扫描：**2026-11-20（周五）**，`已写入 daily_scores: 143 条`，DB readback 143 行 ✅（详见上条）。
 L3 post-hook：`✅ 正常完成 (duration=0s)`（跳过，无扫描执行，不告警）。
 
+## 2026-11-22 本次执行
+周日**非交易日**。L3 pre-hook **Gate3 触发跳过**：`is_trading_day.py 2026-11-22` 返回 `非交易日 ❌（周日，周末休市）`；prompt 含「选股」「收盘」交易关键词 -> `check_trading_context` 返回 1，打印「📅 非交易日 + 交易类自动化 → 跳过（is_trading_day=false）」。`gates_failed=1` 为 Gate3 **预期跳过计数，非真异常**。
+**未运行扫描**（`cli.py scan` 不执行；非故障、非资源/源问题）。三项真异常条件（退出码非0 / 无「结果已保存」/ daily_scores=0）**不适用** → **判定正常跳过，不推送飞书**。
+DB readback 复核：`date='2026-11-22'` = **0 行**（无周末污染）✅；`daily_scores` 表最新日期仍为 **2026-11-20（143 行）**，对照 11-19=194 / 11-18=194 / 11-16=202 / 11-13=194 完好。
+上次有效扫描：**2026-11-20（周五）**，`已写入 daily_scores: 143 条`，DB readback 143 行 ✅。
+L3 post-hook：`✅ 正常完成 (duration=0s)`（跳过，无扫描执行，不告警）。
+
 ## 2026-11-20 本次执行
 周五交易日。L3 pre-hook Gate3 通过（`is_trading_day=true`，gates_failed=0）。宿主侧 `PYTHONPATH=.../.deps /opt/homebrew/bin/python3.12 cli.py scan --mode mainboard --top-n 20`，**~3min（15:31:31→15:33:48）**，退出码 **0**（重定向捕获 `$?`，未用管道）。
 结果 `logs/scan_mainboard_20261120_1533.json`(2.53MB)，`已写入 daily_scores: 143 条`；DB readback `date='2026-11-20'`=**143 行** ✅（对照 11-19=194 / 11-18=194 / 11-16=202 / 11-13=194）。
