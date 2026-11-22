@@ -22,7 +22,9 @@ from .db_utils import open_wal_conn
 logger = logging.getLogger("tushare_loader")
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(PROJECT_ROOT, "stock_cache.db")
+# 2026-11-22：支持环境变量覆盖，与 config.DB_PATH 口径一致。
+# 容器内 /app 是只读挂载，硬编码路径会让下载任务报 "unable to open database file"。
+DB_PATH = os.environ.get("STOCK_CACHE_DB") or os.path.join(PROJECT_ROOT, "stock_cache.db")
 
 # ── 限速控制（强制间隔，防止触发API限流）──
 _API_CALL_INTERVAL = 0.5  # 每次API请求间隔秒数

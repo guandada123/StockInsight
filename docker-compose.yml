@@ -10,6 +10,12 @@ services:
       - ./stock_cache.db:/app/stock_cache.db
       - ./logs:/app/logs
       - ./portfolios:/app/portfolios
+      # 2026-11-22：tushare SDK 需要可写家目录（写 ~/.tushare 缓存）。
+      # 镜像里 useradd -r 不建 home，导致数据下载任务全部报
+      # "Cannot save file into a non-existent directory: '/home/appuser'"。
+      # 挂载可写目录绕开；正规修法是 Dockerfile 加 -m 建家目录，但当前
+      # 前端构建坏了（lightningcss 原生模块缺失）无法 rebuild。
+      - ./logs/tushare_home:/home/appuser
       - .:/app:ro
     environment:
       - TUSHARE_TOKEN=${TUSHARE_TOKEN:-}
