@@ -17,7 +17,14 @@ from ..config import HEADERS
 from ..env import get_env
 from ..logging_config import get_logger
 from ..sectors_fallback import SECTOR_STOCKS_FALLBACK
-from ._infra import _circuit_breaker, _circuit_report, _get_em_session, _retry_request
+from ._infra import (
+    _circuit_breaker,
+    _circuit_report,
+    _get_em_session,
+    _get_tushare_api_url,
+    _get_tushare_token,
+    _retry_request,
+)
 
 logger = get_logger("fetcher")
 
@@ -119,6 +126,65 @@ def get_fund_flow(code, days=20):
         logger.warning("get_fund_flow: 全部来源失败 code=%s (%s: %s)", code, type(e).__name__, e)
 
     return pd.DataFrame()
+
+
+def get_market_moneyflow(max_lookback=7):
+    """取最近一个交易日的全市场主力资金净流入（单位：万元）
+
+    2026-11-22 新增。三源现状：
+    - 东财 push2：本机 IP 已被拒连（0.1s RST）
+    - 腾讯 ff_ 接口：返回 v_pv_none_match（已失效）
+    - 新浪 bkzj_bk：返回 __ERROR Input error
+    改用 Tushare moneyflow 按 trade_date 批量查：一次约 5580 行 / 0.2 秒。
+    逐只调用要 85 次且会触发限频，故必须批量。
+
+    返回 {6位代码: 主力净流入(万元)}；取不到返回 {}。
+    """
+    token = _get_tushare_token()
+    if not token:
+        return {}
+    api_url = _get_tushare_api_url() or "https://api.tushare.pro"
+
+    for back in range(max_lookback):
+        day = (datetime.now() - timedelta(days=back)).strftime("%Y%m%d")
+        try:
+            r = requests.post(
+                api_url,
+                json={
+                    "api_name": "moneyflow",
+                    "token": token,
+                    "params": {"trade_date": day},
+                    "fields": "ts_code,net_mf_amount",
+                },
+                timeout=15,
+            )
+            if r.status_code != 200:
+                continue
+            payload = r.json()
+            if payload.get("code") != 0:
+                logger.debug(
+                    "get_market_moneyflow: api code=%s msg=%s",
+                    payload.get("code"),
+                    payload.get("msg"),
+                )
+                return {}
+            items = (payload.get("data") or {}).get("items") or []
+            if not items:
+                continue  # 非交易日，往前翻一天
+            out = {}
+            for ts_code, net in items:
+                code = str(ts_code).split(".")[0]
+                try:
+                    out[code] = float(net or 0)
+                except (TypeError, ValueError):
+                    continue
+            if out:
+                logger.info("get_market_moneyflow: %d 只（交易日 %s）", len(out), day)
+                return out
+        except Exception as e:
+            logger.debug("get_market_moneyflow 失败 (%s: %s)", type(e).__name__, e)
+            return {}
+    return {}
 
 
 def get_sector_fund_flow_rank(indicator="今日", sector_type="行业资金流"):

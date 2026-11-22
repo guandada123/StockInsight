@@ -6,7 +6,7 @@
 """
 
 from ._fundamentals import get_fundamentals, get_national_team_holdings
-from ._funds import get_fund_flow, get_sector_fund_flow_rank
+from ._funds import get_fund_flow, get_market_moneyflow, get_sector_fund_flow_rank
 from ._infra import (
     _CIRCUIT_STATE,
     _NON_RETRYABLE_EXC,

@@ -17,6 +17,7 @@ from ..config import HEADERS
 from ..env import get_env
 from ..logging_config import get_logger
 from ..sectors_fallback import SECTOR_STOCKS_FALLBACK
+from ._funds import get_market_moneyflow
 from ._infra import _em_request
 from ._quotes import get_market_overview, get_real_time, sina_real_time
 
@@ -74,6 +75,9 @@ def get_sectors_fallback():
     for info in SECTOR_STOCKS_FALLBACK.values():
         sample_codes.extend(info.get("成分股", [])[:5])
     rt = get_real_time(sorted(set(sample_codes))) if sample_codes else {}
+    # 2026-11-22：板块主力资金净流入。数据来自 Tushare 全市场 moneyflow（一次批量，
+    # 单位万元），按**全部**成分股聚合 —— 资金流是全市场数据，不受上面的抽样限制。
+    mf = get_market_moneyflow()
     for sec_name, info in SECTOR_STOCKS_FALLBACK.items():
         stocks = info["成分股"][:5]
         changes = [rt[c]["涨跌幅"] for c in stocks if c in rt and rt[c]["涨跌幅"] is not None]
@@ -89,6 +93,8 @@ def get_sectors_fallback():
                 "上涨家数": up,
                 "下跌家数": down,
                 "总成交额": sum(rt[c]["成交额"] for c in stocks if c in rt),
+                # 万元 → 元（与下游 fund_flow_yi = 净额/1e8 对齐）
+                "资金净流入": round(sum(mf.get(c, 0) for c in info["成分股"]) * 10000, 0),
             }
         )
     if rows:
