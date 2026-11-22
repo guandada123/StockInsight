@@ -157,7 +157,7 @@ def run_fast_analysis(code: str) -> dict[str, Any]:
         "time": time.strftime("%H:%M:%S"),
         "quote": _build_quote(code, name, info, price_rt, None),
         "technical": {
-            "ma_status": tech.get("均线", ""),
+            "ma_status": _ma_status_text(tech.get("均线")),
             "macd_signal": tech.get("macd_signal", ""),
             "kdj_signal": tech.get("kdj_signal", ""),
             "rsi_value": tech.get("rsi_value", 50),
@@ -307,6 +307,35 @@ def build_fund_flow_data(code: str, days: int = 20) -> dict[str, Any]:
 # ═══════════════════════════════════════════
 
 
+def _ma_status_text(ma) -> str:
+    """把均线结构转成一句话（多头排列 / 空头排列 / 均线纠缠）
+
+    2026-11-22 修复：stock_analyzer.analysis 返回的 "均线" 是字典
+    {MA5: {值, 股价位置}, MA10: ..., MA20: ...}，而 responses.MAStatus
+    声明 ma_status 为 str，前端又调用 .includes("多头") ——
+    于是运行时报 "r.ma_status.includes is not a function"，整个个股页白屏。
+    这里统一转字符串；字典仍原样留在 "均线" 字段，不影响其他消费者。
+    """
+    if isinstance(ma, str):
+        return ma
+    if not isinstance(ma, dict) or not ma:
+        return ""
+    values = []
+    for key in ("MA5", "MA10", "MA20"):
+        item = ma.get(key)
+        if isinstance(item, dict):
+            v = item.get("值")
+            if isinstance(v, (int, float)):
+                values.append(float(v))
+    if len(values) < 3:
+        return ""
+    if values[0] > values[1] > values[2]:
+        return "多头排列"
+    if values[0] < values[1] < values[2]:
+        return "空头排列"
+    return "均线纠缠"
+
+
 def _build_quote(code, name, info, price, r):
     return {
         "code": code,
@@ -332,7 +361,7 @@ def _build_quote(code, name, info, price, r):
 def _build_technical(r, tech_sum=None, sr=None):
     stop_d = r.get("stop_levels", {})
     return {
-        "ma_status": (tech_sum or {}).get("均线", ""),
+        "ma_status": _ma_status_text((tech_sum or {}).get("均线")),
         "macd_signal": r.get("macd_signal", ""),
         "kdj_signal": r.get("kdj_signal", ""),
         "rsi_value": r.get("rsi", 50),
@@ -450,7 +479,7 @@ def _build_debate(code, r):
                     "rsi": r.get("rsi", 50),
                     "near5d": r.get("near_5d", 0),
                     "near20d": r.get("near_20d", 0),
-                    "ma_status": tech_sum.get("均线", ""),
+                    "ma_status": _ma_status_text(tech_sum.get("均线")),
                     "resistance": sr.get("压力", []),
                     "price": price,
                     "pe": r.get("fundamentals", {}).get("市盈率")
