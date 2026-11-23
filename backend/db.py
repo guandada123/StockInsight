@@ -29,9 +29,13 @@ import aiosqlite
 logger = logging.getLogger(__name__)
 
 # 配置
-_DB_PATH = os.environ.get(
-    "STOCKINSIGHT_DB_PATH",
-    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "stock_cache.db"),
+# 2026-11-23：优先读 STOCK_CACHE_DB（与 config.DB_PATH 同源），再退回自身的
+# STOCKINSIGHT_DB_PATH。此前默认 /app/stock_cache.db —— 容器内 /app 只读，
+# init_database 的 PRAGMA journal_mode=WAL 会报 "unable to open database file"。
+_DB_PATH = (
+    os.environ.get("STOCK_CACHE_DB")
+    or os.environ.get("STOCKINSIGHT_DB_PATH")
+    or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "stock_cache.db")
 )
 _POOL_SIZE = int(os.environ.get("STOCKINSIGHT_DB_POOL_SIZE", "5"))
 _QUERY_TIMEOUT = int(os.environ.get("STOCKINSIGHT_DB_TIMEOUT", "10"))

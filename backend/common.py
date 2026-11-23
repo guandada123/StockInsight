@@ -46,7 +46,15 @@ PROJECT_ROOT: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _get_db_path() -> str:
-    """获取 SQLite 数据库路径（兼容 stock_analyzer/ 子目录路径）"""
+    """获取 SQLite 数据库路径（兼容 stock_analyzer/ 子目录路径）
+
+    2026-11-23：优先取 STOCK_CACHE_DB（与 config.DB_PATH 同源）。
+    此前恒返回 /app/stock_cache.db —— 容器内 /app 只读，打开即
+    "unable to open database file"，data_service 全线不可用。
+    """
+    env_path = os.environ.get("STOCK_CACHE_DB")
+    if env_path:
+        return env_path
     db_path = os.path.join(PROJECT_ROOT, "stock_cache.db")
     if not os.path.exists(db_path):
         db_path = os.path.join(PROJECT_ROOT, "stock_analyzer", "stock_cache.db")

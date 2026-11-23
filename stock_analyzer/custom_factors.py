@@ -28,7 +28,10 @@ import pandas as pd
 from .db_utils import open_wal_conn
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(PROJECT_ROOT, "stock_cache.db")
+# 2026-11-23：统一走 config.DB_PATH（唯一真源）。
+# 此前自拼 /app/stock_cache.db，容器内 /app 只读 → open_wal_conn 报
+# "unable to open database file"，导致「自定义因子」整个功能不可用（列表、初始化全挂）。
+from .config import DB_PATH  # noqa: E402
 
 
 class FactorExpressionEngine:
