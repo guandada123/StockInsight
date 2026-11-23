@@ -34,6 +34,22 @@ _CIRCUIT_STATE: dict[
 ] = {}  # {api_name: {"failures": N, "last_fail": timestamp, "open_until": timestamp}}
 
 
+def market_prefix(code: str) -> str:
+    """返回行情代码的市场前缀：sh / sz / bj
+
+    2026-11-23：原各处只判断 `startswith("6")` → sh，其余全 sz。
+    这会把 5 开头的沪市 ETF 拼成 sz 前缀（例：科创半导 588170 → sz588170），
+    腾讯与新浪都查不到，行情返回空，持仓页据此算出 -100% 亏损。
+    规则：6/5/9 → 沪；4/8 → 北交所；其余 → 深。
+    """
+    c = str(code).strip()
+    if c.startswith(("6", "5", "9")):
+        return "sh"
+    if c.startswith(("4", "8")):
+        return "bj"
+    return "sz"
+
+
 def _circuit_breaker(api_name, max_failures=3, cooldown=300):
     """熔断器检查：返回 True 表示可以尝试，False 表示跳过"""
     state = _CIRCUIT_STATE.get(api_name, {})

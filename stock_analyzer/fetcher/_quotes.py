@@ -23,6 +23,7 @@ from ._infra import (
     _get_sina_session,
     _retry_request,
     _sina_check_rate,
+    market_prefix,
 )
 
 logger = get_logger("fetcher")
@@ -35,7 +36,7 @@ def sina_real_time(codes):
     """
     if not codes:
         return {}
-    symbols = ",".join(f"{'sh' if c.startswith('6') else 'sz'}{c}" for c in codes)
+    symbols = ",".join(f"{market_prefix(c)}{c}" for c in codes)
     if len(codes) > 10:
         _sina_check_rate()  # 大批量才需要限流
     session = _get_sina_session()
@@ -89,7 +90,7 @@ def tencent_real_time(codes):
     """
     if not codes:
         return {}
-    symbols = ",".join(f"{'sh' if c.startswith('6') else 'sz'}{c}" for c in codes)
+    symbols = ",".join(f"{market_prefix(c)}{c}" for c in codes)
     r = _retry_request(
         "GET",
         f"https://qt.gtimg.cn/q={symbols}",

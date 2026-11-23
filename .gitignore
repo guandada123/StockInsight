@@ -35,6 +35,8 @@ mainboard_summary_*.csv
 portfolios/test_*.json
 # 2026-11-22：模拟盘持仓明细（代码/成本/股数）不入公开库，只留本机
 portfolios/模拟盘.json
+# 2026-11-23：用户实盘持仓（真实成本与股数），绝不入库
+portfolios/实盘.json
 # 2026-11-22：全链路精选组合同为持仓明细（5 只，股数/成本），且由报告程序生成，不入库
 portfolios/全链路精选组合.json
 !alerts.json

@@ -77,9 +77,20 @@ def get_portfolio(name: str) -> dict[str, Any]:
         p = float(info.get("最新价", 0) or 0)
         cost = pos.get("cost", 0)
         shares = pos.get("shares", 0)
-        mv = round(p * shares, 2)
-        profit = round((p - cost) * shares, 2)
-        profit_pct = round((p - cost) / cost * 100, 2) if cost else 0
+        if p <= 0:
+            # 2026-11-23：取价失败不得谎报盈亏。此前 p=0 会算出 -100%，
+            # 等于告诉用户「账户归零」（实证：588170 因市场前缀错拼导致双源取不到）。
+            # 归零会让 profit_pct 参与排序时报错，故用 0 + 显式标记，并留 WARNING 可查。
+            logger.warning("portfolio_price_missing: code=%s name=%s", code, info.get("名称", code))
+            mv = 0.0
+            profit = 0.0
+            profit_pct = 0.0
+            price_missing = True
+        else:
+            mv = round(p * shares, 2)
+            profit = round((p - cost) * shares, 2)
+            profit_pct = round((p - cost) / cost * 100, 2) if cost else 0
+            price_missing = False
         total_cost += cost * shares
         total_value += mv
         holdings.append(
@@ -92,6 +103,7 @@ def get_portfolio(name: str) -> dict[str, Any]:
                 "market_value": mv,
                 "profit_amount": profit,
                 "profit_pct": profit_pct,
+                "price_missing": price_missing,
                 "weight_pct": 0,
             }
         )

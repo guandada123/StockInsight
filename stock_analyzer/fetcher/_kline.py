@@ -24,6 +24,7 @@ from ._infra import (
     _parse_kline_df,
     _retry_request,
     _sina_check_rate,
+    market_prefix,
 )
 
 logger = get_logger("fetcher")
@@ -31,7 +32,7 @@ logger = get_logger("fetcher")
 
 def _sina_kline(code, days):
     """新浪财经日K线（加重试）"""
-    symbol = f"sh{code}" if code.startswith("6") else f"sz{code}"
+    symbol = f"{market_prefix(code)}{code}"
     url = (
         "http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/"
         f"CN_MarketData.getKLineData?symbol={symbol}&scale=240&datalen={days}"
@@ -63,7 +64,7 @@ def _sina_kline(code, days):
 
 def _tencent_kline(code, days):
     """腾讯证券日K线（备选，加重试）"""
-    symbol = f"sh{code}" if code.startswith("6") else f"sz{code}"
+    symbol = f"{market_prefix(code)}{code}"
     url = f"http://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={symbol},day,,,120,qfq"
     session = _get_sina_session()  # 复用同一个session
     r = _retry_request("GET", url, max_retries=1, base_delay=0.5, timeout=8, session=session)
@@ -387,7 +388,7 @@ def get_intraday_kline(code, scale=60, count=120):
     count: 返回条数
     返回 DataFrame（列：日期/开盘/收盘/最高/最低/成交量）或空
     """
-    symbol = f"sh{code}" if code.startswith("6") else f"sz{code}"
+    symbol = f"{market_prefix(code)}{code}"
     url = (
         "http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/"
         f"CN_MarketData.getKLineData?symbol={symbol}&scale={scale}&ma=no&datalen={count}"
