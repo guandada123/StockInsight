@@ -71,7 +71,7 @@ def get_portfolio(name: str) -> dict[str, Any]:
 
     holdings = []
     total_cost = 0
-    total_value = 0
+    total_value = 0.0  # mypy: 后续 += mv(float)，初始化为 float 避免 int→float 类型错误
     for code, pos in holdings_raw.items():
         info = rt.get(code, {})
         p = float(info.get("最新价", 0) or 0)
