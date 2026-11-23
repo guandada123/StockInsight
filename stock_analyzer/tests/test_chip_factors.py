@@ -3,7 +3,7 @@
 import os
 import sys
 
-# Pre-populate sys.modules so @patch('akshare.stock_holder_number_em') resolves
+# Pre-populate sys.modules so @patch('akshare.stock_zh_a_gdhs') resolves
 # without needing akshare actually installed in the test environment.
 from unittest.mock import MagicMock
 
@@ -16,11 +16,29 @@ import numpy as np
 import pandas as pd
 
 from stock_analyzer.chip_factors import (
+    _HOLDER_TABLE,
     calc_chip_concentration,
     calc_turnover_analysis,
     calc_volume_price_factors,
     composite_chip_score,
 )
+
+
+def _make_gdhs_table(code="000001", now=12000, prev=12000, pct=0.0, avg_hold=8000):
+    """构造 ak.stock_zh_a_gdhs('最新') 风格的全市场股东户数表（单行命中给定代码）。
+
+    2026-11-23：calc_chip_concentration 已从 stock_holder_number_em 换到此接口，
+    列名对齐 chip_factors.py 实际读取的字段。
+    """
+    return pd.DataFrame(
+        {
+            "代码": [str(code)],
+            "股东户数-本次": [now],
+            "股东户数-上次": [prev],
+            "股东户数-增减比例": [pct],
+            "户均持股数量": [avg_hold],
+        }
+    )
 
 
 def _make_kline_df(rows=60, seed=42):
@@ -156,116 +174,97 @@ class TestTurnoverAnalysis(unittest.TestCase):
 
 
 class TestCalcChipConcentration(unittest.TestCase):
-    """calc_chip_concentration 筹码集中度测试（mock akshare）"""
+    """calc_chip_concentration 筹码集中度测试（mock akshare.stock_zh_a_gdhs）
 
-    @patch("akshare.stock_holder_number_em")
+    2026-11-23 迁移：实现已从 stock_holder_number_em 换到全市场表 stock_zh_a_gdhs
+    （按代码筛选 + 6h 表级缓存），测试同步对齐新接口，避免「代码改了测试没跟上」。
+    """
+
+    def setUp(self):
+        # 清表级缓存，避免上一个测试的 mock 表被 6h TTL 复用污染
+        _HOLDER_TABLE["data"] = None
+        _HOLDER_TABLE["ts"] = 0.0
+
+    @patch("akshare.stock_zh_a_gdhs")
     def test_concentration_increasing(self, mock_ak):
-        """股东人数大幅减少 → 筹码集中(主力吸筹)"""
-        mock_ak.return_value = pd.DataFrame(
-            {
-                "股东人数": [10000, 12000],  # 最新:10000, 上期:12000 → -16.7%
-            }
-        )
+        """股东户数大幅减少 → 筹码集中(主力吸筹)"""
+        mock_ak.return_value = _make_gdhs_table(now=10000, prev=12000, pct=-16.67)
         result = calc_chip_concentration("000001")
         self.assertTrue(result["数据可用"])
         self.assertEqual(result["股东人数趋势"], "集中(主力吸筹)")
         self.assertEqual(result["筹码集中度评分"], 80)
         self.assertLess(result["股东人数变化率"], -5)
 
-    @patch("akshare.stock_holder_number_em")
+    @patch("akshare.stock_zh_a_gdhs")
     def test_concentration_slight(self, mock_ak):
-        """股东人数小幅减少 → 小幅集中"""
-        mock_ak.return_value = pd.DataFrame(
-            {
-                "股东人数": [11700, 12000],  # -2.5% → change_pct < -2
-            }
-        )
+        """股东户数小幅减少 → 小幅集中"""
+        mock_ak.return_value = _make_gdhs_table(now=11700, prev=12000, pct=-2.5)
         result = calc_chip_concentration("000001")
         self.assertTrue(result["数据可用"])
         self.assertEqual(result["股东人数趋势"], "小幅集中")
         self.assertEqual(result["筹码集中度评分"], 65)
 
-    @patch("akshare.stock_holder_number_em")
+    @patch("akshare.stock_zh_a_gdhs")
     def test_concentration_stable(self, mock_ak):
-        """股东人数基本不变 → 稳定"""
-        mock_ak.return_value = pd.DataFrame(
-            {
-                "股东人数": [12000, 12100],  # -0.83%
-            }
-        )
+        """股东户数基本不变 → 稳定"""
+        mock_ak.return_value = _make_gdhs_table(now=12000, prev=12100, pct=-0.83)
         result = calc_chip_concentration("000001")
         self.assertTrue(result["数据可用"])
         self.assertEqual(result["股东人数趋势"], "稳定")
 
-    @patch("akshare.stock_holder_number_em")
+    @patch("akshare.stock_zh_a_gdhs")
     def test_concentration_slight_dispersing(self, mock_ak):
-        """股东人数小幅增加 → 小幅分散"""
-        mock_ak.return_value = pd.DataFrame(
-            {
-                "股东人数": [12300, 12000],  # +2.5%
-            }
-        )
+        """股东户数小幅增加 → 小幅分散"""
+        mock_ak.return_value = _make_gdhs_table(now=12300, prev=12000, pct=2.5)
         result = calc_chip_concentration("000001")
         self.assertTrue(result["数据可用"])
         self.assertEqual(result["股东人数趋势"], "小幅分散")
 
-    @patch("akshare.stock_holder_number_em")
+    @patch("akshare.stock_zh_a_gdhs")
     def test_concentration_dispersing(self, mock_ak):
-        """股东人数大幅增加 → 分散(主力出货)"""
-        mock_ak.return_value = pd.DataFrame(
-            {
-                "股东人数": [13000, 12000],  # +8.33%
-            }
-        )
+        """股东户数大幅增加 → 分散(主力出货)"""
+        mock_ak.return_value = _make_gdhs_table(now=13000, prev=12000, pct=8.33)
         result = calc_chip_concentration("000001")
         self.assertTrue(result["数据可用"])
         self.assertEqual(result["股东人数趋势"], "分散(主力出货)")
         self.assertEqual(result["筹码集中度评分"], 20)
 
-    @patch("akshare.stock_holder_number_em")
-    def test_too_few_rows(self, mock_ak):
-        """数据不足2行 → 返回默认值"""
-        mock_ak.return_value = pd.DataFrame({"股东人数": [10000]})
+    @patch("akshare.stock_zh_a_gdhs")
+    def test_code_not_found(self, mock_ak):
+        """全市场表无该代码 → 返回默认值"""
+        mock_ak.return_value = _make_gdhs_table(code="000002")
         result = calc_chip_concentration("000001")
         self.assertFalse(result["数据可用"])
 
-    @patch("akshare.stock_holder_number_em")
+    @patch("akshare.stock_zh_a_gdhs")
     def test_empty_data(self, mock_ak):
         """空数据 → 返回默认值"""
         mock_ak.return_value = pd.DataFrame()
         result = calc_chip_concentration("000001")
         self.assertFalse(result["数据可用"])
 
-    @patch("akshare.stock_holder_number_em")
+    @patch("akshare.stock_zh_a_gdhs")
     def test_prev_zero(self, mock_ak):
-        """上期股东人数为0 → 返回默认值"""
-        mock_ak.return_value = pd.DataFrame(
-            {
-                "股东人数": [10000, 0],
-            }
-        )
+        """上期股东户数为0 → 返回默认值"""
+        mock_ak.return_value = _make_gdhs_table(now=10000, prev=0, pct=0)
         result = calc_chip_concentration("000001")
         self.assertFalse(result["数据可用"])
 
-    @patch("akshare.stock_holder_number_em")
+    @patch("akshare.stock_zh_a_gdhs")
     def test_akshare_exception(self, mock_ak):
         """akshare 抛异常 → 返回默认值"""
         mock_ak.side_effect = RuntimeError("API fail")
         result = calc_chip_concentration("000001")
         self.assertFalse(result["数据可用"])
 
-    @patch("akshare.stock_holder_number_em")
-    def test_with_total_shares(self, mock_ak):
-        """有总股本 → 计算户均持股"""
-        mock_ak.return_value = pd.DataFrame(
-            {
-                "股东人数": [10000, 12000],
-                "总股本": [100_000_000, 100_000_000],
-            }
-        )
+    @patch("akshare.stock_zh_a_gdhs")
+    def test_with_avg_hold(self, mock_ak):
+        """接口直给用户均持股数量 → 户均持股变化>0"""
+        mock_ak.return_value = _make_gdhs_table(now=10000, prev=12000, pct=-16.67, avg_hold=10000)
         result = calc_chip_concentration("000001")
         self.assertTrue(result["数据可用"])
         self.assertGreater(result["户均持股变化"], 0)
+        self.assertEqual(result["户均持股变化"], 10000.0)
 
 
 class TestVolumePriceFactorsNoVol(unittest.TestCase):
