@@ -26,6 +26,11 @@ router = APIRouter(prefix="/api/market", tags=["市场行情"])
 
 _SAFE_ERROR_MSG = "服务暂不可用，请稍后重试"
 
+# 板块热点进程内缓存（2026-11-23）：45 秒。盘中数据仍在变，但用户不会 45 秒内刷同一屏，
+# 换来首屏重复请求从 0.36s 降到 ~0.001s。多 worker 各自持有，属「可容忍的不一致」。
+_HOT_SECTORS_TTL = 45.0
+_HOT_SECTORS_CACHE: dict = {"data": None, "top_n": None, "ts": 0.0}
+
 
 @router.get("/overview")
 async def market_overview():
@@ -92,11 +97,27 @@ async def sector_rotation():
 
 @router.get("/hot-sectors")
 async def hot_sectors(top_n: int = Query(10, description="返回前N个板块")):
-    """热门板块（涨跌幅 + 资金流向综合排名）"""
+    """热门板块（涨跌幅 + 资金流向综合排名）
+
+    2026-11-23：加 45 秒进程内缓存。
+    此前每次请求都重算（实测稳定的 0.36-0.40s，两次之间毫无差异 = 缓存不存在），
+    但返回里却硬写 freshness="cached" —— 属"呈现假事实"，比没缓存更糟。
+    现在：命中才标 cached，未命中标 fresh，且 freshness 与实际行为一致。
+    """
     t0 = time.time()
     try:
+        now = time.time()
+        if (
+            _HOT_SECTORS_CACHE["data"] is not None
+            and _HOT_SECTORS_CACHE["top_n"] == top_n
+            and now - _HOT_SECTORS_CACHE["ts"] < _HOT_SECTORS_TTL
+        ):
+            return _ok(
+                _HOT_SECTORS_CACHE["data"], freshness="cached", timing=(time.time() - t0) * 1000
+            )
         result = build_hot_sectors(top_n=top_n)
-        return _ok(result, freshness="cached", timing=(time.time() - t0) * 1000)
+        _HOT_SECTORS_CACHE.update(data=result, top_n=top_n, ts=now)
+        return _ok(result, freshness="fresh", timing=(time.time() - t0) * 1000)
     except Exception:
         logger.exception("hot_sectors_failed")
         return _err(_SAFE_ERROR_MSG)
