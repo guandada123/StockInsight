@@ -4,9 +4,38 @@
 数据源：akshare 十大流通股东 + 股东人数变化
 """
 
+import contextlib
+import io
+import time
+
 from .logging_config import get_logger
 
 logger = get_logger("chip_factors")
+
+# 全市场股东户数表缓存（stock_zh_a_gdhs 一次约 4-7s，6 小时内复用）
+_HOLDER_TABLE_TTL = 6 * 3600
+_HOLDER_TABLE: dict = {"data": None, "ts": 0.0}
+
+
+def _load_holder_table():
+    """取全市场股东户数表（带 6 小时缓存），取不到返回 None"""
+    now = time.time()
+    if _HOLDER_TABLE["data"] is not None and now - _HOLDER_TABLE["ts"] < _HOLDER_TABLE_TTL:
+        return _HOLDER_TABLE["data"]
+    try:
+        import akshare as ak
+
+        # 该接口带 tqdm 进度条（写 stderr），会把服务日志刷满
+        with contextlib.redirect_stderr(io.StringIO()):
+            df = ak.stock_zh_a_gdhs(symbol="最新")
+        if df is None or df.empty:
+            return None
+        _HOLDER_TABLE.update(data=df, ts=now)
+        logger.info("holder_table_loaded: %d 行", len(df))
+        return df
+    except Exception as e:
+        logger.warning("_load_holder_table 失败 (%s: %s)", type(e).__name__, e)
+        return None
 
 
 def calc_chip_concentration(code):
@@ -23,22 +52,30 @@ def calc_chip_concentration(code):
     }
 
     try:
-        import akshare as ak
-
-        df = ak.stock_holder_number_em(symbol=code)
-        if df is None or df.empty or len(df) < 2:
+        # 2026-11-23：原 ak.stock_holder_number_em(symbol=code) 在 akshare 1.18.x
+        # 已移除（AttributeError），本因子长期静默降级为「未知」。
+        # 改用全市场表 + 按代码筛（6 小时缓存），列名口径见接口文档。
+        df = _load_holder_table()
+        if df is None:
             return result
 
-        # 最新两期股东人数
-        latest = df.iloc[0]
-        prev = df.iloc[1]
-        holders_now = float(latest.get("股东人数", latest.iloc[1] if len(df.columns) > 1 else 0))
-        holders_prev = float(prev.get("股东人数", prev.iloc[1] if len(df.columns) > 1 else 0))
+        row = df[df["代码"].astype(str).str.zfill(6) == str(code).zfill(6)]
+        if row.empty:
+            return result
+        latest = row.iloc[0]
 
-        if holders_prev == 0:
+        holders_now = float(latest.get("股东户数-本次") or 0)
+        holders_prev = float(latest.get("股东户数-上次") or 0)
+        if holders_now <= 0 or holders_prev <= 0:
             return result
 
-        change_pct = (holders_now - holders_prev) / holders_prev * 100
+        # 接口已直接给增减比例（百分比），优先使用，避免自己再除一遍口径不同
+        raw_pct = latest.get("股东户数-增减比例")
+        change_pct = (
+            float(raw_pct)
+            if raw_pct is not None and str(raw_pct) not in ("", "nan", "None")
+            else (holders_now - holders_prev) / holders_prev * 100
+        )
 
         # 判断趋势
         if change_pct < -5:
@@ -57,12 +94,11 @@ def calc_chip_concentration(code):
             trend = "分散(主力出货)"
             score = 20
 
-        # 户均持股估算
-        total_shares = float(latest.get("总股本", 0)) if "总股本" in latest.index else 0
-        if total_shares > 0 and holders_now > 0:
-            avg_hold = total_shares / holders_now
-        else:
-            avg_hold = 0
+        # 户均持股：新接口直接给「户均持股数量」，不再用总股本÷户数估算
+        avg_hold = float(latest.get("户均持股数量") or 0)
+        if avg_hold <= 0:
+            total_shares = float(latest.get("总股本", 0) or 0)
+            avg_hold = total_shares / holders_now if total_shares > 0 else 0
 
         result = {
             "股东人数趋势": trend,
