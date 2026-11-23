@@ -374,6 +374,17 @@ def get_kline(code, days=120):
             "get_kline: Chain 不可用且兜底失败 code=%s (%s: %s)", code, type(e).__name__, e
         )
 
+    # ── 直取兜底（2026-11-23）──
+    # 实测 _tencent_kline / _sina_kline 本身支持 ETF（588170 各返回 20 行），
+    # 但 DataSourceChain 对 ETF 全线失败，之后直接落到 yquoter/tickflow（不支持 ETF）→ 恒空。
+    # 因此在进最后防线前，给两个已验证支持 ETF 的源一次直取机会。
+    df = _tencent_kline(code, days)
+    if not df.empty:
+        return df
+    df = _sina_kline(code, days)
+    if not df.empty:
+        return df
+
     # ── 兜底源：yquoter → TickFlow（无熔断，最后防线）──
     df = _yquoter_kline(code, days)
     if not df.empty:
