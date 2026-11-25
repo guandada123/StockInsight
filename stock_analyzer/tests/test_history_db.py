@@ -320,3 +320,47 @@ class TestGetAvailableDates(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestOpenDayCompleteness(unittest.TestCase):
+    """交易日完整性检测（disc-20261027-01）
+
+    为什么必须有这组用例：缺一天不会报错，但均线/RSI/回测窗口会整段错位。
+    判据必须能被「注入一个缺失的开盘日」打红，否则等于恒绿装饰。
+    """
+
+    OPEN = ["2026-11-13", "2026-11-14", "2026-11-17", "2026-11-18"]
+
+    def test_missing_open_day_detected(self):
+        """注入一个缺失的开盘日 → 必须抛错并点名那一天（红）"""
+        present = ["2026-11-13", "2026-11-14", "2026-11-18"]  # 故意漏 11-17
+        with self.assertRaises(AssertionError) as ctx:
+            history_db.assert_no_missing_open_days(self.OPEN, present)
+        self.assertIn("2026-11-17", str(ctx.exception))
+
+    def test_no_missing_passes(self):
+        """全都有 → 不抛（绿）"""
+        history_db.assert_no_missing_open_days(self.OPEN, list(self.OPEN))
+
+    def test_allow_tail_tolerates_latest_day(self):
+        """allow_tail=1 时最后一个开盘日允许未落库（收盘写入窗口内）"""
+        present = ["2026-11-13", "2026-11-14", "2026-11-17"]  # 缺 11-18（最新）
+        history_db.assert_no_missing_open_days(self.OPEN, present, allow_tail=1)
+        with self.assertRaises(AssertionError):
+            history_db.assert_no_missing_open_days(self.OPEN, present, allow_tail=0)
+
+    def test_missing_list_is_sorted_and_deduped(self):
+        """缺口按升序返回，重复输入不产生重复项"""
+        missing = history_db.missing_open_days(self.OPEN + self.OPEN, ["2026-11-13", "2026-11-18"])
+        self.assertEqual(missing, ["2026-11-14", "2026-11-17"])
+
+    def test_extra_non_open_days_reported_separately(self):
+        """非交易日带数据只登记、不判失败（与缺日区分开）"""
+        present = list(self.OPEN) + ["2026-11-15"]  # 11-15 是周六
+        self.assertEqual(history_db.extra_non_open_days(self.OPEN, present), ["2026-11-15"])
+        history_db.assert_no_missing_open_days(self.OPEN, present)  # 不应抛
+
+    def test_negative_allow_tail_rejected(self):
+        """allow_tail 为负属调用方 bug，直接报错而不是静默当 0"""
+        with self.assertRaises(ValueError):
+            history_db.missing_open_days(self.OPEN, list(self.OPEN), allow_tail=-1)

@@ -555,6 +555,44 @@ def audit_storage_benchmark(report):
 # ── 主入口 ──
 
 
+def audit_history_completeness(report):
+    """审计: 历史评分库的交易日完整性（disc-20261027-01）。
+
+    为什么单独一项：daily_scores 按日追加，缺一天不报错，但下游均线/RSI/回测窗口
+    会整段错位。2026-11-25 实测该库缺 2026-10-27 与 2026-11-17 两个开盘日，
+    而当时 8 个审计项无一发现——因为没人把「日历 vs 库内日期」对过。
+    """
+    try:
+        from .history_db import check_history_completeness
+    except Exception as e:  # noqa: BLE001  # 模块缺失=环境坏了，按「取不到证」处理而非通过
+        report.warn("历史库完整性", f"取不到证（不计入通过）: {type(e).__name__}: {e}")
+        return
+
+    try:
+        r = check_history_completeness()
+    except Exception as e:  # noqa: BLE001  # 表缺失/库不可读同样按取不到证处理
+        report.warn("历史库完整性", f"取不到证（不计入通过）: {type(e).__name__}: {e}")
+        return
+
+    if r["missing"]:
+        shown = "、".join(r["missing"][:8]) + ("…" if len(r["missing"]) > 8 else "")
+        report.fail(
+            "历史库完整性",
+            f"缺失 {len(r['missing'])} 个开盘日的评分数据：{shown}"
+            f"（开局 {r['open_days']} 天 / 库内 {r['present_days']} 天）",
+            fix="补跑对应日期的扫描；下游均线/回测在补齐前不可信",
+        )
+    else:
+        report.ok("历史库完整性", f"{r['open_days']} 个开盘日全部有数据")
+
+    if r["extra"]:
+        report.warn(
+            "历史库完整性",
+            f"{len(r['extra'])} 个非交易日带有评分数据（如 {'、'.join(r['extra'][:3])}）"
+            "——不判失败，但会污染按自然日取窗的统计",
+        )
+
+
 def run_audit(auto_fix=True, verbose=True):
     """运行完整审计
 
@@ -587,6 +625,7 @@ def run_audit(auto_fix=True, verbose=True):
         ("资金流向自检", audit_fund_flow_sign),
         ("API健康评分", audit_api_health),
         ("存储格式基准", audit_storage_benchmark),
+        ("历史库完整性", audit_history_completeness),
     ]
 
     for name, check_fn in checks:

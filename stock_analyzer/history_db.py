@@ -178,3 +178,104 @@ def get_available_dates(limit=30):
     ).fetchall()
     conn.close()
     return [r[0] for r in rows]
+
+
+# ── 交易日完整性校验（disc-20261027-01）────────────────────────────────────
+# 为什么需要：daily_scores 是按日追加的，缺一天不会有任何报错，但下游的均线/RSI/
+# 回测窗口会**整段错位**——例如缺 11-17 后，MA5 实际跨了 6 个自然日却仍按 5 天算。
+# 2026-11-25 实测：该库缺 2026-10-27 与 2026-11-17 两个开盘日（后者正是平台故障日），
+# 而此前没有任何检查项发现它。
+
+COMPLETENESS_TAIL_NOTE = "末尾 allow_tail 个交易日视为「今日尚未落库」而不计缺失"
+
+
+def missing_open_days(open_days, present_days, *, allow_tail: int = 0) -> list[str]:
+    """纯比对：返回「有开盘但库里没有数据」的日期（升序）。
+
+    Args:
+        open_days: 交易日序列（'YYYY-MM-DD'），通常来自 stock_trade_calendar 的 is_open=1
+        present_days: 库中已有数据的日期序列
+        allow_tail: 允许末尾 N 个交易日尚未落库（收盘后写入窗口内属正常）
+
+    刻意做成纯函数：不读库、不取网络，测试可直接注入一条缺失日验证它真会报。
+    """
+    opens = sorted({str(d) for d in open_days if d})
+    present = {str(d) for d in present_days if d}
+    if allow_tail < 0:
+        raise ValueError(f"allow_tail 不能为负：{allow_tail}")
+    if allow_tail:
+        opens = opens[: max(0, len(opens) - allow_tail)]
+    return [d for d in opens if d not in present]
+
+
+def extra_non_open_days(open_days, present_days) -> list[str]:
+    """返回库里有数据、但按日历当天并不开盘的日期（升序）。
+
+    2026-11-25 实测该库有 7 个周末日期带数据（如 08-01/08-02 各 243 行）。
+    这类不判失败（可能是补录/测试遗留），但会污染「按日窗口」统计，故单独提示。
+    """
+    opens = {str(d) for d in open_days if d}
+    return sorted({str(d) for d in present_days if d and str(d) not in opens})
+
+
+def assert_no_missing_open_days(open_days, present_days, *, allow_tail: int = 0) -> None:
+    """缺任一个开盘日即抛 AssertionError（消息里列出全部缺口）。"""
+    missing = missing_open_days(open_days, present_days, allow_tail=allow_tail)
+    if missing:
+        shown = "、".join(missing[:10]) + ("…" if len(missing) > 10 else "")
+        raise AssertionError(
+            f"历史库缺失 {len(missing)} 个开盘日的数据：{shown}"
+            f"（下游均线/RSI/回测窗口会整段错位；{COMPLETENESS_TAIL_NOTE}）"
+        )
+
+
+def check_history_completeness(start=None, end=None, *, allow_tail: int = 1, conn=None):
+    """读日历与 daily_scores，返回完整性报告（不抛异常，供 CLI/巡检取结构化结果）。
+
+    **默认窗口 = 库自身覆盖范围**（start=库内最早日期，end=今天）：
+    直接拿整本日历比对会把「建库之前」的日子全算成缺失——2026-11-25 实测报 157 天，
+    属永远无法处置的假红（判据描述的不是缺陷，而是建库时刻）。指定 start 可覆盖。
+
+    Returns: {"start","end","open_days","present_days","missing","extra"}
+    """
+    own = conn is None
+    conn = conn or _get_conn()
+    try:
+        present_all = [
+            r[0] for r in conn.execute("SELECT DISTINCT date FROM daily_scores").fetchall()
+        ]
+        if not present_all:
+            return {
+                "start": start,
+                "end": end,
+                "open_days": 0,
+                "present_days": 0,
+                "missing": [],
+                "extra": [],
+            }
+        if start is None:
+            start = min(present_all)
+        if end is None:
+            end = datetime.now().strftime("%Y-%m-%d")
+
+        open_days = [
+            r[0]
+            for r in conn.execute(
+                "SELECT cal_date FROM stock_trade_calendar WHERE is_open = 1"
+                " AND cal_date >= ? AND cal_date <= ? ORDER BY cal_date",
+                (start, end),
+            ).fetchall()
+        ]
+        present = [d for d in present_all if start <= d <= end]
+    finally:
+        if own:
+            conn.close()
+
+    return {
+        "start": start,
+        "end": end,
+        "open_days": len(open_days),
+        "present_days": len(present),
+        "missing": missing_open_days(open_days, present, allow_tail=allow_tail),
+        "extra": extra_non_open_days(open_days, present_all),
+    }
