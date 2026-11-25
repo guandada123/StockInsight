@@ -364,3 +364,72 @@ class TestOpenDayCompleteness(unittest.TestCase):
         """allow_tail 为负属调用方 bug，直接报错而不是静默当 0"""
         with self.assertRaises(ValueError):
             history_db.missing_open_days(self.OPEN, list(self.OPEN), allow_tail=-1)
+
+
+class TestLatestTradingDate(unittest.TestCase):
+    """默认「最新日」必须落在开盘日（2026-11-25 实测风险）
+
+    库里存在非交易日写入（7 个周末日期带数据）。若某个周末成了 MAX(date)，
+    get_top_stocks / get_market_summary 的默认查询就会拿半量数据当「最新交易日」，
+    而且不报错——这比缺一天更危险。
+    """
+
+    def setUp(self):
+        import sqlite3
+
+        self.db = tempfile.mktemp(suffix=".db")
+        conn = sqlite3.connect(self.db)
+        conn.executescript(
+            """
+            CREATE TABLE daily_scores (date TEXT, code TEXT, composite_score REAL);
+            CREATE TABLE stock_trade_calendar (cal_date TEXT, is_open INTEGER);
+            INSERT INTO stock_trade_calendar VALUES
+                ('2026-11-24', 1), ('2026-11-25', 1), ('2026-11-28', 0);
+            INSERT INTO daily_scores VALUES
+                ('2026-11-24','600584',70.0), ('2026-11-25','600584',71.0);
+            """
+        )
+        conn.commit()
+        conn.close()
+        self._patcher = patch("stock_analyzer.history_db.DB_PATH", self.db)
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+        if os.path.exists(self.db):
+            os.unlink(self.db)
+
+    def test_skips_weekend_max_date(self):
+        """周末写入使 MAX(date)=周末时，仍返回最后一个开盘日"""
+        import sqlite3
+
+        conn = sqlite3.connect(self.db)
+        conn.execute("INSERT INTO daily_scores VALUES ('2026-11-28','600584',65.0)")
+        conn.commit()
+        conn.close()
+
+        self.assertEqual(history_db.latest_trading_date(), "2026-11-25")
+
+    def test_falls_back_without_calendar_table(self):
+        """日历表缺失时不崩，回退 MAX(date)"""
+        import sqlite3
+
+        conn = sqlite3.connect(self.db)
+        conn.execute("DROP TABLE stock_trade_calendar")
+        conn.commit()
+        conn.close()
+
+        self.assertEqual(history_db.latest_trading_date(), "2026-11-25")
+
+    def test_reports_latest_is_open_flag(self):
+        """check_history_completeness 给出 latest_is_open，供审计判红"""
+        import sqlite3
+
+        conn = sqlite3.connect(self.db)
+        conn.execute("INSERT INTO daily_scores VALUES ('2026-11-28','600584',65.0)")
+        conn.commit()
+        conn.close()
+
+        r = history_db.check_history_completeness()
+        self.assertEqual(r["latest_present"], "2026-11-28")
+        self.assertFalse(r["latest_is_open"])

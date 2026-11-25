@@ -580,10 +580,22 @@ def audit_history_completeness(report):
             "历史库完整性",
             f"缺失 {len(r['missing'])} 个开盘日的评分数据：{shown}"
             f"（开局 {r['open_days']} 天 / 库内 {r['present_days']} 天）",
-            fix="补跑对应日期的扫描；下游均线/回测在补齐前不可信",
+            fix="该日查询会返回空、趋势序列少一行；如需补齐须用与日扫描同口径的评分入参重跑，"
+            "不可直接用 backfill_history.py（口径不同，见该脚本头部警告）",
         )
     else:
         report.ok("历史库完整性", f"{r['open_days']} 个开盘日全部有数据")
+
+    # 「最新有数据日」必须落在开盘日：否则 get_top_stocks/get_market_summary 的默认
+    # （date=None → MAX(date)）会拿非交易日的半量数据当「最新交易日」——比缺一天更危险，
+    # 因为它不报错、数字看起来完全正常。
+    if r.get("latest_is_open") is False:
+        report.fail(
+            "历史库完整性",
+            f"最新有数据日期 {r['latest_present']} 不是开盘日 —— "
+            "默认取最新日的查询（TOP N / 市场分布）会拿到该日半量数据",
+            fix="清理该非交易日写入的数据，或让默认查询改用 latest_trading_date()",
+        )
 
     if r["extra"]:
         report.warn(
