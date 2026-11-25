@@ -13,6 +13,9 @@ import pandas as pd
 
 from .config import DB_PATH
 from .db_utils import open_wal_conn
+from .logging_config import get_logger
+
+logger = get_logger("history_db")
 
 
 def _get_conn():
@@ -112,6 +115,36 @@ def get_stock_history(code, days=30):
     return df
 
 
+def latest_trading_date(conn=None):
+    """库内最新「开盘日」且有数据的日期；日历表缺失时回退 MAX(date)。
+
+    为什么不能直接用 MAX(date)：daily_scores 里存在非交易日写入（2026-11-25 实测 7 个周末
+    日期带数据）。一旦某个周末成了最大值，`get_top_stocks()`/`get_market_summary()`
+    默认就会拿那一天的**半量数据**当「最新交易日」——比缺一天更隐蔽的错误。
+    """
+    own = conn is None
+    conn = conn or _get_conn()
+    try:
+        try:
+            row = conn.execute(
+                "SELECT MAX(d.date) FROM daily_scores d WHERE EXISTS ("
+                "  SELECT 1 FROM stock_trade_calendar c"
+                "  WHERE c.cal_date = d.date AND c.is_open = 1)"
+            ).fetchone()
+            if row and row[0]:
+                return row[0]
+        except sqlite3.Error as e:
+            # 2026-11-25：日历表缺失/结构不同属合法回退路径（后面还有降级查询），
+            # 但原写法 `pass` 被 test_no_new_silent_swallows 判为静默吞（基线 0 → 1）。
+            # 按项目分级规范：链中节点用 debug，兜底终点才用 warning。
+            logger.debug("trade_calendar 查询不可用，回退到无日历查询: %s", e)
+        row = conn.execute("SELECT MAX(date) FROM daily_scores").fetchone()
+        return row[0] if row else None
+    finally:
+        if own:
+            conn.close()
+
+
 def get_top_stocks(date=None, top_n=20, min_score=60):
     """查询某日评分最高的股票
 
@@ -120,7 +153,7 @@ def get_top_stocks(date=None, top_n=20, min_score=60):
     """
     conn = _get_conn()
     if date is None:
-        date = conn.execute("SELECT MAX(date) FROM daily_scores").fetchone()[0]
+        date = latest_trading_date(conn)
         if date is None:
             conn.close()
             return pd.DataFrame()
@@ -143,7 +176,7 @@ def get_market_summary(date=None):
     """
     conn = _get_conn()
     if date is None:
-        date = conn.execute("SELECT MAX(date) FROM daily_scores").fetchone()[0]
+        date = latest_trading_date(conn)
         if date is None:
             conn.close()
             return {}
@@ -225,7 +258,8 @@ def assert_no_missing_open_days(open_days, present_days, *, allow_tail: int = 0)
         shown = "、".join(missing[:10]) + ("…" if len(missing) > 10 else "")
         raise AssertionError(
             f"历史库缺失 {len(missing)} 个开盘日的数据：{shown}"
-            f"（下游均线/RSI/回测窗口会整段错位；{COMPLETENESS_TAIL_NOTE}）"
+            f"（该日查询返回空、单只股票趋势序列会少一行；"
+            f"当前无任何基于本表的滚动/均线/回测计算，故不构成指标失真；{COMPLETENESS_TAIL_NOTE}）"
         )
 
 
@@ -267,13 +301,23 @@ def check_history_completeness(start=None, end=None, *, allow_tail: int = 1, con
             ).fetchall()
         ]
         present = [d for d in present_all if start <= d <= end]
+        # 全量开盘日集合（不受 start/end 限制）：用于判断「最新有数据的日期」是否开盘日
+        open_all = {
+            r[0]
+            for r in conn.execute(
+                "SELECT cal_date FROM stock_trade_calendar WHERE is_open = 1"
+            ).fetchall()
+        }
     finally:
         if own:
             conn.close()
 
+    latest = max(present_all)
     return {
         "start": start,
         "end": end,
+        "latest_present": latest,
+        "latest_is_open": (latest in open_all) if open_all else None,
         "open_days": len(open_days),
         "present_days": len(present),
         "missing": missing_open_days(open_days, present, allow_tail=allow_tail),
