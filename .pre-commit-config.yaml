@@ -59,3 +59,15 @@ repos:
         language: python
         stages: [commit-msg]
         always_run: true
+
+  # 2026-11-27：助手提交归属标注（与 Claw / QTS 同款，三仓统一）。
+  # 只在 ASSISTANT_COMMIT=1 时追加 Assistant-Change trailer；无条件追加会把中台的提交
+  # 也标成助手写的（错标比漏标更坏）。fail-safe：任何异常 exit 0，不阻断提交。
+  - repo: local
+    hooks:
+      - id: assistant-trailer
+        name: 助手提交归属标注（仅在 ASSISTANT_COMMIT=1 时追加）
+        entry: python scripts/append_assistant_trailer.py
+        language: python
+        stages: [commit-msg]
+        always_run: true
